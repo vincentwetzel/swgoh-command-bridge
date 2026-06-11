@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
@@ -23,6 +24,13 @@ namespace swgoh_command_bridge.UI.ViewModels
         private string _headerText = "Mod Assignment Optimizer";
         private CharacterEntity? _selectedCharacter;
         private bool _isBusy;
+        private string _popularityText = "No community recommendation data available.";
+        private string _lastUpdatedText = string.Empty;
+
+        private static readonly JsonSerializerOptions SerializerOptions = new()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
 
         /// <summary>
         /// Gets the collection of available characters for optimization.
@@ -33,6 +41,16 @@ namespace swgoh_command_bridge.UI.ViewModels
         /// Gets the collection of optimal mods computed for the selected character.
         /// </summary>
         public ObservableCollection<GameModEntity> RecommendedLoadout { get; } = new();
+
+        /// <summary>
+        /// Gets the collection of target mod sets recommended by swgoh.gg.
+        /// </summary>
+        public ObservableCollection<string> TargetSets { get; } = new();
+
+        /// <summary>
+        /// Gets the collection of target primary stats per mod slot recommended by swgoh.gg.
+        /// </summary>
+        public ObservableCollection<string> TargetPrimaries { get; } = new();
 
         /// <summary>
         /// Gets or sets the page header text.
@@ -63,6 +81,38 @@ namespace swgoh_command_bridge.UI.ViewModels
                     _selectedCharacter = value;
                     OnPropertyChanged(nameof(SelectedCharacter));
                     _ = LoadOptimalLoadoutAsync();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the text representation of recommendation popularity.
+        /// </summary>
+        public string PopularityText
+        {
+            get => _popularityText;
+            set
+            {
+                if (_popularityText != value)
+                {
+                    _popularityText = value;
+                    OnPropertyChanged(nameof(PopularityText));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the text representation of the last updated timestamp.
+        /// </summary>
+        public string LastUpdatedText
+        {
+            get => _lastUpdatedText;
+            set
+            {
+                if (_lastUpdatedText != value)
+                {
+                    _lastUpdatedText = value;
+                    OnPropertyChanged(nameof(LastUpdatedText));
                 }
             }
         }
@@ -132,6 +182,10 @@ namespace swgoh_command_bridge.UI.ViewModels
             if (SelectedCharacter == null)
             {
                 RecommendedLoadout.Clear();
+                TargetSets.Clear();
+                TargetPrimaries.Clear();
+                PopularityText = "No community recommendation data available.";
+                LastUpdatedText = string.Empty;
                 return;
             }
 
@@ -140,6 +194,48 @@ namespace swgoh_command_bridge.UI.ViewModels
 
             try
             {
+                // Fetch scraped community insights from SQLite cache
+                var recommendation = await _context.SwgohGgRecommendations
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(r => r.CharacterId == characterId)
+                    .ConfigureAwait(true);
+
+                TargetSets.Clear();
+                TargetPrimaries.Clear();
+                PopularityText = "No community recommendation data available.";
+                LastUpdatedText = string.Empty;
+
+                if (recommendation != null)
+                {
+                    PopularityText = $"Community Popularity: {recommendation.PopularityPercentage:F1}%";
+                    LastUpdatedText = $"Scraped: {recommendation.LastUpdatedUtc.ToLocalTime():yyyy-MM-dd HH:mm}";
+
+                    try
+                    {
+                        var sets = JsonSerializer.Deserialize<List<string>>(recommendation.SetRecommendationsJson, SerializerOptions);
+                        if (sets != null)
+                        {
+                            foreach (var set in sets)
+                            {
+                                TargetSets.Add(set);
+                            }
+                        }
+
+                        var primaries = JsonSerializer.Deserialize<Dictionary<string, string>>(recommendation.PrimaryStatsJson, SerializerOptions);
+                        if (primaries != null)
+                        {
+                            foreach (var kvp in primaries)
+                            {
+                                TargetPrimaries.Add($"{kvp.Key}: {kvp.Value}");
+                            }
+                        }
+                    }
+                    catch (JsonException ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Failed to deserialize recommendation payload: {ex.Message}");
+                    }
+                }
+
                 // Offload CPU heavy work and Db Queries to background thread (Rule 9)
                 var optimalMods = await Task.Run(async () =>
                 {

@@ -3,9 +3,9 @@
 A cross-platform desktop application written in C# and Avalonia UI for read-only SWGOH roster, mod inventory, and mod optimization analysis.
 
 ## Current Shape
-- `src/swgoh-command-bridge.Core` contains the compiled domain models and early recommendation services.
-- `src/swgoh-command-bridge.UI` contains the Avalonia shell, navigation, and feature views for characters, mods, priorities, thresholds, and optimization.
-- Root-level service/entity files are prototype data-access and integration drafts that are not yet moved into the compiled Core project.
+- `src/swgoh-command-bridge.Core` contains the compiled domain models, mod advisor/assignment services, and the `swgoh.gg` scraper service.
+- `src/swgoh-command-bridge.UI` contains the Avalonia shell, navigation, and feature viewmodels for characters, mods, priorities, thresholds, and optimization.
+- Local SQLite persistence is represented by EF Core database/entity drafts at the repository root. UI viewmodels and Core services currently depend on those namespaces while the files are being consolidated into the compiled Core project.
 - `tests/swgoh-command-bridge.Tests` is the test project scaffold.
 
 ## Prerequisites

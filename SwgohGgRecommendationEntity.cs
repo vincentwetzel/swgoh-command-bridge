@@ -5,22 +5,33 @@ using System;
 namespace swgoh_command_bridge.Core.Database.Entities
 {
     /// <summary>
-    /// Database entity representing the scraped swgoh.gg recommendations for a specific character.
+    /// Database model representing swgoh.gg scraping insights for a character.
     /// </summary>
     public class SwgohGgRecommendationEntity
     {
+        /// <summary>
+        /// Gets or sets the unique character ID.
+        /// </summary>
         public string CharacterId { get; set; } = string.Empty;
 
-        public string RecommendedSets { get; set; } = string.Empty;
+        /// <summary>
+        /// Gets or sets serialized JSON representing recommended primary stats by slot.
+        /// </summary>
+        public string PrimaryStatsJson { get; set; } = "{}";
 
-        public string ArrowPrimary { get; set; } = string.Empty;
+        /// <summary>
+        /// Gets or sets serialized JSON representing recommended mod sets.
+        /// </summary>
+        public string SetRecommendationsJson { get; set; } = "[]";
 
-        public string TrianglePrimary { get; set; } = string.Empty;
+        /// <summary>
+        /// Gets or sets the percentage weight/popularity of this recommendation.
+        /// </summary>
+        public double PopularityPercentage { get; set; }
 
-        public string CirclePrimary { get; set; } = string.Empty;
-
-        public string CrossPrimary { get; set; } = string.Empty;
-
-        public DateTime LastUpdatedUtc { get; set; }
+        /// <summary>
+        /// Gets or sets the timestamp when this recommendation data was last fetched.
+        /// </summary>
+        public DateTime LastUpdatedUtc { get; set; } = DateTime.UtcNow;
     }
 }

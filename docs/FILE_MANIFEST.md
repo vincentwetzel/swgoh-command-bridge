@@ -35,8 +35,10 @@ This document lists the current files in the project, organized by directory.
 |-- src
 |   |-- ComlinkService.cpp
 |   |-- swgoh-command-bridge.Core
+|   |   |-- ISwgohGgScraperService.cs
 |   |   |-- ModAdvisorService.cs
 |   |   |-- ModAssignmentService.cs
+|   |   |-- SwgohGgScraperService.cs
 |   |   |-- swgoh-command-bridge.Core.csproj
 |   |   `-- Models
 |   |       |-- Character.cs

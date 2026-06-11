@@ -5,7 +5,7 @@ This section describes any automated agents, background services, or long-runnin
 
 *There are currently no long-running in-app agents defined for this project.*
 
-The `swgoh.gg` scraper is currently a service draft rather than a scheduled background worker. This file should be updated if a background sync, periodic cache refresh, or automation host is introduced.
+`SwgohGgScraperService` is a Core service that can run an incremental, sequential scrape of cached roster characters. It is not yet hosted as a scheduled background worker; this file should be updated if a background sync, periodic cache refresh, or automation host is introduced.
 
 ---
 

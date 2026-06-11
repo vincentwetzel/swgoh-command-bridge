@@ -13,29 +13,29 @@ This document outlines the development plan for the SWGOH Command Bridge.
 - [x] Basic view navigation between different sections of the app.
 - [ ] Ensure the solution builds and runs on all target platforms.
 
-## Milestone 2: Mod Analysis & User-Defined Rules
+## Milestone 2: Mod Analysis & User-Defined Rules [COMPLETE]
 *Objective: Implement features for analyzing mods and allowing users to define their own rules and priorities.*
 
-- [ ] **Character Priorities:**
+- [x] **Character Priorities:**
     - [x] Add `Priority` property to the `Character` database entity model.
     - [x] Create a `CharacterPrioritiesView` to allow users to set a priority score for each character.
-- [ ] **Mod Upgrade Advisor:**
+- [x] **Mod Upgrade Advisor:**
     - [x] Create `ModUpgradeThreshold` model for user-defined upgrade rules.
     - [x] Implement a `ModThresholdsView` for users to create and manage these thresholds.
     - [x] Implement the `ModAdvisorService` with the core logic for upgrade/swap/sell recommendations.
-- [ ] **Detailed Mod Mechanics:**
+- [x] **Detailed Mod Mechanics:**
     - [x] Ensure all mod logic correctly implements the processes described in `docs/MOD_MECHANICS.md` (leveling vs. slicing).
-- [ ] **Advanced UI:**
+- [x] **Advanced UI:**
     - [x] Implement advanced filtering and sorting for the mods grid.
     - [x] Create a "Selected Mod" panel to display detailed stats and the recommendation from the `ModAdvisorService`.
 
 ## Milestone 3: `swgoh.gg` Integration & Recommendation Engine
 *Objective: Scrape data from `swgoh.gg` to power an intelligent and flexible recommendation engine.*
 
-- [ ] **`swgoh.gg` Scraper:**
-    - [ ] Move the root-level `SwgohGgScraperService` draft into the compiled Core project.
-    - [ ] Replace placeholder parsing with real "best mods" extraction.
-    - [ ] Wire SQLite tables for storing scraped mod set and primary stat recommendations.
+- [x] **`swgoh.gg` Scraper:**
+    - [x] Move the root-level `SwgohGgScraperService` draft into the compiled Core project.
+    - [x] Replace placeholder parsing with real "best mods" extraction.
+    - [x] Wire SQLite tables for storing scraped mod set and primary stat recommendations.
     - [x] Draft a slow and incremental scraping strategy to avoid overloading `swgoh.gg`.
 - [ ] **Recommendation Logic:**
     - [ ] Wire `ModAssignmentService` and `ModAdvisorService` to persisted `swgoh.gg` data.

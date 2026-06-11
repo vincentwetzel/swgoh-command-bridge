@@ -1,5 +1,13 @@
 #nullable enable
 
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Threading.Tasks;
+using swgoh_command_bridge.Core.Database.Entities;
+using swgoh_command_bridge.Core.Models;
+
 namespace swgoh_command_bridge.UI.ViewModels
 {
     /// <summary>
@@ -8,6 +16,17 @@ namespace swgoh_command_bridge.UI.ViewModels
     public class ModsViewModel : ViewModelBase
     {
         private string _headerText = "Mod Management & Upgrades";
+        private GameModEntity? _selectedMod;
+        private ModRecommendation? _selectedModRecommendation;
+        private int _rarityFilter;
+        private string _sortOption = "Rarity";
+        private readonly List<GameModEntity> _allMods = new();
+        private readonly IModAdvisorService _advisorService;
+
+        /// <summary>
+        /// Gets the collection of filtered mods displayed in the grid.
+        /// </summary>
+        public ObservableCollection<GameModEntity> FilteredMods { get; } = new();
 
         /// <summary>
         /// Gets or sets the header text for the mods panel.
@@ -55,6 +74,23 @@ namespace swgoh_command_bridge.UI.ViewModels
                 {
                     _selectedModRecommendation = value;
                     OnPropertyChanged(nameof(SelectedModRecommendation));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the sorting criteria option.
+        /// </summary>
+        public string SortOption
+        {
+            get => _sortOption;
+            set
+            {
+                if (_sortOption != value)
+                {
+                    _sortOption = value;
+                    OnPropertyChanged(nameof(SortOption));
+                    ApplyFiltersAndSort();
                 }
             }
         }
