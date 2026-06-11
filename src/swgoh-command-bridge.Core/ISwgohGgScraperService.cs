@@ -1,7 +1,9 @@
 #nullable enable
 
+using System;
 using System.Threading;
 using System.Threading.Tasks;
+using swgoh_command_bridge.Core.Models;
 
 namespace swgoh_command_bridge.Core.Services
 {
@@ -18,6 +20,11 @@ namespace swgoh_command_bridge.Core.Services
         /// <summary>
         /// Scrapes recommendations sequentially for all characters with a polite delay to respect rate limit policies.
         /// </summary>
-        Task ScrapeAllCharactersIncrementalAsync(CancellationToken cancellationToken = default);
+        Task ScrapeAllCharactersIncrementalAsync(IProgress<ScrapeProgress>? progress = null, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Checks whether a fresh recommendation exists in the database for the given character.
+        /// </summary>
+        Task<bool> HasRecommendationAsync(string characterId, CancellationToken cancellationToken = default);
     }
 }

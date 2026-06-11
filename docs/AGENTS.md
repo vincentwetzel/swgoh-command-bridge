@@ -3,9 +3,9 @@
 ## Background Agents & Services
 This section describes any automated agents, background services, or long-running processes that are part of the application ecosystem.
 
-*There are currently no long-running in-app agents defined for this project.*
+*There are currently no scheduled long-running in-app agents defined for this project.*
 
-`SwgohGgScraperService` is a Core service that can run an incremental, sequential scrape of cached roster characters. It is not yet hosted as a scheduled background worker; this file should be updated if a background sync, periodic cache refresh, or automation host is introduced.
+`SwgohGgScraperService` is a Core service that can run a user-triggered, incremental, sequential scrape of cached roster characters. It reports `ScrapeProgress`, supports cooperative cancellation, skips fresh cached recommendations, and records per-character failures. It is not hosted as a scheduled background worker; this file should be updated if a background sync, periodic cache refresh, or automation host is introduced.
 
 ---
 

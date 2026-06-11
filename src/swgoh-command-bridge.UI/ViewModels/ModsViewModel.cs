@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using swgoh_command_bridge.Core.Database.Entities;
 using swgoh_command_bridge.Core.Models;
+using swgoh_command_bridge.Core.Services;
 
 namespace swgoh_command_bridge.UI.ViewModels
 {

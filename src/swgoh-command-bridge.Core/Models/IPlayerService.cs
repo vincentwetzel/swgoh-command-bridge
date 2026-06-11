@@ -15,5 +15,10 @@ namespace swgoh_command_bridge.Core.Services
         /// Fetches the player details and updates/returns the models.
         /// </summary>
         Task<PlayerProfile> GetPlayerProfileAsync(string allyCode, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Fetches raw player details, maps them to database entities, persists them, and returns the domain profile.
+        /// </summary>
+        Task<PlayerProfile> SyncPlayerProfileAsync(string allyCode, CancellationToken cancellationToken = default);
     }
 }

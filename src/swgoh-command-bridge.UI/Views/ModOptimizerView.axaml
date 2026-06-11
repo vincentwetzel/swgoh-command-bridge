@@ -38,7 +38,7 @@
               <DataTemplate>
                 <Grid ColumnDefinitions="80, *, 80, 80" Margin="5">
                   <TextBlock Grid.Column="0" Text="{Binding Slot, StringFormat='Slot {0}'}" FontWeight="SemiBold"/>
-                  <TextBlock Grid.Column="1" Text="{Binding Rarity, StringFormat='{0}★ Mod'}" Foreground="#3296FF"/>
+                  <TextBlock Grid.Column="1" Text="{Binding Rarity, StringFormat='{}{0} star Mod'}" Foreground="#3296FF"/>
                   <TextBlock Grid.Column="2" Text="{Binding Level, StringFormat='Lvl {0}'}"/>
                   <TextBlock Grid.Column="3" Text="{Binding Tier, StringFormat='Tier {0}'}"/>
                 </Grid>

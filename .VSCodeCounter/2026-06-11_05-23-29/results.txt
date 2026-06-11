@@ -1,0 +1,129 @@
+Date : 2026-06-11 05:23:29
+Directory : e:\coding_workspaces\CPP\swgoh-command-bridge
+Total : 85 files,  3664 codes, 544 comments, 716 blanks, all 4924 lines
+
+Languages
++----------+------------+------------+------------+------------+------------+
+| language | files      | code       | comment    | blank      | total      |
++----------+------------+------------+------------+------------+------------+
+| C#       |         62 |      2,843 |        532 |        550 |      3,925 |
+| Markdown |         11 |        521 |          0 |        112 |        633 |
+| XML      |         10 |        253 |          9 |         40 |        302 |
+| C++      |          2 |         47 |          3 |         14 |         64 |
++----------+------------+------------+------------+------------+------------+
+
+Directories
++------------------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                                                                         | files      | code       | comment    | blank      | total      |
++------------------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                                                            |         85 |      3,664 |        544 |        716 |      4,924 |
+| . (Files)                                                                                                                    |         17 |        751 |        105 |        175 |      1,031 |
+| docs                                                                                                                         |          7 |        244 |          0 |         58 |        302 |
+| src                                                                                                                          |         59 |      2,635 |        439 |        474 |      3,548 |
+| src (Files)                                                                                                                  |          1 |         33 |          0 |          7 |         40 |
+| src\swgoh-command-bridge.Core                                                                                                |         34 |      1,605 |        269 |        308 |      2,182 |
+| src\swgoh-command-bridge.Core (Files)                                                                                        |          8 |        644 |         83 |        114 |        841 |
+| src\swgoh-command-bridge.Core\Database                                                                                       |          6 |        135 |         44 |         48 |        227 |
+| src\swgoh-command-bridge.Core\Database\Entities                                                                              |          4 |         59 |         27 |         31 |        117 |
+| src\swgoh-command-bridge.Core\Database\Repositories                                                                          |          2 |         76 |         17 |         17 |        110 |
+| src\swgoh-command-bridge.Core\Models                                                                                         |         14 |        529 |         86 |         85 |        700 |
+| src\swgoh-command-bridge.Core\Services                                                                                       |          6 |        297 |         56 |         61 |        414 |
+| src\swgoh-command-bridge.UI                                                                                                  |         24 |        997 |        170 |        159 |      1,326 |
+| src\swgoh-command-bridge.UI (Files)                                                                                          |          5 |         98 |          5 |         23 |        126 |
+| src\swgoh-command-bridge.UI\ViewModels                                                                                       |          7 |        663 |        127 |         97 |        887 |
+| src\swgoh-command-bridge.UI\Views                                                                                            |         12 |        236 |         38 |         39 |        313 |
+| tests                                                                                                                        |          2 |         34 |          0 |          9 |         43 |
+| tests\swgoh-command-bridge.Tests                                                                                             |          2 |         34 |          0 |          9 |         43 |
++------------------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++------------------------------------------------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+
+| filename                                                                                                                     | language | code       | comment    | blank      | total      |
++------------------------------------------------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+
+| e:\coding_workspaces\CPP\swgoh-command-bridge\CHANGELOG.md                                                                   | Markdown |         33 |          0 |          6 |         39 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\CODING_STANDARDS.md                                                            | Markdown |        151 |          0 |         30 |        181 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\CharacterEntity.cs                                                             | C#       |         16 |          3 |          9 |         28 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\ComlinkService.cs                                                              | C#       |         63 |          8 |         12 |         83 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\ComlinkService.hpp                                                             | C++      |         14 |          3 |          7 |         24 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\GameModEntity.cs                                                               | C#       |         16 |          3 |          9 |         28 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\IComlinkService.cs                                                             | C#       |         11 |          9 |          3 |         23 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\IModAssignmentService.cs                                                       | C#       |         15 |          6 |          2 |         23 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\IPlayerRepository.cs                                                           | C#       |         12 |          9 |          3 |         24 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\ISwgohGgScraperService.cs                                                      | C#       |         12 |          9 |          3 |         24 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\ModAssignmentService.cs                                                        | C#       |        110 |         12 |         22 |        144 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\PlayerEntity.cs                                                                | C#       |         14 |          3 |          7 |         24 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\PlayerRepository.cs                                                            | C#       |         64 |          8 |         14 |         86 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\README.md                                                                      | Markdown |         29 |          0 |          9 |         38 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\SwgohGgRecommendationEntity.cs                                                 | C#       |         13 |         18 |          6 |         37 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\SwgohGgScraperService.cs                                                       | C#       |        114 |         14 |         24 |        152 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\TODO.md                                                                        | Markdown |         64 |          0 |          9 |         73 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\docs\AGENTS.md                                                                 | Markdown |         14 |          0 |          7 |         21 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\docs\ARCHITECTURE.md                                                           | Markdown |         41 |          0 |         12 |         53 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\docs\COMLINK_SETUP.md                                                          | Markdown |         17 |          0 |          7 |         24 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\docs\FILE_MANIFEST.md                                                          | Markdown |         83 |          0 |          3 |         86 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\docs\MOD_MECHANICS.md                                                          | Markdown |         30 |          0 |         12 |         42 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\docs\SPEC.md                                                                   | Markdown |         41 |          0 |         10 |         51 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\docs\STATE_FLOW.md                                                             | Markdown |         18 |          0 |          7 |         25 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\ComlinkService.cpp                                                         | C++      |         33 |          0 |          7 |         40 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\AppDbContext.cs                                  | C#       |         55 |         11 |         13 |         79 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\Database\Entities\CharacterEntity.cs             | C#       |         16 |          3 |          9 |         28 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\Database\Entities\GameModEntity.cs               | C#       |         16 |          3 |          9 |         28 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\Database\Entities\PlayerEntity.cs                | C#       |         14 |          3 |          7 |         24 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\Database\Entities\SwgohGgRecommendationEntity.cs | C#       |         13 |         18 |          6 |         37 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\Database\Repositories\IPlayerRepository.cs       | C#       |         12 |          9 |          3 |         24 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\Database\Repositories\PlayerRepository.cs        | C#       |         64 |          8 |         14 |         86 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\ISwgohGgScraperService.cs                        | C#       |         13 |          9 |          3 |         25 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\ModAdvisorService.cs                             | C#       |         37 |          3 |          7 |         47 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\ModAssignmentPlan.cs                             | C#       |         11 |          4 |          2 |         17 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\ModAssignmentService.cs                          | C#       |        246 |         39 |         37 |        322 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\ModSwapRecommendation.cs                         | C#       |         12 |          3 |          1 |         16 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\Models\AppSettings.cs                            | C#       |         10 |          3 |          1 |         14 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\Models\AssignedModDetail.cs                      | C#       |         11 |          3 |          1 |         15 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\Models\Character.cs                              | C#       |         37 |          3 |          5 |         45 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\Models\GameMod.cs                                | C#       |         21 |          4 |          4 |         29 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\Models\IModAdvisorService.cs                     | C#       |         15 |          6 |          2 |         23 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\Models\IPlayerService.cs                         | C#       |         12 |          9 |          3 |         24 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\Models\ModAdvisorService.cs                      | C#       |         71 |         12 |         11 |         94 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\Models\ModEnums.cs                               | C#       |         51 |          1 |          5 |         57 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\Models\ModRecommendation.cs                      | C#       |         18 |         21 |          6 |         45 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\Models\ModStat.cs                                | C#       |         27 |          3 |          4 |         34 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\Models\ModUpgradeThreshold.cs                    | C#       |         13 |          3 |          1 |         17 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\Models\PlayerProfile.cs                          | C#       |         13 |          3 |          2 |         18 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\Models\PlayerService.cs                          | C#       |        218 |         12 |         39 |        269 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\Models\ScrapeProgress.cs                         | C#       |         12 |          3 |          1 |         16 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\Services\ComlinkService.cs                       | C#       |         63 |          8 |         12 |         83 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\Services\IComlinkService.cs                      | C#       |         11 |          9 |          3 |         23 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\Services\IModAssignmentService.cs                | C#       |         15 |          6 |          3 |         24 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\Services\ISettingsService.cs                     | C#       |         12 |         12 |          4 |         28 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\Services\ModAssignmentService.cs                 | C#       |        107 |          7 |         22 |        136 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\Services\SettingsService.cs                      | C#       |         89 |         14 |         17 |        120 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\SwgohGgScraperService.cs                         | C#       |        257 |         14 |         47 |        318 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.Core\swgoh-command-bridge.Core.csproj                 | XML      |         13 |          0 |          4 |         17 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.UI\App.axaml                                          | XML      |         11 |          0 |          2 |         13 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.UI\App.axaml.cs                                       | C#       |         24 |          0 |          6 |         30 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.UI\Program.cs                                         | C#       |         14 |          4 |          4 |         22 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.UI\ViewLocator.cs                                     | C#       |         26 |          0 |          7 |         33 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.UI\ViewModels\CharacterPrioritiesViewModel.cs         | C#       |        142 |         27 |         17 |        186 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.UI\ViewModels\CharactersViewModel.cs                  | C#       |        103 |         24 |         14 |        141 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.UI\ViewModels\MainWindowViewModel.cs                  | C#       |         45 |          1 |         11 |         57 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.UI\ViewModels\ModOptimizerViewModel.cs                | C#       |        212 |         39 |         29 |        280 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.UI\ViewModels\ModThresholdsViewModel.cs               | C#       |         23 |          9 |          4 |         36 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.UI\ViewModels\ModsViewModel.cs                        | C#       |        133 |         27 |         19 |        179 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.UI\ViewModels\ViewModelBase.cs                        | C#       |          5 |          0 |          3 |          8 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.UI\Views\CharacterPrioritiesView.axaml                | XML      |         16 |          0 |          2 |         18 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.UI\Views\CharacterPrioritiesView.axaml.cs             | C#       |          9 |          6 |          2 |         17 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.UI\Views\CharactersView.axaml                         | XML      |         16 |          0 |          2 |         18 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.UI\Views\CharactersView.axaml.cs                      | C#       |          9 |          6 |          3 |         18 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.UI\Views\MainWindow.axaml                             | XML      |         26 |          0 |          5 |         31 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.UI\Views\MainWindow.axaml.cs                          | C#       |          9 |          0 |          3 |         12 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.UI\Views\ModOptimizerView.axaml                       | XML      |         45 |          3 |          5 |         53 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.UI\Views\ModOptimizerView.axaml.cs                    | C#       |          9 |          6 |          2 |         17 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.UI\Views\ModThresholdsView.axaml                      | XML      |         16 |          0 |          2 |         18 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.UI\Views\ModThresholdsView.axaml.cs                   | C#       |          9 |          6 |          2 |         17 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.UI\Views\ModsView.axaml                               | XML      |         63 |          5 |          8 |         76 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.UI\Views\ModsView.axaml.cs                            | C#       |          9 |          6 |          3 |         18 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\src\swgoh-command-bridge.UI\swgoh-command-bridge.UI.csproj                     | XML      |         23 |          1 |          4 |         28 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\tests\swgoh-command-bridge.Tests\UnitTest1.cs                                  | C#       |         10 |          0 |          3 |         13 |
+| e:\coding_workspaces\CPP\swgoh-command-bridge\tests\swgoh-command-bridge.Tests\swgoh-command-bridge.Tests.csproj             | XML      |         24 |          0 |          6 |         30 |
+| Total                                                                                                                        |          |      3,664 |        544 |        716 |      4,924 |
++------------------------------------------------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+

@@ -77,6 +77,14 @@ namespace swgoh_command_bridge.UI.ViewModels
         /// <summary>
         /// Initializes a new instance of the <see cref="CharactersViewModel"/> class.
         /// </summary>
+        public CharactersViewModel()
+            : this(new AppDbContext())
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="CharactersViewModel"/> class.
+        /// </summary>
         public CharactersViewModel(AppDbContext context)
         {
             ArgumentNullException.ThrowIfNull(context);

@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch SWGOH Command Bridge",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-ui",
+      "program": "${workspaceFolder}/src/swgoh-command-bridge.UI/bin/Debug/net8.0/swgoh-command-bridge.UI.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/swgoh-command-bridge.UI",
+      "stopAtEntry": false,
+      "console": "internalConsole"
+    }
+  ]
+}

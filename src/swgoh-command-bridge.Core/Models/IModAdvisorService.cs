@@ -1,8 +1,8 @@
 #nullable enable
 
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using swgoh_command_bridge.Core.Database.Entities;
 using swgoh_command_bridge.Core.Models;
 
 namespace swgoh_command_bridge.Core.Services
@@ -16,8 +16,9 @@ namespace swgoh_command_bridge.Core.Services
         /// Analyzes a single mod against user thresholds and character context to return a recommendation.
         /// </summary>
         Task<ModRecommendation> AnalyzeModAsync(
-            GameModEntity mod, 
-            ModUpgradeThreshold threshold, 
+            GameMod mod,
+            ModUpgradeThreshold threshold,
+            IEnumerable<Character> characters,
             CancellationToken cancellationToken = default);
     }
 }

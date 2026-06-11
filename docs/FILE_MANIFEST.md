@@ -5,7 +5,6 @@ This document lists the current files in the project, organized by directory.
 ```text
 .
 |-- .gitignore
-|-- AppDbContext.cs
 |-- CHANGELOG.md
 |-- CharacterEntity.cs
 |-- CODING_STANDARDS.md
@@ -35,12 +34,26 @@ This document lists the current files in the project, organized by directory.
 |-- src
 |   |-- ComlinkService.cpp
 |   |-- swgoh-command-bridge.Core
+|   |   |-- AppDbContext.cs
 |   |   |-- ISwgohGgScraperService.cs
 |   |   |-- ModAdvisorService.cs
+|   |   |-- ModAssignmentPlan.cs
 |   |   |-- ModAssignmentService.cs
+|   |   |-- ModSwapRecommendation.cs
 |   |   |-- SwgohGgScraperService.cs
 |   |   |-- swgoh-command-bridge.Core.csproj
-|   |   `-- Models
+|   |   |-- Database
+|   |   |   |-- Entities
+|   |   |   |   |-- CharacterEntity.cs
+|   |   |   |   |-- GameModEntity.cs
+|   |   |   |   |-- PlayerEntity.cs
+|   |   |   |   `-- SwgohGgRecommendationEntity.cs
+|   |   |   `-- Repositories
+|   |   |       |-- IPlayerRepository.cs
+|   |   |       `-- PlayerRepository.cs
+|   |   |-- Models
+|   |       |-- AppSettings.cs
+|   |       |-- AssignedModDetail.cs
 |   |       |-- Character.cs
 |   |       |-- GameMod.cs
 |   |       |-- IModAdvisorService.cs
@@ -50,8 +63,19 @@ This document lists the current files in the project, organized by directory.
 |   |       |-- ModRecommendation.cs
 |   |       |-- ModStat.cs
 |   |       |-- ModUpgradeThreshold.cs
+|   |       |-- OperationState.cs
 |   |       |-- PlayerProfile.cs
-|   |       `-- PlayerService.cs
+|   |       |-- PlayerService.cs
+|   |       `-- ScrapeProgress.cs
+|   |   `-- Services
+|   |       |-- ComlinkService.cs
+|   |       |-- IComlinkService.cs
+|   |       |-- IModAssignmentService.cs
+|   |       |-- ISettingsService.cs
+|   |       |-- ModAssignmentService.cs
+|   |       |-- ModFilterService.cs
+|   |       |-- ModMechanicsService.cs
+|   |       `-- SettingsService.cs
 |   `-- swgoh-command-bridge.UI
 |       |-- App.axaml
 |       |-- App.axaml.cs
@@ -71,15 +95,22 @@ This document lists the current files in the project, organized by directory.
 |           |-- CharacterPrioritiesView.axaml
 |           |-- CharacterPrioritiesView.axaml.cs
 |           |-- CharactersView.axaml
+|           |-- CharactersView.axaml.cs
 |           |-- MainWindow.axaml
 |           |-- MainWindow.axaml.cs
 |           |-- ModOptimizerView.axaml
 |           |-- ModOptimizerView.axaml.cs
 |           |-- ModThresholdsView.axaml
 |           |-- ModThresholdsView.axaml.cs
-|           `-- ModsView.axaml
+|           |-- ModsView.axaml
+|           `-- ModsView.axaml.cs
 `-- tests
     `-- swgoh-command-bridge.Tests
+        |-- ModAdvisorServiceTests.cs
+        |-- ModFilterServiceTests.cs
+        |-- OperationStateTests.cs
+        |-- PlayerServiceTests.cs
+        |-- SettingsServiceTests.cs
         |-- UnitTest1.cs
         `-- swgoh-command-bridge.Tests.csproj
 ```
