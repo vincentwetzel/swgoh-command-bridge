@@ -1,0 +1,36 @@
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Re]leases/
+x64/
+x86/
+[Aa]R[Mm]/
+[Aa]R[Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Log]s/
+[Te]st[Re]sult*/
+
+# Visual Studio 2015/2017/2019/2022 cache/options directory
+.vs/
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userb
+*.userosscache
+*.sln.docstates
+
+# Mono Auto Generated Files
+mono_crash.*
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# OS-specific files
+.DS_Store
+Thumbs.db

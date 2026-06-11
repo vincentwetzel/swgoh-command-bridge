@@ -1,0 +1,52 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:swgoh_command_bridge.UI.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="swgoh_command_bridge.UI.Views.ModOptimizerView"
+             x:DataType="vm:ModOptimizerViewModel">
+  <Design.DataContext>
+    <!-- Design time setup fallback can go here if needed -->
+  </Design.DataContext>
+
+  <Grid RowDefinitions="Auto, *" Margin="15">
+    <TextBlock Grid.Row="0" Text="{Binding HeaderText}" FontSize="22" FontWeight="Bold" Margin="0,0,0,15"/>
+
+    <Grid Grid.Row="1" ColumnDefinitions="250, *">
+      <!-- Left Column: Character List -->
+      <Border Grid.Column="0" CornerRadius="4" BorderBrush="Gray" BorderThickness="1" Margin="0,0,10,0">
+        <ListBox ItemsSource="{Binding Characters}" SelectedItem="{Binding SelectedCharacter}">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Margin="5">
+                <TextBlock Text="{Binding Name}" FontWeight="Bold"/>
+                <TextBlock Text="{Binding Priority, StringFormat='Priority: {0}'}" FontSize="12" Foreground="Gray"/>
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Border>
+
+      <!-- Right Column: Optimal Loadout Deck -->
+      <Border Grid.Column="1" Background="#222222" CornerRadius="8" Padding="15">
+        <Grid RowDefinitions="Auto, *">
+          <TextBlock Grid.Row="0" Text="Optimal Recommended Loadout" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,15"/>
+
+          <ListBox Grid.Row="1" ItemsSource="{Binding RecommendedLoadout}" Background="Transparent">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <Grid ColumnDefinitions="80, *, 80, 80" Margin="5">
+                  <TextBlock Grid.Column="0" Text="{Binding Slot, StringFormat='Slot {0}'}" FontWeight="SemiBold"/>
+                  <TextBlock Grid.Column="1" Text="{Binding Rarity, StringFormat='{0}★ Mod'}" Foreground="#3296FF"/>
+                  <TextBlock Grid.Column="2" Text="{Binding Level, StringFormat='Lvl {0}'}"/>
+                  <TextBlock Grid.Column="3" Text="{Binding Tier, StringFormat='Tier {0}'}"/>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

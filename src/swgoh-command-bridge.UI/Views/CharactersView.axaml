@@ -1,0 +1,18 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:swgoh_command_bridge.UI.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="swgoh_command_bridge.UI.Views.CharactersView"
+             x:DataType="vm:CharactersViewModel">
+  <Design.DataContext>
+    <vm:CharactersViewModel/>
+  </Design.DataContext>
+
+  <Grid RowDefinitions="Auto, *" Margin="20">
+    <TextBlock Grid.Row="0" Text="{Binding HeaderText}" FontSize="24" FontWeight="Bold" Margin="0,0,0,20"/>
+    
+    <TextBlock Grid.Row="1" Text="Track your roster characters and configure priority values." VerticalAlignment="Center" HorizontalAlignment="Center" IsVisible="True"/>
+  </Grid>
+</UserControl>

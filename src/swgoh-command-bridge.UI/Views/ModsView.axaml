@@ -1,0 +1,76 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:swgoh_command_bridge.UI.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="swgoh_command_bridge.UI.Views.ModsView"
+             x:DataType="vm:ModsViewModel">
+  <Design.DataContext>
+    <!-- Design time setup fallback can go here if needed -->
+  </Design.DataContext>
+
+  <Grid RowDefinitions="Auto, *" Margin="15">
+    <!-- Top Header & Filter Bar -->
+    <Grid Grid.Row="0" ColumnDefinitions="*, Auto, Auto" Margin="0,0,0,15">
+      <TextBlock Grid.Column="0" Text="{Binding HeaderText}" FontSize="22" FontWeight="Bold" VerticalAlignment="Center"/>
+      
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" Margin="0,0,10,0">
+        <TextBlock Text="Min Rarity (Stars):" VerticalAlignment="Center"/>
+        <ComboBox Width="100" SelectedIndex="{Binding RarityFilter}">
+          <ComboBoxItem>All</ComboBoxItem>
+          <ComboBoxItem>1 Star</ComboBoxItem>
+          <ComboBoxItem>2 Stars</ComboBoxItem>
+          <ComboBoxItem>3 Stars</ComboBoxItem>
+          <ComboBoxItem>4 Stars</ComboBoxItem>
+          <ComboBoxItem>5 Stars</ComboBoxItem>
+          <ComboBoxItem>6 Stars</ComboBoxItem>
+        </ComboBox>
+      </StackPanel>
+    </Grid>
+
+    <!-- Main Workspace Splitter -->
+    <Grid Grid.Row="1" ColumnDefinitions="*, 350">
+      <!-- Left Column: Mods Data List -->
+      <Border Grid.Column="0" CornerRadius="4" BorderBrush="Gray" BorderThickness="1" Margin="0,0,10,0">
+        <ListBox ItemsSource="{Binding FilteredMods}" SelectedItem="{Binding SelectedMod}">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <Grid ColumnDefinitions="Auto, *, Auto, Auto" Margin="5">
+                <TextBlock Grid.Column="0" Text="{Binding Rarity, StringFormat='{}{0}★'}" FontWeight="Bold" Width="40" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="1" Text="{Binding CharacterId, StringFormat='Equipped: {0}'}" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="2" Text="{Binding Level, StringFormat='Lvl {0}'}" Margin="10,0,0,0" Width="60" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="3" Text="{Binding Tier, StringFormat='Tier {0}'}" Margin="10,0,0,0" Width="60" VerticalAlignment="Center"/>
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Border>
+
+      <!-- Right Column: Interactive Selected Mod & Recommendation Panel -->
+      <Border Grid.Column="1" Background="#2A2A2A" CornerRadius="8" Padding="15">
+        <ScrollViewer>
+          <StackPanel Spacing="15">
+            <TextBlock Text="Selected Mod Details" FontSize="18" FontWeight="SemiBold"/>
+            
+            <TextBlock Text="Please select a mod from the repository list to analyze." 
+                       IsVisible="{Binding SelectedMod, Converter={x:Static ObjectConverters.IsNull}}" 
+                       FontStyle="Italic" Foreground="Gray"/>
+
+            <StackPanel Spacing="10" IsVisible="{Binding SelectedMod, Converter={x:Static ObjectConverters.IsNotNull}}">
+              <TextBlock Text="{Binding SelectedMod.Rarity, StringFormat='Rarity: {0} Star(s)'}" FontSize="14"/>
+              <TextBlock Text="{Binding SelectedMod.Level, StringFormat='Level: {0}/15'}" FontSize="14"/>
+              
+              <Border Height="1" Background="Gray" Margin="0,5"/>
+              
+              <TextBlock Text="Advisor Recommendation" FontSize="16" FontWeight="SemiBold" Foreground="#3296FF"/>
+              <TextBlock Text="{Binding SelectedModRecommendation.Action, StringFormat='Action: {0}'}" FontSize="14" FontWeight="Bold"/>
+              <TextBlock Text="{Binding SelectedModRecommendation.Reason}" FontSize="13" TextWrapping="Wrap" Margin="0,5,0,0" Foreground="LightGray"/>
+              <TextBlock Text="{Binding SelectedModRecommendation.Score, StringFormat='Score Value: {0:F1}'}" FontSize="12" Foreground="DarkGray" Margin="0,5,0,0"/>
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>
