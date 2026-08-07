@@ -31,3 +31,5 @@ public record ModStat(
             : $"+{formattedValue} {friendlyName}";
     }
 }
+
+public record ModStatSnapshot(string Type, double Value, int RollCount);

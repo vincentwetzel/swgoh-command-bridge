@@ -10,7 +10,7 @@ The solution is divided into three main projects. A few older root-level `.cs` d
 *   **Purpose:** This is the business logic and data layer of the application. It is a standard .NET library with no dependencies on any UI framework.
 *   **Contents:**
     *   **Models:** Plain C# record types (`GameMod`, `Character`, `PlayerProfile`, etc.) plus small state/configuration records such as `OperationState<T>`, `AppSettings`, and scraper progress models.
-    *   **Services:** Classes responsible for fetching, caching, filtering, analyzing, and assigning data. This includes Comlink access, player sync, settings persistence, mod filtering/mechanics, mod upgrade advice, roster assignment planning, and `swgoh.gg` scraping.
+    *   **Services:** Classes responsible for fetching, caching, filtering, analyzing, and assigning data. This includes Comlink access, tolerant `PlayerProfileParser` mapping, player sync, settings persistence, threshold transfer, mod filtering/mechanics, mod upgrade advice, priority-first roster assignment planning, and `swgoh.gg` scraping.
     *   **Data:** EF Core and SQLite are compiled in the Core project. `AppDbContext`, database entities, and `PlayerRepository` live under `src/swgoh-command-bridge.Core/Database`. `SwgohGgRecommendationEntity` stores JSON payloads for recommended sets and slot primary stats, while player, character, and mod entities cache synced account data.
 
 ### 2. `swgoh-command-bridge.UI`
@@ -18,7 +18,10 @@ The solution is divided into three main projects. A few older root-level `.cs` d
 *   **Pattern:** It strictly follows the **MVVM** pattern to ensure a clean separation between the UI (the "View") and the application logic (the "ViewModel").
 *   **Contents:**
     *   **Views:** `.axaml` files that define the UI layout and controls. The code-behind (`.axaml.cs`) is kept minimal.
-    *   **ViewModels:** Classes that expose data from the `Core` models to the `Views` and handle user commands. Character and priority viewmodels query SQLite-backed character data, the mods viewmodel filters/sorts mod inventory and evaluates selected mods, and the optimizer viewmodel displays scraped community recommendation context alongside a recommended loadout. Feature screens use explicit empty/loading/success/error state instead of preview fallback data.
+*   **ViewModels:** Classes that expose data from the `Core` models to the `Views` and handle user commands. Character and priority viewmodels query SQLite-backed character data, the mods viewmodel filters, deterministically sorts, pages, and labels mod inventory before evaluating selected mods, and the optimizer viewmodel displays scraped community recommendation context alongside selected-character and priority-roster loadouts. Feature screens use explicit empty/loading/success/error state instead of preview fallback data.
+*   **Composition:** `src/swgoh-command-bridge.UI/ApplicationComposition.cs` is the desktop composition root. It creates the shared database, settings, Comlink client/service, repositories, player service, advisor, assignment service, and scraper, while `App` disposes the owned database and HTTP resources when the main window closes.
+*   **Diagnostics:** `DiagnosticsViewModel` reads only local metadata and aggregate cache counts, and exports a privacy-redacted report without account payloads or credentials.
+*   **Recommendation contract:** `SwgohGgRecommendationParser` converts page markup into a fixture-testable `SwgohGgRecommendationParseResult`; `RecommendationSnapshot` is then the shared boundary for persisted community data. The database retains the source, payload schema version, source URL, scrape time, set percentages, and per-slot primary recommendations for assignment and UI consumers. `ModLoadoutResult` carries completeness, set-rule validity, status, and per-mod explanations back to the optimizer, while `RosterLoadoutResult` carries priority-ordered, conflict-aware coverage.
     *   **ViewLocator:** A mechanism used by Avalonia to automatically find and render the correct `View` for a given `ViewModel`.
 
 ### 3. `swgoh-command-bridge.Tests`
@@ -39,14 +42,14 @@ There are two primary data flows:
 2.  The **ViewModel** calls a service method in the **Core** project.
 3.  `PlayerService` makes an HTTP call to the configured local `swgoh-comlink` instance.
 4.  `swgoh-comlink` communicates with the official game servers.
-5.  The service receives the raw JSON, recursively maps profile, roster unit, and equipped mod payloads to **Core** models and EF entities, then caches them in SQLite through `PlayerRepository`.
+5.  The service receives the raw JSON, maps tolerant profile/roster/inventory variants through `PlayerProfileParser`, isolates malformed records, and then caches the usable Core models in SQLite through `PlayerRepository`.
 6.  The service returns cached models to the **ViewModel**.
 7.  The **ViewModel** updates its properties, and through data binding, the **View** automatically updates to display the new information.
 
 **2. `swgoh.gg` Data Scraping:**
 1.  On a user-triggered command, the `SwgohGgScraperService` is invoked with progress reporting and cooperative cancellation.
-2.  The service reads cached roster characters from SQLite and processes them sequentially.
+2.  The service reads cached roster characters from SQLite and processes them sequentially; the optimizer passes the active ally code for account-scoped refreshes, while explicit multi-account switching remains planned.
 3.  For each character without fresh cached data, the service makes an HTTP request to the corresponding `swgoh.gg` "best mods" page, retries transient failures, and backs off on rate limits.
 4.  The parser extracts recommended mod sets and primary stats from the page HTML.
 5.  The extracted data is stored in the local SQLite database as JSON fields on `SwgohGgRecommendationEntity`, overwriting old stale data for that character.
-6.  The optimizer viewmodel reads the cached recommendation data and displays target sets, target primaries, popularity, last-scraped time, missing-data state, assignment explanations, and calculated swap recommendations.
+6.  The optimizer viewmodel reads the cached recommendation data and displays target sets, target primaries, popularity, last-scraped time, missing-data state, loadout completeness, assignment explanations, and the calculated loadout.

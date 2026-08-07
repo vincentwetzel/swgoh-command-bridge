@@ -1,6 +1,7 @@
 #nullable enable
 
 using System;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -16,6 +17,7 @@ namespace swgoh_command_bridge.Core.Services
     /// </summary>
     public class ComlinkService : IComlinkService
     {
+        private const int MaxAttempts = 3;
         private readonly HttpClient _httpClient;
         private readonly ILogger<ComlinkService> _logger;
 
@@ -39,14 +41,16 @@ namespace swgoh_command_bridge.Core.Services
             _logger.LogInformation("Fetching raw player data for ally code {AllyCode}", allyCode);
 
             var payload = new PlayerRequestPayload(allyCode);
-            using var content = new StringContent(JsonSerializer.Serialize(payload, ComlinkSourceGenerationContext.Default.PlayerRequestPayload), Encoding.UTF8, "application/json");
+            var serializedPayload = JsonSerializer.Serialize(
+                payload,
+                ComlinkSourceGenerationContext.Default.PlayerRequestPayload);
 
             try
             {
-                using var response = await _httpClient.PostAsync("/player", content, cancellationToken).ConfigureAwait(false);
-                response.EnsureSuccessStatusCode();
-                var result = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                return result;
+                return await PostForStringAsync(
+                    "/player",
+                    serializedPayload,
+                    cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -62,9 +66,10 @@ namespace swgoh_command_bridge.Core.Services
 
             try
             {
-                using var response = await _httpClient.PostAsync("/metadata", null, cancellationToken).ConfigureAwait(false);
-                response.EnsureSuccessStatusCode();
-                return await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                return await PostForStringAsync(
+                    "/metadata",
+                    null,
+                    cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -72,6 +77,76 @@ namespace swgoh_command_bridge.Core.Services
                 throw;
             }
         }
+
+        private async Task<string> PostForStringAsync(
+            string path,
+            string? serializedPayload,
+            CancellationToken cancellationToken)
+        {
+            for (var attempt = 1; attempt <= MaxAttempts; attempt++)
+            {
+                HttpResponseMessage response;
+                try
+                {
+                    using var content = serializedPayload == null
+                        ? null
+                        : new StringContent(serializedPayload, Encoding.UTF8, "application/json");
+                    response = await _httpClient.PostAsync(
+                        path,
+                        content,
+                        cancellationToken).ConfigureAwait(false);
+                }
+                catch (HttpRequestException) when (attempt < MaxAttempts)
+                {
+                    _logger.LogWarning(
+                        "Transient Comlink request failure for {Path}; retrying attempt {Attempt} of {MaxAttempts}",
+                        path,
+                        attempt + 1,
+                        MaxAttempts);
+                    await Task.Delay(GetRetryDelay(attempt), cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
+                catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested && attempt < MaxAttempts)
+                {
+                    _logger.LogWarning(
+                        "Comlink request timed out for {Path}; retrying attempt {Attempt} of {MaxAttempts}",
+                        path,
+                        attempt + 1,
+                        MaxAttempts);
+                    await Task.Delay(GetRetryDelay(attempt), cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
+
+                using (response)
+                {
+                    if (IsTransient(response.StatusCode) && attempt < MaxAttempts)
+                    {
+                        _logger.LogWarning(
+                            "Transient Comlink response {StatusCode} for {Path}; retrying attempt {Attempt} of {MaxAttempts}",
+                            (int)response.StatusCode,
+                            path,
+                            attempt + 1,
+                            MaxAttempts);
+                        await Task.Delay(GetRetryDelay(attempt), cancellationToken).ConfigureAwait(false);
+                        continue;
+                    }
+
+                    response.EnsureSuccessStatusCode();
+                    return await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                }
+            }
+
+            throw new InvalidOperationException("Comlink request did not complete.");
+        }
+
+        private static bool IsTransient(HttpStatusCode statusCode)
+        {
+            var status = (int)statusCode;
+            return status == 408 || status == 429 || status >= 500;
+        }
+
+        private static TimeSpan GetRetryDelay(int attempt) =>
+            TimeSpan.FromMilliseconds(250 * Math.Pow(2, attempt - 1));
     }
 
     internal record PlayerRequestPayload(string AllyCode);

@@ -1,0 +1,30 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:swgoh_command_bridge.UI.ViewModels"
+             x:Class="swgoh_command_bridge.UI.Views.HomeView"
+             x:DataType="vm:MainWindowViewModel">
+  <ScrollViewer>
+    <StackPanel Margin="32" Spacing="18" MaxWidth="760">
+      <TextBlock Text="{Binding Greeting}" FontSize="30" FontWeight="Bold"/>
+      <TextBlock Text="Sync a read-only roster cache, inspect your mods, and build optimization plans." TextWrapping="Wrap"/>
+
+      <Border BorderBrush="#555555" BorderThickness="1" CornerRadius="6" Padding="18">
+        <StackPanel Spacing="12">
+          <TextBlock Text="Account sync" FontSize="20" FontWeight="SemiBold"/>
+          <TextBlock Text="Comlink ally code"/>
+          <Grid ColumnDefinitions="*, Auto" ColumnSpacing="10">
+            <TextBox Grid.Column="0" Text="{Binding AllyCode}" Watermark="123456789"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+              <Button Content="Sync account" Command="{Binding SyncCommand}" Padding="18,8"/>
+              <Button Content="Cancel" Command="{Binding CancelSyncCommand}" IsVisible="{Binding CanCancelSync}" Padding="12,8"/>
+              <Button Content="Retry" Command="{Binding RetrySyncCommand}" IsVisible="{Binding CanRetrySync}" Padding="12,8"/>
+            </StackPanel>
+          </Grid>
+          <TextBlock Text="{Binding SyncStatusText}" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+
+      <TextBlock Text="Use the navigation above after a successful sync. Cached data remains available when Comlink is offline." TextWrapping="Wrap" Foreground="Gray"/>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

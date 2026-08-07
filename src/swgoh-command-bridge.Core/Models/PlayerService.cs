@@ -1,7 +1,6 @@
 #nullable enable
 
 using System;
-using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,6 +19,7 @@ namespace swgoh_command_bridge.Core.Services
         private readonly IComlinkService _comlinkService;
         private readonly IPlayerRepository _playerRepository;
         private readonly ILogger<PlayerService> _logger;
+        private readonly PlayerProfileParser _profileParser = new();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="PlayerService"/> class.
@@ -46,87 +46,13 @@ namespace swgoh_command_bridge.Core.Services
 
             try
             {
-                using var doc = JsonDocument.Parse(rawJson);
-                var root = doc.RootElement;
-
-                var name = root.TryGetProperty("name", out var nameProp) ? nameProp.GetString() ?? "Unknown" : "Unknown";
-                var level = root.TryGetProperty("level", out var levelProp) ? levelProp.GetInt32() : 0;
-
-                long gp = 0;
-                if (root.TryGetProperty("gp", out var gpProp))
-                {
-                    gp = gpProp.GetInt64();
-                }
-
-                var characters = new List<Character>();
-                var mods = new List<GameMod>();
-
-                // Parse roster if present
-                if (root.TryGetProperty("rosterUnit", out var rosterProp) && rosterProp.ValueKind == JsonValueKind.Array)
-                {
-                    var rosterArray = rosterProp.EnumerateArray();
-                    foreach (var unit in rosterArray)
-                    {
-                        if (!unit.TryGetProperty("definitionId", out var defIdProp))
-                        {
-                            continue;
-                        }
-
-                        var defId = defIdProp.GetString() ?? string.Empty;
-                        var charId = defId.Split(':')[0];
-                        var friendlyName = charId.Replace("_", " ", StringComparison.Ordinal);
-
-                        var charLevel = unit.TryGetProperty("currentLevel", out var lvProp) ? lvProp.GetInt32() : 1;
-                        var gearLevel = unit.TryGetProperty("currentGearLevel", out var gearProp) ? gearProp.GetInt32() : 1;
-
-                        var relicTier = 0;
-                        if (unit.TryGetProperty("relic", out var relicProp) && relicProp.TryGetProperty("currentTier", out var tierProp))
-                        {
-                            var rawRelic = tierProp.GetInt32();
-                            relicTier = rawRelic > 2 ? rawRelic - 2 : 0;
-                        }
-
-                        var unitGp = unit.TryGetProperty("gp", out var unitGpProp) ? unitGpProp.GetInt32() : 0;
-                        var equippedMods = new Dictionary<ModSlot, GameMod>();
-
-                        if (unit.TryGetProperty("equippedStatMod", out var modsProp) && modsProp.ValueKind == JsonValueKind.Array)
-                        {
-                            foreach (var modJson in modsProp.EnumerateArray())
-                            {
-                                var parsedMod = ParseGameMod(modJson, charId);
-                                if (parsedMod != null)
-                                {
-                                    equippedMods[parsedMod.Slot] = parsedMod;
-                                    mods.Add(parsedMod);
-                                }
-                            }
-                        }
-
-                        var character = new Character(
-                            Id: charId,
-                            Name: friendlyName,
-                            Level: charLevel,
-                            GearLevel: gearLevel,
-                            RelicTier: relicTier,
-                            GalacticPower: unitGp,
-                            Priority: 0,
-                            EquippedMods: equippedMods
-                        );
-
-                        characters.Add(character);
-                    }
-                }
-
-                _logger.LogInformation("Successfully parsed profile for {PlayerName} with {CharacterCount} characters and {ModCount} mods", name, characters.Count, mods.Count);
-
-                return new PlayerProfile(
-                    AllyCode: allyCode,
-                    Name: name,
-                    Level: level,
-                    GalacticPower: gp,
-                    Characters: characters.AsReadOnly(),
-                    Mods: mods.AsReadOnly()
-                );
+                var profile = _profileParser.Parse(allyCode, rawJson);
+                _logger.LogInformation(
+                    "Successfully parsed profile for {PlayerName} with {CharacterCount} characters and {ModCount} mods",
+                    profile.Name,
+                    profile.Characters.Count,
+                    profile.Mods.Count);
+                return profile;
             }
             catch (Exception ex)
             {
@@ -173,7 +99,7 @@ namespace swgoh_command_bridge.Core.Services
                     PlayerAllyCode = profile.AllyCode,
                     Name = character.Name,
                     Level = character.Level,
-                    Stars = 7, // Standard default stars count
+                    Stars = character.Stars,
                     GearLevel = character.GearLevel,
                     GalacticPower = character.GalacticPower,
                     Priority = character.Priority,
@@ -193,6 +119,10 @@ namespace swgoh_command_bridge.Core.Services
                     Level = mod.Level,
                     Tier = mod.Tier,
                     Rarity = mod.Pips,
+                    PrimaryStatType = mod.Primary.Type.ToString(),
+                    PrimaryStatValue = mod.Primary.Value,
+                    SecondaryStatsJson = JsonSerializer.Serialize(
+                        mod.Secondaries.ConvertAll(stat => new ModStatSnapshot(stat.Type.ToString(), stat.Value, stat.RollCount))),
                     Player = entity
                 });
             }
@@ -200,70 +130,5 @@ namespace swgoh_command_bridge.Core.Services
             return entity;
         }
 
-        private static GameMod? ParseGameMod(JsonElement modJson, string? equippedUnitId)
-        {
-            try
-            {
-                if (!modJson.TryGetProperty("id", out var idProp))
-                {
-                    return null;
-                }
-
-                var id = idProp.GetString() ?? Guid.NewGuid().ToString();
-                var level = modJson.TryGetProperty("level", out var lvlProp) ? lvlProp.GetInt32() : 1;
-                var pips = modJson.TryGetProperty("pips", out var pipsProp) ? pipsProp.GetInt32() : 5;
-                var tier = modJson.TryGetProperty("tier", out var tierProp) ? tierProp.GetInt32() : 1;
-
-                var slotVal = modJson.TryGetProperty("slot", out var slotProp) ? slotProp.GetInt32() : 1;
-                var setVal = modJson.TryGetProperty("set", out var setProp) ? setProp.GetInt32() : 1;
-
-                var slot = (ModSlot)slotVal;
-                var set = (ModSet)setVal;
-
-                ModStat? primary = null;
-                if (modJson.TryGetProperty("primaryStat", out var primaryProp) && primaryProp.TryGetProperty("stat", out var statProp))
-                {
-                    var unitId = statProp.GetProperty("unitId").GetInt32();
-                    var rawValue = statProp.GetProperty("value").GetInt64();
-                    primary = new ModStat((StatType)unitId, rawValue / 100000000.0, 1);
-                }
-
-                if (primary == null)
-                {
-                    primary = new ModStat(StatType.None, 0);
-                }
-
-                var secondaries = new List<ModStat>(4);
-                if (modJson.TryGetProperty("secondaryStat", out var secondaryProp) && secondaryProp.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (var secJson in secondaryProp.EnumerateArray())
-                    {
-                        if (secJson.TryGetProperty("stat", out var secStatProp))
-                        {
-                            var unitId = secStatProp.GetProperty("unitId").GetInt32();
-                            var rawValue = secStatProp.GetProperty("value").GetInt64();
-                            var rollCount = secJson.TryGetProperty("roll", out var rollProp) ? rollProp.GetInt32() : 1;
-                            secondaries.Add(new ModStat((StatType)unitId, rawValue / 100000000.0, rollCount));
-                        }
-                    }
-                }
-
-                return new GameMod(
-                    Id: id,
-                    Level: level,
-                    Pips: pips,
-                    Tier: tier,
-                    Slot: slot,
-                    Set: set,
-                    Primary: primary,
-                    Secondaries: secondaries,
-                    EquippedUnitId: equippedUnitId
-                );
-            }
-            catch
-            {
-                return null;
-            }
-        }
     }
 }

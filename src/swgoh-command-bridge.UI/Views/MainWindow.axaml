@@ -11,18 +11,49 @@
 
     <Window.DataTemplates>
         <DataTemplate DataType="{x:Type vm:MainWindowViewModel}">
+            <views:HomeView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:CharactersViewModel}">
+            <views:CharactersView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:CharacterPrioritiesViewModel}">
             <views:CharacterPrioritiesView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:ModsViewModel}">
+            <views:ModsView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:ModOptimizerViewModel}">
+            <views:ModOptimizerView/>
         </DataTemplate>
         <DataTemplate DataType="{x:Type vm:ModThresholdsViewModel}">
             <views:ModThresholdsView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
+            <views:SettingsView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:DiagnosticsViewModel}">
+            <views:DiagnosticsView/>
         </DataTemplate>
     </Window.DataTemplates>
 
     <DockPanel>
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="10">
             <Button Content="Home" Command="{Binding GoToHomeCommand}"/>
+            <Button Content="Characters" Command="{Binding GoToCharactersCommand}"/>
+            <Button Content="Priorities" Command="{Binding GoToPrioritiesCommand}"/>
+            <Button Content="Mods" Command="{Binding GoToModsCommand}"/>
+            <Button Content="Optimizer" Command="{Binding GoToOptimizerCommand}"/>
             <Button Content="Mod Thresholds" Command="{Binding GoToThresholdsCommand}"/>
+            <Button Content="Settings" Command="{Binding GoToSettingsCommand}"/>
+            <Button Content="Diagnostics" Command="{Binding GoToDiagnosticsCommand}"/>
         </StackPanel>
+
+        <Border DockPanel.Dock="Top" IsVisible="{Binding HasStartupError}" Background="#4A1F1F" BorderBrush="#FF8A80" BorderThickness="1" CornerRadius="4" Padding="12" Margin="10,0,10,10">
+            <Grid ColumnDefinitions="*, Auto" ColumnSpacing="12">
+                <TextBlock Text="{Binding StartupErrorMessage}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                <Button Grid.Column="1" Content="Retry startup" Command="{Binding RetryStartupCommand}"/>
+            </Grid>
+        </Border>
 
         <ContentControl Content="{Binding CurrentView}" Margin="10"/>
     </DockPanel>

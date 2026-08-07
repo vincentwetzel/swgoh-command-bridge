@@ -1,12 +1,15 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.Input;
 using Microsoft.EntityFrameworkCore;
 using swgoh_command_bridge.Core.Database;
 using swgoh_command_bridge.Core.Database.Entities;
+using swgoh_command_bridge.Core.Models;
 
 namespace swgoh_command_bridge.UI.ViewModels
 {
@@ -16,10 +19,32 @@ namespace swgoh_command_bridge.UI.ViewModels
     public class CharacterPrioritiesViewModel : ViewModelBase
     {
         private readonly AppDbContext _context;
+        private readonly Func<string?>? _activeAllyCodeProvider;
         private string _headerText = "Configure Character Priorities";
         private CharacterEntity? _selectedCharacter;
         private int _selectedCharacterPriority;
-        private bool _isBusy;
+        private int _originalPriority;
+        private string _validationError = string.Empty;
+        private OperationState<IReadOnlyList<CharacterEntity>> _state = OperationState<IReadOnlyList<CharacterEntity>>.ToEmpty();
+
+        /// <summary>
+        /// Gets or sets the explicit empty, loading, success, and error state.
+        /// </summary>
+        public OperationState<IReadOnlyList<CharacterEntity>> State
+        {
+            get => _state;
+            set
+            {
+                _state = value;
+                OnPropertyChanged(nameof(State));
+                OnPropertyChanged(nameof(IsBusy));
+                OnPropertyChanged(nameof(IsLoading));
+                OnPropertyChanged(nameof(IsEmpty));
+                OnPropertyChanged(nameof(HasCharacters));
+                OnPropertyChanged(nameof(HasError));
+                OnPropertyChanged(nameof(ErrorMessage));
+            }
+        }
 
         /// <summary>
         /// Gets the collection of characters available to update priorities.
@@ -30,10 +55,18 @@ namespace swgoh_command_bridge.UI.ViewModels
         /// Initializes a new instance of the <see cref="CharacterPrioritiesViewModel"/> class.
         /// </summary>
         public CharacterPrioritiesViewModel(AppDbContext context)
+            : this(context, null)
+        {
+        }
+
+        public CharacterPrioritiesViewModel(AppDbContext context, Func<string?>? activeAllyCodeProvider)
         {
             ArgumentNullException.ThrowIfNull(context);
             _context = context;
-            _ = LoadCharactersAsync();
+            _activeAllyCodeProvider = activeAllyCodeProvider;
+            RefreshCommand = new AsyncRelayCommand(LoadCharactersAsync);
+            SavePriorityCommand = new AsyncRelayCommand(SavePriorityAsync);
+            CancelEditCommand = new RelayCommand(CancelEdit);
         }
 
         /// <summary>
@@ -64,11 +97,16 @@ namespace swgoh_command_bridge.UI.ViewModels
                 {
                     _selectedCharacter = value;
                     OnPropertyChanged(nameof(SelectedCharacter));
+                    OnPropertyChanged(nameof(IsDirty));
+                    OnPropertyChanged(nameof(CanSavePriority));
 
                     if (_selectedCharacter != null)
                     {
+                        _originalPriority = _selectedCharacter.Priority;
                         SelectedCharacterPriority = _selectedCharacter.Priority;
                     }
+
+                    ValidationError = string.Empty;
                 }
             }
         }
@@ -85,36 +123,74 @@ namespace swgoh_command_bridge.UI.ViewModels
                 {
                     _selectedCharacterPriority = value;
                     OnPropertyChanged(nameof(SelectedCharacterPriority));
+                    OnPropertyChanged(nameof(IsDirty));
+                    OnPropertyChanged(nameof(CanSavePriority));
                 }
             }
         }
 
-        /// <summary>
-        /// Gets or sets a value indicating whether an asynchronous operation is in progress.
-        /// </summary>
-        public bool IsBusy
+        public bool IsDirty =>
+            SelectedCharacter != null && SelectedCharacterPriority != _originalPriority;
+
+        public bool CanSavePriority => IsDirty && !HasValidationError;
+
+        public string ValidationError
         {
-            get => _isBusy;
-            set
+            get => _validationError;
+            private set
             {
-                if (_isBusy != value)
+                if (_validationError == value)
                 {
-                    _isBusy = value;
-                    OnPropertyChanged(nameof(IsBusy));
+                    return;
                 }
+
+                _validationError = value;
+                OnPropertyChanged(nameof(ValidationError));
+                OnPropertyChanged(nameof(HasValidationError));
+                OnPropertyChanged(nameof(CanSavePriority));
             }
         }
+
+        public bool HasValidationError => !string.IsNullOrWhiteSpace(ValidationError);
+
+        /// <summary>
+        /// Gets a value indicating whether an asynchronous operation is in progress.
+        /// </summary>
+        public bool IsBusy => State.Status == OperationStatus.Loading;
+
+        public bool IsLoading => State.Status == OperationStatus.Loading;
+
+        public bool IsEmpty => State.Status == OperationStatus.Empty;
+
+        public bool HasCharacters => State.Status == OperationStatus.Success;
+
+        public bool HasError => State.Status == OperationStatus.Error;
+
+        public string ErrorMessage => State.ErrorMessage ?? string.Empty;
+
+        public IAsyncRelayCommand RefreshCommand { get; }
+
+        public IAsyncRelayCommand SavePriorityCommand { get; }
+
+        public IRelayCommand CancelEditCommand { get; }
 
         /// <summary>
         /// Loads the character entries asynchronously to build the selection pool.
         /// </summary>
         public async Task LoadCharactersAsync()
         {
-            IsBusy = true;
+            State = OperationState<IReadOnlyList<CharacterEntity>>.ToLoading();
             try
             {
-                var list = await _context.Characters
-                    .AsNoTracking()
+                var selectedCharacterId = SelectedCharacter?.Id;
+                var query = _context.Characters.AsNoTracking();
+                var activeAllyCode = _activeAllyCodeProvider?.Invoke()?.Trim();
+                if (!string.IsNullOrWhiteSpace(activeAllyCode))
+                {
+                    query = query.Where(c => c.PlayerAllyCode == activeAllyCode);
+                }
+
+                var list = await query
                     .OrderByDescending(c => c.Priority)
                     .ThenBy(c => c.Name)
                     .ToListAsync()
@@ -128,19 +204,21 @@ namespace swgoh_command_bridge.UI.ViewModels
 
                 if (Characters.Count == 0)
                 {
-                    Characters.Add(new CharacterEntity { Id = "luke_skyw_v2", Name = "Commander Luke Skywalker", Priority = 100 });
-                    Characters.Add(new CharacterEntity { Id = "darth_vader", Name = "Darth Vader", Priority = 90 });
+                    State = OperationState<IReadOnlyList<CharacterEntity>>.ToEmpty();
+                    SelectedCharacter = null;
                 }
-
-                SelectedCharacter = Characters.FirstOrDefault();
+                else
+                {
+                    State = OperationState<IReadOnlyList<CharacterEntity>>.ToSuccess(list);
+                    SelectedCharacter = Characters.FirstOrDefault(character =>
+                        string.Equals(character.Id, selectedCharacterId, StringComparison.Ordinal))
+                        ?? Characters.FirstOrDefault();
+                }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error loading character priorities: {ex.Message}");
-            }
-            finally
-            {
-                IsBusy = false;
+                State = OperationState<IReadOnlyList<CharacterEntity>>.ToError($"Failed to load priorities: {ex.Message}");
             }
         }
 
@@ -154,7 +232,13 @@ namespace swgoh_command_bridge.UI.ViewModels
                 return;
             }
 
-            IsBusy = true;
+            ValidationError = ValidatePriority();
+            if (HasValidationError)
+            {
+                return;
+            }
+
+            State = OperationState<IReadOnlyList<CharacterEntity>>.ToLoading();
             try
             {
                 var character = await _context.Characters
@@ -176,11 +260,23 @@ namespace swgoh_command_bridge.UI.ViewModels
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error saving character priority: {ex.Message}");
-            }
-            finally
-            {
-                IsBusy = false;
+                State = OperationState<IReadOnlyList<CharacterEntity>>.ToError($"Failed to save priority: {ex.Message}");
             }
         }
+
+        private void CancelEdit()
+        {
+            if (SelectedCharacter == null)
+            {
+                return;
+            }
+
+            SelectedCharacterPriority = _originalPriority;
+            ValidationError = string.Empty;
+        }
+
+        private string ValidatePriority() => _selectedCharacterPriority is < 0 or > 100
+            ? "Priority must be between 0 and 100."
+            : string.Empty;
     }
 }

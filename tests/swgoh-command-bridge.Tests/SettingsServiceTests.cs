@@ -1,6 +1,7 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -67,7 +68,12 @@ namespace swgoh_command_bridge.Tests
                 ComlinkBaseUrl: "http://192.168.1.50:3000",
                 DefaultAllyCode: "111222333",
                 Theme: "Light",
-                AutomaticallyCheckForUpdates: false
+                AutomaticallyCheckForUpdates: false,
+                UpgradeThresholds: new List<ModUpgradeThresholdSetting>
+                {
+                    new(5, 4, "Speed", 10, "Competitive", true, 65, "competitive-threshold")
+                },
+                DefaultUpgradeThresholdId: "competitive-threshold"
             );
 
             // Act
@@ -82,6 +88,11 @@ namespace swgoh_command_bridge.Tests
             Assert.Equal("111222333", readerService.CurrentSettings.DefaultAllyCode);
             Assert.Equal("Light", readerService.CurrentSettings.Theme);
             Assert.False(readerService.CurrentSettings.AutomaticallyCheckForUpdates);
+            var threshold = Assert.Single(readerService.CurrentSettings.UpgradeThresholds!);
+            Assert.Equal("Competitive", threshold.Name);
+            Assert.Equal(65, threshold.MinimumEfficiency);
+            Assert.Equal("competitive-threshold", threshold.Id);
+            Assert.Equal("competitive-threshold", readerService.CurrentSettings.DefaultUpgradeThresholdId);
         }
 
         public void Dispose()

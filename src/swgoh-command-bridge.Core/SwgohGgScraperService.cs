@@ -1,12 +1,11 @@
 #nullable enable
 
 using System;
-using System.Collections.Generic;
-using System.Globalization;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
@@ -32,9 +31,7 @@ namespace swgoh_command_bridge.Core.Services
             WriteIndented = false
         };
 
-        // Regex patterns for parsing static HTML blocks on swgoh.gg best mods pages
-        private static readonly Regex ModSetRegex = new(@"<div class=""mod-set-image""[^>]*alt=""([^""]+)""[\s\S]*?<div class=""mod-set-percent"">([\d\.]+)%</div>", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private static readonly Regex PrimaryStatRegex = new(@"Slot (\d)[^>]*>[\s\S]*?<div class=""mod-stat-name"">([^<]+)</div>[\s\S]*?<div class=""mod-stat-percent"">([\d\.]+)%</div>", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly SwgohGgRecommendationParser RecommendationParser = new();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="SwgohGgScraperService"/> class.
@@ -85,8 +82,9 @@ namespace swgoh_command_bridge.Core.Services
 
             try
             {
-                var recommendedSets = ExtractModSets(htmlContent);
-                var primaryStats = ExtractPrimaryStats(htmlContent);
+                var parsedRecommendations = RecommendationParser.Parse(htmlContent);
+                var recommendedSets = parsedRecommendations.Sets;
+                var primaryStats = parsedRecommendations.PrimaryStats;
 
                 if (recommendedSets.Count == 0 && primaryStats.Count == 0)
                 {
@@ -105,10 +103,20 @@ namespace swgoh_command_bridge.Core.Services
                     entity = new SwgohGgRecommendationEntity { CharacterId = characterId };
                 }
 
+                var scrapedAtUtc = DateTime.UtcNow;
+                entity.Source = "swgoh.gg";
+                entity.RecommendationSchemaVersion = 1;
+                entity.SourceUrl = requestUri;
                 entity.SetRecommendationsJson = JsonSerializer.Serialize(recommendedSets, SerializerOptions);
                 entity.PrimaryStatsJson = JsonSerializer.Serialize(primaryStats, SerializerOptions);
-                entity.PopularityPercentage = 100.0; // Primary default parse set
-                entity.LastUpdatedUtc = DateTime.UtcNow;
+                entity.PopularityPercentage = recommendedSets.Count > 0
+                    ? recommendedSets.Max(set => set.Percentage)
+                    : primaryStats.Values
+                        .SelectMany(values => values)
+                        .Select(primary => primary.Percentage)
+                        .DefaultIfEmpty(0)
+                        .Max();
+                entity.LastUpdatedUtc = scrapedAtUtc;
 
                 if (isNew)
                 {
@@ -123,6 +131,10 @@ namespace swgoh_command_bridge.Core.Services
                 _logger.LogInformation("Successfully saved recommendations to DB cache for {CharacterId}", characterId);
                 return true;
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed parsing or persisting scraped mod data for {CharacterId}", characterId);
@@ -131,12 +143,25 @@ namespace swgoh_command_bridge.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task ScrapeAllCharactersIncrementalAsync(IProgress<ScrapeProgress>? progress = null, CancellationToken cancellationToken = default)
+        public async Task ScrapeAllCharactersIncrementalAsync(
+            IProgress<ScrapeProgress>? progress = null,
+            CancellationToken cancellationToken = default,
+            string? allyCode = null)
         {
-            _logger.LogInformation("Starting sequential incremental scrape of all cached roster characters");
+            var normalizedAllyCode = allyCode?.Trim();
+            _logger.LogInformation(
+                "Starting sequential incremental scrape of cached roster characters for ally code {AllyCode}",
+                string.IsNullOrWhiteSpace(normalizedAllyCode) ? "all cached accounts" : normalizedAllyCode);
 
-            var characters = await _context.Characters
-                .AsNoTracking()
+            var characterQuery = _context.Characters.AsNoTracking();
+            if (!string.IsNullOrWhiteSpace(normalizedAllyCode))
+            {
+                characterQuery = characterQuery.Where(character => character.PlayerAllyCode == normalizedAllyCode);
+            }
+
+            var characters = await characterQuery
+                .OrderByDescending(character => character.Priority)
+                .ThenBy(character => character.Name)
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
 
@@ -162,6 +187,10 @@ namespace swgoh_command_bridge.Core.Services
                     {
                         errorMessage = "Scrape returned no data.";
                     }
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
                 }
                 catch (Exception ex)
                 {
@@ -210,9 +239,6 @@ namespace swgoh_command_bridge.Core.Services
         {
             using var client = _httpClientFactory.CreateClient("SwgohGgClient");
 
-            // Set standard user-agent to look friendly to servers
-            client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) SWGOHCommandBridge/1.0");
-
             var retryDelayMs = 2000;
             var maxRetries = 3;
 
@@ -220,12 +246,31 @@ namespace swgoh_command_bridge.Core.Services
             {
                 try
                 {
-                    using var response = await client.GetAsync(requestUri, cancellationToken).ConfigureAwait(false);
+                    using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
+                    request.Headers.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) SWGOHCommandBridge/1.0");
+                    request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/html"));
+                    request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/xhtml+xml"));
+
+                    using var response = await client.SendAsync(
+                        request,
+                        HttpCompletionOption.ResponseHeadersRead,
+                        cancellationToken).ConfigureAwait(false);
 
                     if (response.StatusCode == HttpStatusCode.TooManyRequests)
                     {
-                        _logger.LogWarning("HTTP 429 Rate limited by swgoh.gg. Backing off...");
-                        await Task.Delay(retryDelayMs, cancellationToken).ConfigureAwait(false);
+                        if (retry == maxRetries)
+                        {
+                            _logger.LogWarning("HTTP 429 rate limit persisted for {Uri} after {Attempts} attempts", requestUri, retry + 1);
+                            return null;
+                        }
+
+                        var delay = GetRetryDelay(response, retryDelayMs);
+                        _logger.LogWarning(
+                            "HTTP 429 rate limited by swgoh.gg. Retrying {Attempt}/{MaxAttempts} after {DelayMs}ms",
+                            retry + 1,
+                            maxRetries,
+                            delay);
+                        await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
                         retryDelayMs *= 2; // Exponential backoff
                         continue;
                     }
@@ -239,6 +284,10 @@ namespace swgoh_command_bridge.Core.Services
                     await Task.Delay(retryDelayMs, cancellationToken).ConfigureAwait(false);
                     retryDelayMs *= 2;
                 }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Terminal exception while connecting to swgoh.gg target {Uri}", requestUri);
@@ -250,83 +299,24 @@ namespace swgoh_command_bridge.Core.Services
             return null;
         }
 
-        private static List<RecommendedSet> ExtractModSets(string htmlContent)
+        private static int GetRetryDelay(HttpResponseMessage response, int fallbackDelayMs)
         {
-            var recommendations = new List<RecommendedSet>(6); // Pre-allocated capacity optimization (Rule 18)
-            var matches = ModSetRegex.Matches(htmlContent);
-
-            foreach (Match match in matches)
+            var retryAfter = response.Headers.RetryAfter;
+            if (retryAfter?.Delta is { } delta)
             {
-                if (match.Groups.Count > 1)
-                {
-                    var setName = match.Groups[1].Value.Trim();
-                    var percentage = 50.0; // Fallback default popularity
-
-                    if (match.Groups.Count > 2 && double.TryParse(match.Groups[2].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedPct))
-                    {
-                        percentage = parsedPct;
-                    }
-
-                    recommendations.Add(new RecommendedSet(setName, percentage));
-                }
+                return (int)Math.Clamp(delta.TotalMilliseconds, fallbackDelayMs, 60_000);
             }
 
-            // Broad regex fallback for unstructured formats
-            if (recommendations.Count == 0)
+            if (retryAfter?.Date is { } retryAt)
             {
-                var fallbackMatches = Regex.Matches(htmlContent, @"alt=""([^""]+Set)""[\s\S]{0,150}?([\d\.]+)%", RegexOptions.IgnoreCase);
-                foreach (Match m in fallbackMatches)
-                {
-                    var setName = m.Groups[1].Value.Replace("Set", "", StringComparison.OrdinalIgnoreCase).Trim();
-                    if (double.TryParse(m.Groups[2].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var pct))
-                    {
-                        recommendations.Add(new RecommendedSet(setName, pct));
-                    }
-                }
+                return (int)Math.Clamp(
+                    (retryAt - DateTimeOffset.UtcNow).TotalMilliseconds,
+                    fallbackDelayMs,
+                    60_000);
             }
 
-            return recommendations;
+            return fallbackDelayMs;
         }
 
-        private static Dictionary<string, List<RecommendedPrimary>> ExtractPrimaryStats(string htmlContent)
-        {
-            var stats = new Dictionary<string, List<RecommendedPrimary>>(6, StringComparer.Ordinal);
-            var matches = PrimaryStatRegex.Matches(htmlContent);
-
-            foreach (Match match in matches)
-            {
-                if (match.Groups.Count > 2)
-                {
-                    var slotId = match.Groups[1].Value;
-                    var statName = match.Groups[2].Value.Trim();
-                    var percentage = 100.0; // Fallback default
-
-                    if (match.Groups.Count > 3 && double.TryParse(match.Groups[3].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedPct))
-                    {
-                        percentage = parsedPct;
-                    }
-
-                    var mappedSlot = slotId switch
-                    {
-                        "1" => "Square",
-                        "2" => "Arrow",
-                        "3" => "Diamond",
-                        "4" => "Triangle",
-                        "5" => "Circle",
-                        "6" => "Cross",
-                        _ => $"Slot_{slotId}"
-                    };
-
-                    if (!stats.TryGetValue(mappedSlot, out var list))
-                    {
-                        list = new List<RecommendedPrimary>();
-                        stats[mappedSlot] = list;
-                    }
-
-                    list.Add(new RecommendedPrimary(statName, percentage));
-                }
-            }
-            return stats;
-        }
     }
 }

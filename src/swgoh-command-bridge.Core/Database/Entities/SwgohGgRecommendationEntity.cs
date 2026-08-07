@@ -15,6 +15,21 @@ namespace swgoh_command_bridge.Core.Database.Entities
         public string CharacterId { get; set; } = string.Empty;
 
         /// <summary>
+        /// Gets or sets the recommendation source identifier.
+        /// </summary>
+        public string Source { get; set; } = "swgoh.gg";
+
+        /// <summary>
+        /// Gets or sets the version of the serialized recommendation payload.
+        /// </summary>
+        public int RecommendationSchemaVersion { get; set; } = 1;
+
+        /// <summary>
+        /// Gets or sets the source URL used to obtain the recommendation.
+        /// </summary>
+        public string SourceUrl { get; set; } = string.Empty;
+
+        /// <summary>
         /// Gets or sets serialized JSON representing recommended primary stats by slot.
         /// </summary>
         public string PrimaryStatsJson { get; set; } = "{}";

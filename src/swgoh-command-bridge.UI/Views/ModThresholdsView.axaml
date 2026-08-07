@@ -1,18 +1,66 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:swgoh_command_bridge.UI.ViewModels"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="swgoh_command_bridge.UI.Views.ModThresholdsView"
              x:DataType="vm:ModThresholdsViewModel">
-  <Design.DataContext>
-    <vm:ModThresholdsViewModel/>
-  </Design.DataContext>
+  <Grid RowDefinitions="Auto, *" Margin="24">
+    <Grid Grid.Row="0" ColumnDefinitions="*, Auto, Auto, Auto" ColumnSpacing="10" Margin="0,0,0,16">
+      <TextBlock Text="{Binding HeaderText}" FontSize="26" FontWeight="Bold"/>
+      <Button Grid.Column="1" Content="New" Command="{Binding AddCommand}"/>
+      <Button Grid.Column="2" Content="Duplicate" Command="{Binding DuplicateCommand}"/>
+      <Button Grid.Column="3" Content="Refresh" Command="{Binding RefreshCommand}"/>
+    </Grid>
 
-  <Grid RowDefinitions="Auto, *" Margin="20">
-    <TextBlock Grid.Row="0" Text="{Binding HeaderText}" FontSize="24" FontWeight="Bold" Margin="0,0,0,20"/>
-    
-    <TextBlock Grid.Row="1" Text="Formulate filter/slicing rule parameters to automate candidate checks." VerticalAlignment="Center" HorizontalAlignment="Center" IsVisible="True"/>
+    <Grid Grid.Row="1" ColumnDefinitions="*, 300" ColumnSpacing="16">
+      <Grid>
+        <TextBlock Text="No saved thresholds. Create one with New." IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        <StackPanel IsVisible="{Binding HasError}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" MaxWidth="360">
+          <TextBlock Text="{Binding ErrorMessage}" Foreground="#FF8A80" TextWrapping="Wrap"/>
+          <Button Content="Retry" Command="{Binding RefreshCommand}" HorizontalAlignment="Center"/>
+        </StackPanel>
+        <ListBox ItemsSource="{Binding Thresholds}" SelectedItem="{Binding SelectedThreshold}" IsVisible="{Binding HasThresholds}">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Padding="8" Spacing="3">
+                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                <TextBlock Text="{Binding MinimumRarity, StringFormat='Minimum pips: {0}'}" Foreground="Gray"/>
+                <TextBlock Text="{Binding MinimumSpeed, StringFormat='Minimum speed: {0}'}" Foreground="Gray"/>
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Grid>
+
+      <Border Grid.Column="1" BorderBrush="#555555" BorderThickness="1" CornerRadius="6" Padding="16">
+        <StackPanel Spacing="10">
+          <TextBlock Text="Threshold editor" FontSize="18" FontWeight="SemiBold"/>
+          <TextBlock Text="{Binding ValidationError}" IsVisible="{Binding HasValidationError}" Foreground="#FF8A80" TextWrapping="Wrap"/>
+          <TextBlock Text="Name"/>
+          <TextBox Text="{Binding Name}"/>
+          <TextBlock Text="Minimum pips"/>
+          <TextBox Text="{Binding MinimumRarity}"/>
+          <TextBlock Text="Minimum tier"/>
+          <TextBox Text="{Binding MinimumTier}"/>
+          <TextBlock Text="Minimum speed"/>
+          <TextBox Text="{Binding MinimumSpeed}"/>
+          <CheckBox Content="Require speed" IsChecked="{Binding UpgradeOnlyWithSpeed}"/>
+          <TextBlock Text="Minimum efficiency"/>
+          <TextBox Text="{Binding MinimumEfficiency}"/>
+          <TextBlock Text="{Binding DefaultStatusText}" Foreground="Gray"/>
+          <Button Content="Save threshold" Command="{Binding SaveCommand}"/>
+          <Button Content="Use as default" Command="{Binding SetDefaultCommand}"/>
+          <Button Content="Delete threshold" Command="{Binding DeleteCommand}"/>
+          <Separator Margin="0,6"/>
+          <TextBlock Text="Portable thresholds" FontSize="16" FontWeight="SemiBold"/>
+          <TextBlock Text="Export or import the threshold collection as a versioned JSON file." Foreground="Gray" TextWrapping="Wrap"/>
+          <TextBox Text="{Binding TransferPath}" Watermark="C:\path\thresholds.json"/>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button Content="Export thresholds" Command="{Binding ExportCommand}"/>
+            <Button Content="Import thresholds" Command="{Binding ImportCommand}"/>
+          </StackPanel>
+          <TextBlock Text="{Binding TransferStatusText}" Foreground="Gray" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+    </Grid>
   </Grid>
 </UserControl>

@@ -120,7 +120,7 @@ namespace swgoh_command_bridge.Tests
 
             // Assert
             Assert.Equal(ModRecommendationAction.Slice, recommendation.Action);
-            Assert.Contains("Slice to 6-dot", recommendation.Reason);
+            Assert.Contains("advanced to 6-dot", recommendation.Reason);
         }
 
         [Fact]
@@ -158,7 +158,7 @@ namespace swgoh_command_bridge.Tests
 
             // Assert
             Assert.Equal(ModRecommendationAction.Swap, recommendation.Action);
-            Assert.Contains("Upgrade/Swap candidate", recommendation.Reason);
+            Assert.Contains("highest-priority compatible target", recommendation.Reason);
         }
 
         [Fact]
@@ -179,7 +179,7 @@ namespace swgoh_command_bridge.Tests
 
             // Assert
             Assert.Equal(ModRecommendationAction.Slice, recommendation.Action);
-            Assert.Contains("eligible for slicing", recommendation.Reason);
+            Assert.Contains("below the required tier", recommendation.Reason);
         }
 
         [Fact]
@@ -199,7 +199,94 @@ namespace swgoh_command_bridge.Tests
 
             // Assert
             Assert.Equal(ModRecommendationAction.Sell, recommendation.Action);
-            Assert.Contains("fails to meet threshold", recommendation.Reason);
+            Assert.Contains("Speed +2/15", recommendation.Reason);
+        }
+
+        [Fact]
+        public async Task AnalyzeModAsync_WhenRarityIsBelowThreshold_SellsBeforeLeveling()
+        {
+            var mod = new GameMod(
+                "low-pip",
+                level: 1,
+                pips: 4,
+                tier: 5,
+                ModSlot.Square,
+                ModSet.Health,
+                new ModStat(StatType.Offense, 0.5),
+                new List<ModStat> { new(StatType.Speed, 40) },
+                null);
+
+            var recommendation = await _advisorService.AnalyzeModAsync(
+                mod,
+                new ModUpgradeThreshold("t1", "Strict", 5, 1, 10, true, 0),
+                Array.Empty<Character>());
+
+            Assert.Equal(ModRecommendationAction.Sell, recommendation.Action);
+            Assert.Contains("rarity 4", recommendation.Reason);
+        }
+
+        [Fact]
+        public async Task AnalyzeModAsync_WhenMaxedModHasNoRequiredSpeed_SellsWithoutSwap()
+        {
+            var mod = new GameMod(
+                "no-speed",
+                level: 15,
+                pips: 5,
+                tier: 5,
+                ModSlot.Square,
+                ModSet.Health,
+                new ModStat(StatType.Offense, 0.5),
+                new List<ModStat> { new(StatType.Health, 300) },
+                null);
+
+            var recommendation = await _advisorService.AnalyzeModAsync(
+                mod,
+                new ModUpgradeThreshold("t1", "Strict", 5, 5, 10, true, 0),
+                Array.Empty<Character>());
+
+            Assert.Equal(ModRecommendationAction.Sell, recommendation.Action);
+            Assert.Contains("Speed +0/10", recommendation.Reason);
+        }
+
+        [Fact]
+        public async Task AnalyzeModAsync_WhenSwapCandidatesTie_UsesNameThenIdDeterministically()
+        {
+            var candidateMod = new GameMod(
+                "candidate",
+                level: 15,
+                pips: 5,
+                tier: 5,
+                ModSlot.Square,
+                ModSet.Health,
+                new ModStat(StatType.Offense, 0.5),
+                new List<ModStat> { new(StatType.Speed, 12) },
+                null);
+            var equipped = new GameMod(
+                "equipped",
+                level: 15,
+                pips: 5,
+                tier: 5,
+                ModSlot.Square,
+                ModSet.Health,
+                new ModStat(StatType.Offense, 0.5),
+                new List<ModStat> { new(StatType.Speed, 8) },
+                "owner");
+
+            var characters = new[]
+            {
+                new Character("z-owner", "Same Name", 85, 12, 0, 15000, 10,
+                    new Dictionary<ModSlot, GameMod> { [ModSlot.Square] = equipped }),
+                new Character("a-owner", "Same Name", 85, 12, 0, 15000, 10,
+                    new Dictionary<ModSlot, GameMod> { [ModSlot.Square] = equipped })
+            };
+
+            var recommendation = await _advisorService.AnalyzeModAsync(
+                candidateMod,
+                new ModUpgradeThreshold("t1", "Strict", 5, 5, 15, true, 0),
+                characters);
+
+            Assert.Equal(ModRecommendationAction.Swap, recommendation.Action);
+            Assert.Contains("a-owner", recommendation.Reason);
         }
     }
 }

@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using swgoh_command_bridge.Core.Database;
 using swgoh_command_bridge.Core.Database.Entities;
+using swgoh_command_bridge.Core.Models;
 using swgoh_command_bridge.Core.Services;
 using Xunit;
 
@@ -88,6 +89,14 @@ namespace swgoh_command_bridge.Tests
             Assert.Contains("Health", persisted.SetRecommendationsJson);
             Assert.Contains("Speed", persisted.PrimaryStatsJson);
             Assert.Contains("Critical Damage", persisted.PrimaryStatsJson);
+            Assert.Equal("swgoh.gg", persisted.Source);
+            Assert.Equal(1, persisted.RecommendationSchemaVersion);
+            Assert.Contains("/characters/darthtraya/best-mods/", persisted.SourceUrl);
+
+            var snapshot = RecommendationSnapshot.FromEntity(persisted);
+            Assert.Equal("swgoh.gg", snapshot.Source);
+            Assert.Contains(snapshot.Sets, set => set.Name == "Speed");
+            Assert.Contains("Speed", snapshot.PrimaryStats.Keys);
         }
 
         [Fact]
@@ -127,6 +136,21 @@ namespace swgoh_command_bridge.Tests
         }
 
         [Fact]
+        public async Task ScrapeCharacterRecommendationsAsync_PropagatesCallerCancellation()
+        {
+            var clientFactory = new FakeHttpClientFactory(new HttpClient());
+            var scraper = new SwgohGgScraperService(
+                clientFactory,
+                _context,
+                NullLogger<SwgohGgScraperService>.Instance);
+            using var cancellation = new CancellationTokenSource();
+            cancellation.Cancel();
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+                scraper.ScrapeCharacterRecommendationsAsync("DARTHTRAYA", cancellation.Token));
+        }
+
+        [Fact]
         public async Task ScrapeCharacterRecommendationsAsync_WithEmptyOrInvalidHtml_ReturnsFalseAndDoesNotPersist()
         {
             // Arrange
@@ -159,6 +183,67 @@ namespace swgoh_command_bridge.Tests
                 .FirstOrDefaultAsync(r => r.CharacterId == "DARTHTRAYA");
 
             Assert.Null(persisted);
+        }
+
+        [Fact]
+        public async Task ScrapeAllCharactersIncrementalAsync_ReportsProgressForRequestedAllyCode()
+        {
+            _context.Players.Add(new PlayerEntity
+            {
+                AllyCode = "123456789",
+                Name = "Test Player",
+                Characters = new List<CharacterEntity>
+                {
+                    new()
+                    {
+                        Id = "DARTHTRAYA",
+                        PlayerAllyCode = "123456789",
+                        Name = "Darth Traya"
+                    }
+                }
+            });
+            await _context.SaveChangesAsync();
+
+            _context.Players.Add(new PlayerEntity
+            {
+                AllyCode = "987654321",
+                Name = "Other Player",
+                Characters = new List<CharacterEntity>
+                {
+                    new()
+                    {
+                        Id = "OTHER_CHARACTER",
+                        PlayerAllyCode = "987654321",
+                        Name = "Other Character"
+                    }
+                }
+            });
+            await _context.SaveChangesAsync();
+
+            var handler = new FakeHttpMessageHandler(req =>
+            {
+                var response = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("<div class=\"mod-set-image\" alt=\"Speed\"></div><div class=\"mod-set-percent\">60%</div>")
+                };
+                return Task.FromResult(response);
+            });
+            var clientFactory = new FakeHttpClientFactory(new HttpClient(handler));
+            var scraper = new SwgohGgScraperService(
+                clientFactory,
+                _context,
+                NullLogger<SwgohGgScraperService>.Instance);
+            var updates = new List<ScrapeProgress>();
+
+            await scraper.ScrapeAllCharactersIncrementalAsync(
+                new Progress<ScrapeProgress>(updates.Add),
+                CancellationToken.None,
+                "123456789");
+
+            var update = Assert.Single(updates);
+            Assert.Equal(1, update.Current);
+            Assert.Equal(1, update.Total);
+            Assert.True(update.Success);
         }
 
         public void Dispose()

@@ -1,12 +1,15 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.Input;
 using Microsoft.EntityFrameworkCore;
 using swgoh_command_bridge.Core.Database;
 using swgoh_command_bridge.Core.Database.Entities;
+using swgoh_command_bridge.Core.Models;
 
 namespace swgoh_command_bridge.UI.ViewModels
 {
@@ -16,9 +19,29 @@ namespace swgoh_command_bridge.UI.ViewModels
     public class CharactersViewModel : ViewModelBase
     {
         private readonly AppDbContext _context;
+        private readonly Func<string?>? _activeAllyCodeProvider;
         private string _headerText = "Characters List";
         private string _searchText = string.Empty;
-        private bool _isBusy;
+        private OperationState<IReadOnlyList<CharacterEntity>> _state = OperationState<IReadOnlyList<CharacterEntity>>.ToEmpty();
+
+        /// <summary>
+        /// Gets or sets the explicit empty, loading, success, and error state.
+        /// </summary>
+        public OperationState<IReadOnlyList<CharacterEntity>> State
+        {
+            get => _state;
+            set
+            {
+                _state = value;
+                OnPropertyChanged(nameof(State));
+                OnPropertyChanged(nameof(IsBusy));
+                OnPropertyChanged(nameof(IsLoading));
+                OnPropertyChanged(nameof(IsEmpty));
+                OnPropertyChanged(nameof(HasCharacters));
+                OnPropertyChanged(nameof(HasError));
+                OnPropertyChanged(nameof(ErrorMessage));
+            }
+        }
 
         /// <summary>
         /// Gets the collection of characters loaded from the database.
@@ -59,26 +82,27 @@ namespace swgoh_command_bridge.UI.ViewModels
         }
 
         /// <summary>
-        /// Gets or sets a value indicating whether data is currently being retrieved.
+        /// Gets a value indicating whether data is currently being retrieved.
         /// </summary>
-        public bool IsBusy
-        {
-            get => _isBusy;
-            set
-            {
-                if (_isBusy != value)
-                {
-                    _isBusy = value;
-                    OnPropertyChanged(nameof(IsBusy));
-                }
-            }
-        }
+        public bool IsBusy => State.Status == OperationStatus.Loading;
+
+        public bool IsLoading => State.Status == OperationStatus.Loading;
+
+        public bool IsEmpty => State.Status == OperationStatus.Empty;
+
+        public bool HasCharacters => State.Status == OperationStatus.Success;
+
+        public bool HasError => State.Status == OperationStatus.Error;
+
+        public string ErrorMessage => State.ErrorMessage ?? string.Empty;
+
+        public IAsyncRelayCommand RefreshCommand { get; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="CharactersViewModel"/> class.
         /// </summary>
         public CharactersViewModel()
-            : this(new AppDbContext())
+            : this(new AppDbContext(), null)
         {
         }
 
@@ -86,10 +110,16 @@ namespace swgoh_command_bridge.UI.ViewModels
         /// Initializes a new instance of the <see cref="CharactersViewModel"/> class.
         /// </summary>
         public CharactersViewModel(AppDbContext context)
+            : this(context, null)
+        {
+        }
+
+        public CharactersViewModel(AppDbContext context, Func<string?>? activeAllyCodeProvider)
         {
             ArgumentNullException.ThrowIfNull(context);
             _context = context;
-            _ = LoadCharactersAsync();
+            _activeAllyCodeProvider = activeAllyCodeProvider;
+            RefreshCommand = new AsyncRelayCommand(LoadCharactersAsync);
         }
 
         /// <summary>
@@ -97,10 +127,15 @@ namespace swgoh_command_bridge.UI.ViewModels
         /// </summary>
         public async Task LoadCharactersAsync()
         {
-            IsBusy = true;
+            State = OperationState<IReadOnlyList<CharacterEntity>>.ToLoading();
             try
             {
                 var query = _context.Characters.AsNoTracking();
+                var activeAllyCode = _activeAllyCodeProvider?.Invoke()?.Trim();
+                if (!string.IsNullOrWhiteSpace(activeAllyCode))
+                {
+                    query = query.Where(c => c.PlayerAllyCode == activeAllyCode);
+                }
 
                 if (!string.IsNullOrWhiteSpace(_searchText))
                 {
@@ -120,20 +155,19 @@ namespace swgoh_command_bridge.UI.ViewModels
                     Characters.Add(character);
                 }
 
-                if (Characters.Count == 0 && string.IsNullOrWhiteSpace(_searchText))
+                if (Characters.Count == 0)
                 {
-                    Characters.Add(new CharacterEntity { Id = "luke_skyw_v2", Name = "Commander Luke Skywalker", Priority = 100 });
-                    Characters.Add(new CharacterEntity { Id = "darth_vader", Name = "Darth Vader", Priority = 90 });
-                    Characters.Add(new CharacterEntity { Id = "han_solo", Name = "Han Solo", Priority = 85 });
+                    State = OperationState<IReadOnlyList<CharacterEntity>>.ToEmpty();
+                }
+                else
+                {
+                    State = OperationState<IReadOnlyList<CharacterEntity>>.ToSuccess(list);
                 }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error loading characters: {ex.Message}");
-            }
-            finally
-            {
-                IsBusy = false;
+                State = OperationState<IReadOnlyList<CharacterEntity>>.ToError($"Failed to load characters: {ex.Message}");
             }
         }
     }

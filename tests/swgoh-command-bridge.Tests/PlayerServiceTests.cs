@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -130,6 +131,109 @@ namespace swgoh_command_bridge.Tests
             Assert.Equal("Kenobi", fakeRepo.SavedPlayer.Name);
             Assert.Equal(85, fakeRepo.SavedPlayer.Level);
             Assert.Equal(5100000, fakeRepo.SavedPlayer.GalacticPower);
+        }
+
+        [Fact]
+        public async Task SyncPlayerProfileAsync_WithInventoryMods_PreservesStarsAndStatSnapshots()
+        {
+            var payload = @"
+            {
+                ""name"": ""Ahsoka"",
+                ""level"": 85,
+                ""gp"": 3000000,
+                ""rosterUnit"": [
+                    {
+                        ""definitionId"": ""AHSOKATANO:SEVEN_STAR"",
+                        ""currentRarity"": 5,
+                        ""currentLevel"": 85,
+                        ""currentGearLevel"": 13
+                    }
+                ],
+                ""mods"": [
+                    {
+                        ""id"": ""inventory_mod_1"",
+                        ""level"": 15,
+                        ""pips"": 6,
+                        ""tier"": 5,
+                        ""slot"": 1,
+                        ""set"": 4,
+                        ""primaryStat"": { ""stat"": { ""unitId"": 1, ""value"": 100000000 } },
+                        ""secondaryStat"": [
+                            { ""stat"": { ""unitId"": 5, ""value"": 1500000000 }, ""roll"": 3 }
+                        ]
+                    }
+                ]
+            }";
+
+            var fakeRepo = new FakePlayerRepository();
+            var service = new PlayerService(
+                new FakeComlinkService(payload),
+                fakeRepo,
+                NullLogger<PlayerService>.Instance);
+
+            await service.SyncPlayerProfileAsync("111222333");
+
+            Assert.NotNull(fakeRepo.SavedPlayer);
+            Assert.Equal(5, fakeRepo.SavedPlayer!.Characters.Single().Stars);
+            var savedMod = Assert.Single(fakeRepo.SavedPlayer.Mods);
+            Assert.Equal("Health", savedMod.PrimaryStatType);
+            Assert.Contains("Speed", savedMod.SecondaryStatsJson);
+            Assert.Contains("3", savedMod.SecondaryStatsJson);
+        }
+
+        [Fact]
+        public async Task GetPlayerProfileAsync_WithPartialMixedShapePayload_PreservesUsableRecords()
+        {
+            var payload = @"
+            {
+                ""playerName"": ""Mixed Payload"",
+                ""level"": ""85"",
+                ""galacticPower"": ""1234567"",
+                ""roster"": [
+                    {
+                        ""definitionId"": ""LUKE_SKYWALKER:SEVEN_STAR"",
+                        ""name"": ""Luke Skywalker"",
+                        ""currentLevel"": ""85"",
+                        ""currentGearLevel"": ""bad"",
+                        ""stars"": 7,
+                        ""equippedMods"": [
+                            {
+                                ""id"": ""shared-mod"",
+                                ""slot"": ""2"",
+                                ""set"": 4,
+                                ""primary"": { ""unitId"": ""5"", ""value"": ""3000000000"" },
+                                ""secondaryStats"": [
+                                    { ""stat"": { ""unitId"": 5, ""value"": 1500000000 }, ""rollCount"": ""2"" },
+                                    { ""stat"": { ""unitId"": ""invalid"", ""value"": ""bad"" } }
+                                ]
+                            }
+                        ]
+                    },
+                    { ""currentLevel"": 85 }
+                ],
+                ""inventory"": {
+                    ""mods"": [
+                        { ""id"": ""shared-mod"", ""slot"": 2, ""set"": 4 },
+                        { ""id"": ""inventory-mod"", ""slot"": 1, ""set"": 1, ""pips"": ""6"" }
+                    ]
+                }
+            }";
+
+            var service = new PlayerService(
+                new FakeComlinkService(payload),
+                new FakePlayerRepository(),
+                NullLogger<PlayerService>.Instance);
+
+            var result = await service.GetPlayerProfileAsync("444555666");
+
+            var character = Assert.Single(result.Characters);
+            Assert.Equal("LUKE_SKYWALKER", character.Id);
+            Assert.Equal("Luke Skywalker", character.Name);
+            Assert.Equal(1, character.GearLevel);
+            Assert.Equal(7, character.Stars);
+            Assert.Equal(2, result.Mods.Count);
+            Assert.Contains(result.Mods, mod => mod.Id == "shared-mod" && mod.Primary.Type == StatType.Speed);
+            Assert.Contains(result.Mods, mod => mod.Id == "inventory-mod" && mod.Pips == 6);
         }
 
         private class FakeComlinkService : IComlinkService

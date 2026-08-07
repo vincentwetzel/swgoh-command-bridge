@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+This unreleased work is not a packaged release. The product remains read-only and requires local Comlink configuration for live account sync.
+
 ### Added
 - Added a high-performance, non-allocating `OperationState` record struct in the Core layer to model explicit loading, empty, success, and error states across MVVM viewmodels.
 - Added comprehensive unit tests for `PlayerService` verifying live raw json parsing and synchronization pathways.
@@ -47,4 +49,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Project Scope:** The primary goal has been refocused to be a **read-only** analysis and recommendation tool. Features related to direct account modification (e.g., equipping or upgrading mods) have been moved to stretch goals.
-- Documentation refreshed to reflect the current mixed state of compiled project scaffolding, root-level persistence drafts, and the Core `swgoh.gg` scraper.
+- Documentation refreshed to identify `src/` as the compiled implementation and root-level C# files as retained historical drafts.
+- Documentation now reflects the active `src/` implementation, local cache/settings locations, recovery controls, privacy-redacted diagnostics, and the manual smoke-test gate.

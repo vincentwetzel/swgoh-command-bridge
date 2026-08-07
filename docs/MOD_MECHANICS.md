@@ -36,6 +36,20 @@ Mods have five quality tiers, represented by colors:
 ## Implications for the Mod Advisor
 
 The recommendation engine must understand this entire flow. For example:
-*   When evaluating a **Green** mod at Level 1, the app knows it has the potential to have four more stat upgrades (at levels 3, 6, 9, 12, and one more when sliced to Blue).
+*   When evaluating a **Green** mod at Level 1, the app considers the four level-based upgrades (at levels 3, 6, 9, and 12) plus a potential reveal when sliced to Blue.
 *   The decision to "Upgrade", "Swap", or "Sell" a mod must take into account not just its current stats, but its *potential* stats after being fully leveled and sliced.
 *   The user's thresholds should be applicable at different stages of this process (e.g., "a green mod at level 12 should have at least X speed to be worth slicing to blue").
+
+## 4. Current advisor decision contract
+
+The active advisor applies these decisions in order so the same inventory produces the same result:
+
+1. **Sell** immediately when rarity is below the selected minimum. Rarity is a hard floor and takes precedence over level or speed potential.
+2. **Level up** an eligible sub-level-15 mod when its calculated maximum Speed can reach the threshold. Sell it instead when required Speed cannot be reached.
+3. **Slice** a level-15 mod that meets the Speed requirement but is below the selected minimum tier. A level-15 5-dot gold mod that otherwise meets the threshold is recommended for 6-dot slicing.
+4. **Keep** a maxed mod when its rarity, tier, and required Speed all meet the threshold.
+5. **Slice** a below-Speed-threshold mod only when it is below gold and the mechanics estimate says slicing can reach the required Speed.
+6. **Swap** is considered only after upgrade/slicing options fail. The candidate must have the same set and primary-stat type as the target slot, must be faster than the equipped mod, and is never compared against the character currently equipping the candidate. Ties are resolved by character priority, then name, then ID.
+7. **Sell** is the final result when no actionable upgrade, slice, keep, or compatible swap applies.
+
+These are recommendations only; the application does not perform game actions or consume slicing materials.

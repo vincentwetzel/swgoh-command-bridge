@@ -1,50 +1,101 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:swgoh_command_bridge.UI.ViewModels"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="swgoh_command_bridge.UI.Views.ModOptimizerView"
              x:DataType="vm:ModOptimizerViewModel">
-  <Design.DataContext>
-    <!-- Design time setup fallback can go here if needed -->
-  </Design.DataContext>
+  <Grid RowDefinitions="Auto, *" Margin="20">
+    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="12" Margin="0,0,0,16">
+      <TextBlock Text="{Binding HeaderText}" FontSize="26" FontWeight="Bold"/>
+      <Button Content="Plan priority roster" Command="{Binding CalculateRosterCommand}" VerticalAlignment="Center"/>
+    </StackPanel>
 
-  <Grid RowDefinitions="Auto, *" Margin="15">
-    <TextBlock Grid.Row="0" Text="{Binding HeaderText}" FontSize="22" FontWeight="Bold" Margin="0,0,0,15"/>
-
-    <Grid Grid.Row="1" ColumnDefinitions="250, *">
-      <!-- Left Column: Character List -->
-      <Border Grid.Column="0" CornerRadius="4" BorderBrush="Gray" BorderThickness="1" Margin="0,0,10,0">
+    <Grid Grid.Row="1" ColumnDefinitions="260, *" ColumnSpacing="16">
+      <Border BorderBrush="#555555" BorderThickness="1" CornerRadius="6">
         <ListBox ItemsSource="{Binding Characters}" SelectedItem="{Binding SelectedCharacter}">
           <ListBox.ItemTemplate>
             <DataTemplate>
-              <StackPanel Margin="5">
-                <TextBlock Text="{Binding Name}" FontWeight="Bold"/>
-                <TextBlock Text="{Binding Priority, StringFormat='Priority: {0}'}" FontSize="12" Foreground="Gray"/>
+              <StackPanel Padding="8" Spacing="3">
+                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                <TextBlock Text="{Binding Priority, StringFormat='Priority: {0}'}" Foreground="Gray"/>
               </StackPanel>
             </DataTemplate>
           </ListBox.ItemTemplate>
         </ListBox>
       </Border>
 
-      <!-- Right Column: Optimal Loadout Deck -->
-      <Border Grid.Column="1" Background="#222222" CornerRadius="8" Padding="15">
-        <Grid RowDefinitions="Auto, *">
-          <TextBlock Grid.Row="0" Text="Optimal Recommended Loadout" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,15"/>
-
-          <ListBox Grid.Row="1" ItemsSource="{Binding RecommendedLoadout}" Background="Transparent">
-            <ListBox.ItemTemplate>
-              <DataTemplate>
-                <Grid ColumnDefinitions="80, *, 80, 80" Margin="5">
-                  <TextBlock Grid.Column="0" Text="{Binding Slot, StringFormat='Slot {0}'}" FontWeight="SemiBold"/>
-                  <TextBlock Grid.Column="1" Text="{Binding Rarity, StringFormat='{}{0} star Mod'}" Foreground="#3296FF"/>
-                  <TextBlock Grid.Column="2" Text="{Binding Level, StringFormat='Lvl {0}'}"/>
-                  <TextBlock Grid.Column="3" Text="{Binding Tier, StringFormat='Tier {0}'}"/>
-                </Grid>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
+      <Border Grid.Column="1" BorderBrush="#555555" BorderThickness="1" CornerRadius="6" Padding="16">
+        <Grid RowDefinitions="Auto, Auto, *">
+          <TextBlock Text="Loading optimizer..." IsVisible="{Binding IsLoading}" HorizontalAlignment="Center"/>
+          <TextBlock Grid.Row="1" Text="Select a character after syncing an account." IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" TextWrapping="Wrap"/>
+          <StackPanel Grid.Row="2" IsVisible="{Binding HasError}" HorizontalAlignment="Center" Spacing="8" MaxWidth="360">
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="#FF8A80" TextWrapping="Wrap"/>
+            <Button Content="Retry" Command="{Binding RefreshCommand}" HorizontalAlignment="Center"/>
+          </StackPanel>
+          <StackPanel Grid.Row="2" IsVisible="{Binding HasLoadout}" Spacing="12">
+            <TextBlock Text="Recommended loadout" FontSize="18" FontWeight="SemiBold"/>
+            <TextBlock Text="{Binding RecommendationStatusText}" TextWrapping="Wrap" Foreground="Gray"/>
+            <TextBlock Text="{Binding PopularityText}" Foreground="Gray"/>
+            <TextBlock Text="{Binding LastUpdatedText}" Foreground="Gray"/>
+            <TextBlock Text="{Binding RecommendationSourceUrlText}" TextWrapping="Wrap" Foreground="Gray"/>
+            <TextBlock Text="{Binding LoadoutStatusText}" TextWrapping="Wrap"/>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Content="Refresh community data" Command="{Binding ScrapeCommand}"/>
+              <Button Content="Refresh all" Command="{Binding ScrapeAllCommand}"/>
+              <Button Content="Cancel" Command="{Binding CancelScrapeCommand}" IsVisible="{Binding IsScraping}"/>
+            </StackPanel>
+            <TextBlock Text="{Binding ScrapeStatusText}" TextWrapping="Wrap" Foreground="Gray"/>
+            <TextBlock Text="{Binding LastScrapeSummaryText}" TextWrapping="Wrap" Foreground="Gray"/>
+            <ListBox ItemsSource="{Binding RecommendedLoadout}">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <Grid ColumnDefinitions="100, *, Auto" Padding="6" ColumnSpacing="12">
+                    <TextBlock Text="{Binding Slot, StringFormat='Slot {0}'}"/>
+                    <TextBlock Grid.Column="1" Text="{Binding PrimaryStatType}"/>
+                    <TextBlock Grid.Column="2" Text="{Binding Id}"/>
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <ItemsControl ItemsSource="{Binding LoadoutExplanations}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding}" TextWrapping="Wrap" Foreground="Gray" Margin="6,0,0,0"/>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Separator Margin="0,8"/>
+            <TextBlock Text="Priority roster plan" FontSize="18" FontWeight="SemiBold"/>
+            <TextBlock Text="{Binding RosterPlanStatusText}" TextWrapping="Wrap" Foreground="Gray"/>
+            <ItemsControl ItemsSource="{Binding RosterPlanSummaries}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding}" TextWrapping="Wrap" Foreground="Gray" Margin="6,0,0,0"/>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+          <StackPanel Grid.Row="2" IsVisible="{Binding IsEmpty}" Spacing="12">
+            <TextBlock Text="No loadout is available for the selected character." FontSize="18" FontWeight="SemiBold"/>
+            <TextBlock Text="{Binding RecommendationStatusText}" TextWrapping="Wrap" Foreground="Gray"/>
+            <TextBlock Text="{Binding LastUpdatedText}" Foreground="Gray"/>
+            <TextBlock Text="{Binding RecommendationSourceUrlText}" TextWrapping="Wrap" Foreground="Gray"/>
+            <TextBlock Text="{Binding LoadoutStatusText}" TextWrapping="Wrap"/>
+            <Button Content="Refresh community data" Command="{Binding ScrapeCommand}"/>
+            <Button Content="Refresh all" Command="{Binding ScrapeAllCommand}"/>
+            <Button Content="Cancel" Command="{Binding CancelScrapeCommand}" IsVisible="{Binding IsScraping}"/>
+            <TextBlock Text="{Binding ScrapeStatusText}" TextWrapping="Wrap" Foreground="Gray"/>
+            <TextBlock Text="{Binding LastScrapeSummaryText}" TextWrapping="Wrap" Foreground="Gray"/>
+            <Separator Margin="0,8"/>
+            <TextBlock Text="Priority roster plan" FontSize="18" FontWeight="SemiBold"/>
+            <TextBlock Text="{Binding RosterPlanStatusText}" TextWrapping="Wrap" Foreground="Gray"/>
+            <ItemsControl ItemsSource="{Binding RosterPlanSummaries}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding}" TextWrapping="Wrap" Foreground="Gray" Margin="6,0,0,0"/>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
         </Grid>
       </Border>
     </Grid>

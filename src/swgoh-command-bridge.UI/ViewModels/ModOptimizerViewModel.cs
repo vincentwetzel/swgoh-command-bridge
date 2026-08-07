@@ -4,12 +4,13 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.Input;
 using Microsoft.EntityFrameworkCore;
 using swgoh_command_bridge.Core.Database;
 using swgoh_command_bridge.Core.Database.Entities;
+using swgoh_command_bridge.Core.Models;
 using swgoh_command_bridge.Core.Services;
 
 namespace swgoh_command_bridge.UI.ViewModels
@@ -21,16 +22,26 @@ namespace swgoh_command_bridge.UI.ViewModels
     {
         private readonly AppDbContext _context;
         private readonly IModAssignmentService _assignmentService;
+        private readonly ISwgohGgScraperService? _scraperService;
+        private readonly ISettingsService? _settingsService;
+        private readonly Func<string?>? _activeAllyCodeProvider;
+        private CancellationTokenSource? _scrapeCancellation;
         private string _headerText = "Mod Assignment Optimizer";
         private CharacterEntity? _selectedCharacter;
-        private bool _isBusy;
+        private OperationState<IReadOnlyList<GameModEntity>> _state =
+            OperationState<IReadOnlyList<GameModEntity>>.ToEmpty();
         private string _popularityText = "No community recommendation data available.";
         private string _lastUpdatedText = string.Empty;
+        private string _recommendationSourceUrlText = string.Empty;
+        private string _loadoutStatusText = "No loadout has been calculated.";
+        private string _recommendationStatusText = "No community recommendation data available.";
+        private string _scrapeStatusText = "Community recommendations have not been refreshed.";
+        private string _lastScrapeSummaryText = "No completed recommendation refresh has been recorded.";
+        private string _rosterPlanStatusText = "No priority roster plan has been calculated.";
+        private bool _isRecommendationStale;
+        private bool _isScraping;
 
-        private static readonly JsonSerializerOptions SerializerOptions = new()
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        };
+        private static readonly TimeSpan RecommendationFreshness = TimeSpan.FromDays(7);
 
         /// <summary>
         /// Gets the collection of available characters for optimization.
@@ -51,6 +62,32 @@ namespace swgoh_command_bridge.UI.ViewModels
         /// Gets the collection of target primary stats per mod slot recommended by swgoh.gg.
         /// </summary>
         public ObservableCollection<string> TargetPrimaries { get; } = new();
+
+        /// <summary>
+        /// Gets the explanation for each selected mod in the calculated loadout.
+        /// </summary>
+        public ObservableCollection<string> LoadoutExplanations { get; } = new();
+
+        /// <summary>
+        /// Gets the concise priority-roster assignment summaries.
+        /// </summary>
+        public ObservableCollection<string> RosterPlanSummaries { get; } = new();
+
+        public OperationState<IReadOnlyList<GameModEntity>> State
+        {
+            get => _state;
+            private set
+            {
+                _state = value;
+                OnPropertyChanged(nameof(State));
+                OnPropertyChanged(nameof(IsBusy));
+                OnPropertyChanged(nameof(IsLoading));
+                OnPropertyChanged(nameof(IsEmpty));
+                OnPropertyChanged(nameof(HasLoadout));
+                OnPropertyChanged(nameof(HasError));
+                OnPropertyChanged(nameof(ErrorMessage));
+            }
+        }
 
         /// <summary>
         /// Gets or sets the page header text.
@@ -80,6 +117,7 @@ namespace swgoh_command_bridge.UI.ViewModels
                 {
                     _selectedCharacter = value;
                     OnPropertyChanged(nameof(SelectedCharacter));
+                    OnPropertyChanged(nameof(IsEmpty));
                     _ = LoadOptimalLoadoutAsync();
                 }
             }
@@ -120,16 +158,156 @@ namespace swgoh_command_bridge.UI.ViewModels
         /// <summary>
         /// Gets or sets a value indicating whether the optimizer is currently calculating.
         /// </summary>
-        public bool IsBusy
+        public bool IsBusy => State.Status == OperationStatus.Loading || IsScraping;
+
+        public bool IsLoading => State.Status == OperationStatus.Loading;
+
+        public bool IsEmpty => State.Status == OperationStatus.Empty ||
+            (State.Status == OperationStatus.Success && SelectedCharacter == null);
+
+        public bool HasLoadout => State.Status == OperationStatus.Success && RecommendedLoadout.Count > 0;
+
+        public bool HasError => State.Status == OperationStatus.Error;
+
+        public string ErrorMessage => State.ErrorMessage ?? string.Empty;
+
+        public bool IsScraping
         {
-            get => _isBusy;
-            set
+            get => _isScraping;
+            private set
             {
-                if (_isBusy != value)
+                if (_isScraping == value)
                 {
-                    _isBusy = value;
-                    OnPropertyChanged(nameof(IsBusy));
+                    return;
                 }
+
+                _isScraping = value;
+                OnPropertyChanged(nameof(IsScraping));
+                OnPropertyChanged(nameof(IsBusy));
+            }
+        }
+
+        public string RecommendationSourceUrlText
+        {
+            get => _recommendationSourceUrlText;
+            private set
+            {
+                if (_recommendationSourceUrlText == value)
+                {
+                    return;
+                }
+
+                _recommendationSourceUrlText = value;
+                OnPropertyChanged(nameof(RecommendationSourceUrlText));
+            }
+        }
+
+        public string LoadoutStatusText
+        {
+            get => _loadoutStatusText;
+            private set
+            {
+                if (_loadoutStatusText == value)
+                {
+                    return;
+                }
+
+                _loadoutStatusText = value;
+                OnPropertyChanged(nameof(LoadoutStatusText));
+            }
+        }
+
+        public string RecommendationStatusText
+        {
+            get => _recommendationStatusText;
+            private set
+            {
+                if (_recommendationStatusText == value)
+                {
+                    return;
+                }
+
+                _recommendationStatusText = value;
+                OnPropertyChanged(nameof(RecommendationStatusText));
+            }
+        }
+
+        public bool IsRecommendationStale
+        {
+            get => _isRecommendationStale;
+            private set
+            {
+                if (_isRecommendationStale == value)
+                {
+                    return;
+                }
+
+                _isRecommendationStale = value;
+                OnPropertyChanged(nameof(IsRecommendationStale));
+            }
+        }
+
+        public string ScrapeStatusText
+        {
+            get => _scrapeStatusText;
+            private set
+            {
+                if (_scrapeStatusText == value)
+                {
+                    return;
+                }
+
+                _scrapeStatusText = value;
+                OnPropertyChanged(nameof(ScrapeStatusText));
+            }
+        }
+
+        public string LastScrapeSummaryText
+        {
+            get => _lastScrapeSummaryText;
+            private set
+            {
+                if (_lastScrapeSummaryText == value)
+                {
+                    return;
+                }
+
+                _lastScrapeSummaryText = value;
+                OnPropertyChanged(nameof(LastScrapeSummaryText));
+            }
+        }
+
+        public string RosterPlanStatusText
+        {
+            get => _rosterPlanStatusText;
+            private set
+            {
+                if (_rosterPlanStatusText == value)
+                {
+                    return;
+                }
+
+                _rosterPlanStatusText = value;
+                OnPropertyChanged(nameof(RosterPlanStatusText));
+            }
+        }
+
+        public IAsyncRelayCommand ScrapeCommand { get; }
+
+        public IAsyncRelayCommand RefreshCommand { get; }
+
+        public IAsyncRelayCommand ScrapeAllCommand { get; }
+
+        public IAsyncRelayCommand CalculateRosterCommand { get; }
+
+        public IRelayCommand CancelScrapeCommand { get; }
+
+        public async Task RefreshAsync()
+        {
+            await LoadCharactersAsync().ConfigureAwait(true);
+            if (SelectedCharacter != null)
+            {
+                await LoadOptimalLoadoutAsync().ConfigureAwait(true);
             }
         }
 
@@ -137,22 +315,253 @@ namespace swgoh_command_bridge.UI.ViewModels
         /// Initializes a new instance of the <see cref="ModOptimizerViewModel"/> class.
         /// </summary>
         public ModOptimizerViewModel(AppDbContext context, IModAssignmentService assignmentService)
+            : this(context, assignmentService, null, null, null)
+        {
+        }
+
+        public ModOptimizerViewModel(
+            AppDbContext context,
+            IModAssignmentService assignmentService,
+            ISwgohGgScraperService? scraperService,
+            Func<string?>? activeAllyCodeProvider = null,
+            ISettingsService? settingsService = null)
         {
             ArgumentNullException.ThrowIfNull(context);
             ArgumentNullException.ThrowIfNull(assignmentService);
 
             _context = context;
             _assignmentService = assignmentService;
-
-            _ = InitializeCharactersAsync();
+            _scraperService = scraperService;
+            _settingsService = settingsService;
+            _activeAllyCodeProvider = activeAllyCodeProvider;
+            LastScrapeSummaryText = FormatScrapeSummary(settingsService?.CurrentSettings.LastRecommendationScrape);
+            RefreshCommand = new AsyncRelayCommand(RefreshAsync);
+            ScrapeCommand = new AsyncRelayCommand(ScrapeSelectedAsync);
+            ScrapeAllCommand = new AsyncRelayCommand(ScrapeAllAsync);
+            CalculateRosterCommand = new AsyncRelayCommand(CalculateRosterAsync);
+            CancelScrapeCommand = new RelayCommand(CancelScrape);
         }
 
-        private async Task InitializeCharactersAsync()
+        public async Task CalculateRosterAsync()
+        {
+            RosterPlanSummaries.Clear();
+            RosterPlanStatusText = "Calculating a priority-first roster plan...";
+            try
+            {
+                var activeAllyCode = _activeAllyCodeProvider?.Invoke()?.Trim();
+                var charactersQuery = _context.Characters.AsNoTracking();
+                var modsQuery = _context.Mods.AsNoTracking();
+                if (!string.IsNullOrWhiteSpace(activeAllyCode))
+                {
+                    charactersQuery = charactersQuery.Where(character => character.PlayerAllyCode == activeAllyCode);
+                    modsQuery = modsQuery.Where(mod => mod.PlayerAllyCode == activeAllyCode);
+                }
+
+                var characters = await charactersQuery.ToListAsync().ConfigureAwait(true);
+                var inventory = await modsQuery.ToListAsync().ConfigureAwait(true);
+                var plan = await _assignmentService.CalculateRosterLoadoutsAsync(
+                    characters,
+                    inventory).ConfigureAwait(true);
+
+                foreach (var characterPlan in plan.Plans)
+                {
+                    RosterPlanSummaries.Add(
+                        $"P{characterPlan.Priority} {characterPlan.CharacterName}: " +
+                        $"{characterPlan.Loadout.Mods.Count}/6 mods — {characterPlan.Loadout.Status}");
+                    foreach (var conflict in characterPlan.Conflicts)
+                    {
+                        RosterPlanSummaries.Add(
+                            $"  Slot {conflict.Slot} conflict for {conflict.CharacterName}: {conflict.Reason}");
+                    }
+                }
+
+                RosterPlanStatusText = plan.Status;
+            }
+            catch (Exception ex)
+            {
+                RosterPlanStatusText = $"Roster planning failed: {ex.Message}";
+            }
+        }
+
+        private async Task ScrapeSelectedAsync()
+        {
+            if (_scraperService == null || SelectedCharacter == null)
+            {
+                ScrapeStatusText = "Select a character and configure the scraper before updating recommendations.";
+                return;
+            }
+
+            _scrapeCancellation?.Dispose();
+            _scrapeCancellation = new CancellationTokenSource();
+            IsScraping = true;
+            ScrapeStatusText = $"Refreshing recommendations for {SelectedCharacter.Name}...";
+            var scrapeSucceeded = false;
+            var scrapeFailed = false;
+            var cancelled = false;
+
+            try
+            {
+                scrapeSucceeded = await _scraperService.ScrapeCharacterRecommendationsAsync(
+                    SelectedCharacter.Id,
+                    _scrapeCancellation.Token);
+                scrapeFailed = !scrapeSucceeded;
+                ScrapeStatusText = scrapeSucceeded
+                    ? "Recommendation data refreshed."
+                    : "No recommendation data was returned for this character.";
+
+                if (scrapeSucceeded)
+                {
+                    await LoadOptimalLoadoutAsync();
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                cancelled = true;
+                ScrapeStatusText = "Recommendation refresh cancelled.";
+            }
+            catch (Exception ex)
+            {
+                scrapeFailed = true;
+                ScrapeStatusText = $"Recommendation refresh failed: {ex.Message}";
+            }
+            finally
+            {
+                await SaveScrapeSummaryAsync(1, scrapeSucceeded ? 1 : 0, scrapeFailed ? 1 : 0, cancelled);
+                IsScraping = false;
+                _scrapeCancellation?.Dispose();
+                _scrapeCancellation = null;
+            }
+        }
+
+        private void CancelScrape()
+        {
+            _scrapeCancellation?.Cancel();
+        }
+
+        private async Task ScrapeAllAsync()
+        {
+            if (_scraperService == null)
+            {
+                ScrapeStatusText = "The recommendation scraper is not configured.";
+                return;
+            }
+
+            _scrapeCancellation?.Dispose();
+            _scrapeCancellation = new CancellationTokenSource();
+            IsScraping = true;
+            ScrapeStatusText = "Preparing incremental recommendation refresh...";
+            var processed = 0;
+            var succeeded = 0;
+            var failed = 0;
+            var cancelled = false;
+
+            try
+            {
+                var progress = new Progress<ScrapeProgress>(update =>
+                {
+                    processed = update.Current;
+                    if (update.Success)
+                    {
+                        succeeded++;
+                    }
+                    else
+                    {
+                        failed++;
+                    }
+
+                    ScrapeStatusText = update.Success
+                        ? $"Refreshed {update.Current}/{update.Total}: {update.CurrentCharacterName}"
+                        : $"Failed {update.Current}/{update.Total}: {update.CurrentCharacterName} — {update.ErrorMessage}";
+                });
+
+                await _scraperService.ScrapeAllCharactersIncrementalAsync(
+                    progress,
+                    _scrapeCancellation.Token,
+                    _activeAllyCodeProvider?.Invoke()?.Trim());
+
+                ScrapeStatusText = "Incremental recommendation refresh completed.";
+                await LoadCharactersAsync();
+                if (SelectedCharacter != null)
+                {
+                    await LoadOptimalLoadoutAsync();
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                cancelled = true;
+                ScrapeStatusText = "Incremental recommendation refresh cancelled.";
+            }
+            catch (Exception ex)
+            {
+                failed++;
+                ScrapeStatusText = $"Incremental recommendation refresh failed: {ex.Message}";
+            }
+            finally
+            {
+                await SaveScrapeSummaryAsync(processed, succeeded, failed, cancelled);
+                IsScraping = false;
+                _scrapeCancellation?.Dispose();
+                _scrapeCancellation = null;
+            }
+        }
+
+        private async Task SaveScrapeSummaryAsync(
+            int processed,
+            int succeeded,
+            int failed,
+            bool cancelled)
+        {
+            var summary = new RecommendationScrapeSummary(
+                DateTime.UtcNow,
+                processed,
+                succeeded,
+                failed,
+                cancelled);
+            LastScrapeSummaryText = FormatScrapeSummary(summary);
+
+            if (_settingsService == null)
+            {
+                return;
+            }
+
+            try
+            {
+                await _settingsService.SaveSettingsAsync(
+                    _settingsService.CurrentSettings with
+                    {
+                        LastRecommendationScrape = summary
+                    });
+            }
+            catch (Exception ex)
+            {
+                ScrapeStatusText = $"Refresh completed, but its summary could not be saved: {ex.Message}";
+            }
+        }
+
+        private static string FormatScrapeSummary(RecommendationScrapeSummary? summary)
+        {
+            if (summary == null)
+            {
+                return "No completed recommendation refresh has been recorded.";
+            }
+
+            var state = summary.Cancelled ? "cancelled" : "completed";
+            return $"Last refresh {state} {summary.CompletedAtUtc.ToLocalTime():yyyy-MM-dd HH:mm}: " +
+                $"{summary.Processed} processed, {summary.Succeeded} succeeded, {summary.Failed} failed.";
+        }
+
+        public async Task LoadCharactersAsync()
         {
             try
             {
-                var characters = await _context.Characters
-                    .AsNoTracking()
+                var activeAllyCode = _activeAllyCodeProvider?.Invoke()?.Trim();
+                var charactersQuery = _context.Characters.AsNoTracking();
+                if (!string.IsNullOrWhiteSpace(activeAllyCode))
+                {
+                    charactersQuery = charactersQuery.Where(character => character.PlayerAllyCode == activeAllyCode);
+                }
+
+                var characters = await charactersQuery
                     .OrderByDescending(c => c.Priority)
                     .ThenBy(c => c.Name)
                     .ToListAsync()
@@ -164,16 +573,14 @@ namespace swgoh_command_bridge.UI.ViewModels
                     Characters.Add(character);
                 }
 
-                // Setup fallback/mock if empty for UX preview
-                if (Characters.Count == 0)
-                {
-                    Characters.Add(new CharacterEntity { Id = "luke_skyw_v2", Name = "Commander Luke Skywalker", Priority = 100 });
-                    Characters.Add(new CharacterEntity { Id = "darth_vader", Name = "Darth Vader", Priority = 90 });
-                }
+                State = Characters.Count == 0
+                    ? OperationState<IReadOnlyList<GameModEntity>>.ToEmpty()
+                    : OperationState<IReadOnlyList<GameModEntity>>.ToSuccess(Array.Empty<GameModEntity>());
             }
-            catch
+            catch (Exception ex)
             {
-                // Graceful fallback
+                State = OperationState<IReadOnlyList<GameModEntity>>.ToError(
+                    $"Failed to load optimizer characters: {ex.Message}");
             }
         }
 
@@ -184,12 +591,18 @@ namespace swgoh_command_bridge.UI.ViewModels
                 RecommendedLoadout.Clear();
                 TargetSets.Clear();
                 TargetPrimaries.Clear();
+                LoadoutExplanations.Clear();
                 PopularityText = "No community recommendation data available.";
                 LastUpdatedText = string.Empty;
+                RecommendationSourceUrlText = string.Empty;
+                LoadoutStatusText = "Select a character to calculate a loadout.";
+                RecommendationStatusText = "No community recommendation data available.";
+                IsRecommendationStale = false;
+                State = OperationState<IReadOnlyList<GameModEntity>>.ToEmpty();
                 return;
             }
 
-            IsBusy = true;
+            State = OperationState<IReadOnlyList<GameModEntity>>.ToLoading();
             var characterId = SelectedCharacter.Id;
 
             try
@@ -202,78 +615,109 @@ namespace swgoh_command_bridge.UI.ViewModels
 
                 TargetSets.Clear();
                 TargetPrimaries.Clear();
+                LoadoutExplanations.Clear();
                 PopularityText = "No community recommendation data available.";
                 LastUpdatedText = string.Empty;
+                RecommendationSourceUrlText = string.Empty;
+                LoadoutStatusText = "Calculating a loadout from the cached inventory.";
+                RecommendationStatusText = "No community recommendation data available.";
+                IsRecommendationStale = false;
 
                 if (recommendation != null)
                 {
+                    IsRecommendationStale = DateTime.UtcNow - recommendation.LastUpdatedUtc >= RecommendationFreshness;
+                    RecommendationStatusText = IsRecommendationStale
+                        ? "Stale community data. Refresh recommendations before relying on this loadout."
+                        : "Community recommendation data is current.";
                     PopularityText = $"Community Popularity: {recommendation.PopularityPercentage:F1}%";
                     LastUpdatedText = $"Scraped: {recommendation.LastUpdatedUtc.ToLocalTime():yyyy-MM-dd HH:mm}";
 
                     try
                     {
-                        var sets = JsonSerializer.Deserialize<List<string>>(recommendation.SetRecommendationsJson, SerializerOptions);
-                        if (sets != null)
+                        var snapshot = RecommendationSnapshot.FromEntity(recommendation);
+                        var source = string.IsNullOrWhiteSpace(snapshot.Source)
+                            ? "community"
+                            : snapshot.Source;
+                        IsRecommendationStale = DateTime.UtcNow - snapshot.ScrapedAtUtc >= RecommendationFreshness;
+                        RecommendationStatusText = IsRecommendationStale
+                            ? $"Stale {source} data. Refresh recommendations before relying on this loadout."
+                            : $"Current {source} recommendation data.";
+                        PopularityText = $"Community Popularity: {snapshot.PopularityPercentage:F1}%";
+                        LastUpdatedText = $"Scraped: {snapshot.ScrapedAtUtc.ToLocalTime():yyyy-MM-dd HH:mm}";
+                        RecommendationSourceUrlText = string.IsNullOrWhiteSpace(snapshot.SourceUrl)
+                            ? "Source URL unavailable."
+                            : $"Source: {snapshot.SourceUrl}";
+
+                        foreach (var set in snapshot.Sets)
                         {
-                            foreach (var set in sets)
-                            {
-                                TargetSets.Add(set);
-                            }
+                            TargetSets.Add($"{set.Name} ({set.Percentage:F1}%)");
                         }
 
-                        var primaries = JsonSerializer.Deserialize<Dictionary<string, string>>(recommendation.PrimaryStatsJson, SerializerOptions);
-                        if (primaries != null)
+                        foreach (var kvp in snapshot.PrimaryStats)
                         {
-                            foreach (var kvp in primaries)
-                            {
-                                TargetPrimaries.Add($"{kvp.Key}: {kvp.Value}");
-                            }
+                            var values = string.Join(", ", kvp.Value.Select(primary =>
+                                $"{primary.StatName} ({primary.Percentage:F1}%)"));
+                            TargetPrimaries.Add($"{kvp.Key}: {values}");
                         }
                     }
-                    catch (JsonException ex)
+                    catch (System.Text.Json.JsonException ex)
                     {
                         System.Diagnostics.Debug.WriteLine($"Failed to deserialize recommendation payload: {ex.Message}");
+                        RecommendationStatusText = "Cached recommendation data is malformed. Refresh recommendations.";
                     }
                 }
 
                 // Offload CPU heavy work and Db Queries to background thread (Rule 9)
-                var optimalMods = await Task.Run(async () =>
+                var loadoutResult = await Task.Run(async () =>
                 {
-                    var availableMods = await _context.Mods
-                        .AsNoTracking()
+                    var activeAllyCode = _activeAllyCodeProvider?.Invoke()?.Trim();
+                    var modsQuery = _context.Mods.AsNoTracking();
+                    if (!string.IsNullOrWhiteSpace(activeAllyCode))
+                    {
+                        modsQuery = modsQuery.Where(mod => mod.PlayerAllyCode == activeAllyCode);
+                    }
+
+                    var availableMods = await modsQuery
                         .ToListAsync()
                         .ConfigureAwait(false);
 
                     if (availableMods.Count == 0)
                     {
-                        availableMods = new List<GameModEntity>
-                        {
-                            new GameModEntity { Id = "m1", Slot = 1, Rarity = 6, Level = 15, Tier = 5, Set = 6 },
-                            new GameModEntity { Id = "m2", Slot = 2, Rarity = 5, Level = 15, Tier = 5, Set = 6 },
-                            new GameModEntity { Id = "m3", Slot = 3, Rarity = 5, Level = 15, Tier = 1, Set = 6 },
-                            new GameModEntity { Id = "m4", Slot = 4, Rarity = 6, Level = 15, Tier = 5, Set = 1 },
-                            new GameModEntity { Id = "m5", Slot = 5, Rarity = 5, Level = 15, Tier = 4, Set = 1 },
-                            new GameModEntity { Id = "m6", Slot = 6, Rarity = 5, Level = 15, Tier = 5, Set = 6 }
-                        };
+                        return new ModLoadoutResult(
+                            Array.Empty<GameModEntity>(),
+                            recommendation != null,
+                            false,
+                            false,
+                            "No inventory mods are available for the active account.",
+                            Array.Empty<ModAssignmentExplanation>());
                     }
 
-                    return await _assignmentService.CalculateOptimalLoadoutAsync(characterId, availableMods).ConfigureAwait(false);
+                    return await _assignmentService.CalculateOptimalLoadoutResultAsync(
+                        characterId,
+                        availableMods).ConfigureAwait(false);
                 });
 
                 // Safely update state back on the UI thread
                 RecommendedLoadout.Clear();
-                foreach (var mod in optimalMods)
+                foreach (var mod in loadoutResult.Mods)
                 {
                     RecommendedLoadout.Add(mod);
                 }
+                foreach (var explanation in loadoutResult.Explanations)
+                {
+                    LoadoutExplanations.Add($"Slot {explanation.Slot} — {explanation.ModId}: {explanation.Reason}");
+                }
+                LoadoutStatusText = loadoutResult.Status;
+                OnPropertyChanged(nameof(HasLoadout));
+                OnPropertyChanged(nameof(IsEmpty));
+                State = loadoutResult.Mods.Count == 0
+                    ? OperationState<IReadOnlyList<GameModEntity>>.ToEmpty()
+                    : OperationState<IReadOnlyList<GameModEntity>>.ToSuccess(loadoutResult.Mods);
             }
-            catch
+            catch (Exception ex)
             {
-                // Graceful error handling
-            }
-            finally
-            {
-                IsBusy = false;
+                State = OperationState<IReadOnlyList<GameModEntity>>.ToError(
+                    $"Failed to calculate loadout: {ex.Message}");
             }
         }
     }

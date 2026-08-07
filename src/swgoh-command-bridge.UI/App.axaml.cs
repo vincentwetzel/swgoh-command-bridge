@@ -18,10 +18,16 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow
+            var composition = ApplicationComposition.CreateDefault();
+            var viewModel = new MainWindowViewModel(composition);
+            var window = new MainWindow
             {
-                DataContext = new MainWindowViewModel(),
+                DataContext = viewModel,
             };
+
+            window.Opened += async (_, _) => await viewModel.InitializeAsync();
+            window.Closed += (_, _) => composition.Dispose();
+            desktop.MainWindow = window;
         }
 
         base.OnFrameworkInitializationCompleted();

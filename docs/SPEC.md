@@ -5,6 +5,8 @@ The **SWGOH Command Bridge** is a cross-platform desktop application designed to
 
 ## 2. Key Features
 
+The current release target is read-only. Any feature that changes the game account is explicitly out of scope for the active product.
+
 ### 2.1. Account & Data Management
 -   **Read-Only Account Sync:** The application will interface with a local `swgoh-comlink` instance to perform a **read-only** sync of the user's game account.
 -   **Full Roster Sync:** Fetch, parse, persist, and display a user's complete character and mod inventory for analysis.
@@ -38,6 +40,11 @@ The **SWGOH Command Bridge** is a cross-platform desktop application designed to
 -   **Cross-Platform:** The application must run natively on Windows, macOS, and Linux.
 -   **Responsive UI:** The user interface should be clean, intuitive, and responsive, capable of handling and displaying large amounts of data without performance degradation.
 
+### 2.5. Recovery and support
+-   **Cache recovery:** Users can create verified SQLite backups, restore a selected backup, or reset cached feature data while retaining JSON settings.
+-   **Diagnostics:** Users can inspect safe cache/configuration metadata and export a privacy-redacted support report.
+-   **Failure states:** Screens must expose loading, empty, success, and error states with retry or recovery actions where applicable.
+
 ## 3. Stretch Goals (Future Scope)
 -   **Secure Write-Access Login**: Authenticate with the user's account with permissions to make changes.
 -   **Automated Equipping**: Execute suggested mod swaps with a single action.
@@ -51,3 +58,8 @@ The **SWGOH Command Bridge** is a cross-platform desktop application designed to
 -   **Local Database:** SQLite (via Entity Framework Core)
 -   **Game API:** `swgoh-comlink` (via local HTTP calls)
 -   **Community Data:** Public `swgoh.gg` pages via remote HTTP calls and HTML parsing
+
+## 5. Data and privacy boundary
+- Account payloads and recommendation cache data remain local unless the user separately operates the configured Comlink or public recommendation requests.
+- Logs and diagnostics must not contain full ally codes, access keys, session values, or raw account payloads.
+- The application may request public `swgoh.gg` recommendation pages, subject to the service's rate limits and freshness policy.

@@ -30,6 +30,10 @@ namespace swgoh_command_bridge.Core.Services
         /// <inheritdoc />
         public AppSettings CurrentSettings => _currentSettings;
 
+        public string SettingsPath => _settingsFilePath;
+
+        public string DiagnosticsDirectory => Path.Combine(_settingsDirectory, "diagnostics");
+
         /// <summary>
         /// Initializes a new instance of the <see cref="SettingsService"/> class.
         /// </summary>

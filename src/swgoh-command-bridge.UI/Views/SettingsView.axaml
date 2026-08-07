@@ -1,0 +1,41 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:swgoh_command_bridge.UI.ViewModels"
+             x:Class="swgoh_command_bridge.UI.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+  <Grid RowDefinitions="Auto, *" Margin="24">
+    <TextBlock Grid.Row="0" Text="{Binding HeaderText}" FontSize="26" FontWeight="Bold" Margin="0,0,0,18"/>
+    <Border Grid.Row="1" BorderBrush="#555555" BorderThickness="1" CornerRadius="6" Padding="18" MaxWidth="620" HorizontalAlignment="Left">
+      <StackPanel Spacing="12">
+        <TextBlock Text="Comlink base URL"/>
+        <TextBox Text="{Binding ComlinkBaseUrl}" Watermark="http://localhost:3000"/>
+        <TextBlock Text="Default ally code"/>
+        <TextBox Text="{Binding DefaultAllyCode}" Watermark="123456789"/>
+        <TextBlock Text="Theme"/>
+        <TextBox Text="{Binding Theme}"/>
+        <StackPanel Orientation="Horizontal" Spacing="10">
+          <Button Content="Test connection" Command="{Binding TestConnectionCommand}"/>
+          <Button Content="Save settings" Command="{Binding SaveCommand}"/>
+        </StackPanel>
+        <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" Foreground="Gray"/>
+        <Separator/>
+        <TextBlock Text="Cache backup" FontSize="18" FontWeight="SemiBold"/>
+        <TextBlock Text="Create a portable SQLite backup before resetting or troubleshooting the cache." TextWrapping="Wrap" Foreground="Gray"/>
+        <Button Content="Back up local cache" Command="{Binding BackupCacheCommand}"/>
+        <TextBlock Text="{Binding BackupStatusText}" TextWrapping="Wrap" Foreground="Gray"/>
+        <Separator/>
+        <TextBlock Text="Restore cache" FontSize="18" FontWeight="SemiBold"/>
+        <TextBlock Text="Restore only a backup created under the cache backups directory. The file is integrity-checked before replacement." TextWrapping="Wrap" Foreground="Gray"/>
+        <TextBox Text="{Binding RestoreBackupPath}" Watermark="Full path to cache-...db"/>
+        <CheckBox Content="I understand this replaces the local cache" IsChecked="{Binding ConfirmCacheRestore}"/>
+        <Button Content="Restore selected backup" Command="{Binding RestoreCacheCommand}"/>
+        <TextBlock Text="{Binding RestoreStatusText}" TextWrapping="Wrap" Foreground="Gray"/>
+        <Separator/>
+        <TextBlock Text="Cache recovery" FontSize="18" FontWeight="SemiBold"/>
+        <TextBlock Text="Resetting removes cached players, characters, mods, and recommendations. Your Settings values are preserved." TextWrapping="Wrap" Foreground="Gray"/>
+        <CheckBox Content="I understand this removes the local cache" IsChecked="{Binding ConfirmCacheReset}"/>
+        <Button Content="Reset local cache" Command="{Binding ResetCacheCommand}"/>
+      </StackPanel>
+    </Border>
+  </Grid>
+</UserControl>

@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using System;
 
 namespace swgoh_command_bridge.Core.Models
 {
@@ -12,7 +13,9 @@ namespace swgoh_command_bridge.Core.Models
         string? DefaultAllyCode = null,
         string Theme = "Dark",
         bool AutomaticallyCheckForUpdates = true,
-        List<ModUpgradeThresholdSetting>? UpgradeThresholds = null
+        List<ModUpgradeThresholdSetting>? UpgradeThresholds = null,
+        string? DefaultUpgradeThresholdId = null,
+        RecommendationScrapeSummary? LastRecommendationScrape = null
     );
 
     /// <summary>
@@ -22,6 +25,21 @@ namespace swgoh_command_bridge.Core.Models
         int MinPips,
         int MinTier,
         string StatName,
-        double MinValue
+        double MinValue,
+        string Name = "Threshold",
+        bool UpgradeOnlyWithSpeed = true,
+        double MinimumEfficiency = 0,
+        string Id = ""
+    );
+
+    /// <summary>
+    /// Summarizes the most recent community recommendation refresh.
+    /// </summary>
+    public record RecommendationScrapeSummary(
+        DateTime CompletedAtUtc,
+        int Processed,
+        int Succeeded,
+        int Failed,
+        bool Cancelled = false
     );
 }

@@ -178,3 +178,8 @@ To ensure consistency and maintainability, all code contributed to this project 
 ## 28. UI Localization & Internationalization (I18n)
 - **No Hardcoded UI Strings:** Do not hardcode user-facing labels, button texts, tooltips, or error notifications in `.axaml` markup files or ViewModel properties. Use localizable resource assets (such as `.resx` files or localized resource dictionaries) to host all user-facing strings.
 - **Dynamic Language Switching:** When binding localized strings in Avalonia, prefer dynamic markup extensions or binding strategies that can respond to runtime culture switches without requiring an application restart.
+
+## 29. Read-only and privacy boundary
+- **No account writes:** Core and UI code may read through Comlink and calculate recommendations, but must not expose commands that equip, upgrade, slice, sell, or otherwise mutate game-account data.
+- **Redacted diagnostics:** Never write raw account payloads, access keys, session values, or full ally codes to logs or exported diagnostics. Prefer aggregate counts and masked identifiers.
+- **Cache recovery safety:** Backup and restore operations must validate the SQLite file before replacing the active cache. Reset must preserve JSON settings unless the user explicitly requests settings removal.

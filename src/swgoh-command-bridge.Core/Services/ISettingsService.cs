@@ -16,6 +16,16 @@ namespace swgoh_command_bridge.Core.Services
         AppSettings CurrentSettings { get; }
 
         /// <summary>
+        /// Gets the absolute path of the JSON settings file.
+        /// </summary>
+        string SettingsPath { get; }
+
+        /// <summary>
+        /// Gets the directory used for privacy-reviewed diagnostic reports.
+        /// </summary>
+        string DiagnosticsDirectory { get; }
+
+        /// <summary>
         /// Loads the settings from the local application data directory.
         /// </summary>
         Task LoadSettingsAsync();

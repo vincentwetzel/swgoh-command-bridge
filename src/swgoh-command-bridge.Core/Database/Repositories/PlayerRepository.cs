@@ -1,9 +1,11 @@
 #nullable enable
 
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using swgoh_command_bridge.Core.Database.Entities;
 
@@ -51,36 +53,87 @@ namespace swgoh_command_bridge.Core.Database.Repositories
 
             _logger.LogInformation("Saving or updating player cache for ally code {AllyCode}", player.AllyCode);
 
-            var existingPlayer = await _context.Players
-                .Include(p => p.Characters)
-                .Include(p => p.Mods)
-                .FirstOrDefaultAsync(p => p.AllyCode == player.AllyCode, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (existingPlayer != null)
+            IDbContextTransaction? transaction = null;
+            if (_context.Database.IsRelational())
             {
-                existingPlayer.Name = player.Name;
-                existingPlayer.Level = player.Level;
-                existingPlayer.GalacticPower = player.GalacticPower;
-
-                _context.Characters.RemoveRange(existingPlayer.Characters);
-                foreach (var character in player.Characters)
-                {
-                    existingPlayer.Characters.Add(character);
-                }
-
-                _context.Mods.RemoveRange(existingPlayer.Mods);
-                foreach (var mod in player.Mods)
-                {
-                    existingPlayer.Mods.Add(mod);
-                }
-            }
-            else
-            {
-                await _context.Players.AddAsync(player, cancellationToken).ConfigureAwait(false);
+                transaction = await _context.Database
+                    .BeginTransactionAsync(cancellationToken)
+                    .ConfigureAwait(false);
             }
 
-            await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                var existingPlayer = await _context.Players
+                    .Include(p => p.Characters)
+                    .Include(p => p.Mods)
+                    .FirstOrDefaultAsync(p => p.AllyCode == player.AllyCode, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (existingPlayer != null)
+                {
+                    var existingPriorities = existingPlayer.Characters
+                        .ToDictionary(character => character.Id, character => character.Priority);
+
+                    existingPlayer.Name = player.Name;
+                    existingPlayer.Level = player.Level;
+                    existingPlayer.GalacticPower = player.GalacticPower;
+
+                    var oldCharacters = existingPlayer.Characters.ToList();
+                    _context.Characters.RemoveRange(oldCharacters);
+                    existingPlayer.Characters.Clear();
+                    foreach (var character in player.Characters)
+                    {
+                        if (existingPriorities.TryGetValue(character.Id, out var priority))
+                        {
+                            character.Priority = priority;
+                        }
+
+                        character.PlayerAllyCode = existingPlayer.AllyCode;
+                        character.Player = existingPlayer;
+                        existingPlayer.Characters.Add(character);
+                    }
+
+                    var oldMods = existingPlayer.Mods.ToList();
+                    _context.Mods.RemoveRange(oldMods);
+                    existingPlayer.Mods.Clear();
+
+                    // Flush removals before adding replacement rows with the same composite keys.
+                    await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+                    foreach (var mod in player.Mods)
+                    {
+                        mod.PlayerAllyCode = existingPlayer.AllyCode;
+                        mod.Player = existingPlayer;
+                        existingPlayer.Mods.Add(mod);
+                    }
+                }
+                else
+                {
+                    await _context.Players.AddAsync(player, cancellationToken).ConfigureAwait(false);
+                }
+
+                await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                if (transaction != null)
+                {
+                    await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                }
+            }
+            catch
+            {
+                if (transaction != null)
+                {
+                    await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+                }
+
+                throw;
+            }
+            finally
+            {
+                if (transaction != null)
+                {
+                    await transaction.DisposeAsync().ConfigureAwait(false);
+                }
+            }
         }
     }
 }

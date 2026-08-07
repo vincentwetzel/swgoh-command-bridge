@@ -1,6 +1,8 @@
 # File Manifest
 
-This document lists the current files in the project, organized by directory.
+This document lists the current tracked source and documentation files in the project, organized by directory.
+
+The root-level C# files are legacy drafts retained for reference; the active implementation is under `src/` and only the project files under `src/` are compiled. Generated folders such as `bin/`, `obj/`, `.tmp/`, and `.VSCodeCounter/` are intentionally omitted.
 
 ```text
 .
@@ -27,8 +29,10 @@ This document lists the current files in the project, organized by directory.
 |   |-- AGENTS.md
 |   |-- ARCHITECTURE.md
 |   |-- COMLINK_SETUP.md
+|   |-- DIAGNOSTICS.md
 |   |-- FILE_MANIFEST.md
 |   |-- MOD_MECHANICS.md
+|   |-- SMOKE_TEST_CHECKLIST.md
 |   |-- SPEC.md
 |   `-- STATE_FLOW.md
 |-- src
@@ -43,6 +47,7 @@ This document lists the current files in the project, organized by directory.
 |   |   |-- SwgohGgScraperService.cs
 |   |   |-- swgoh-command-bridge.Core.csproj
 |   |   |-- Database
+|   |   |   |-- CacheSchemaMigrator.cs
 |   |   |   |-- Entities
 |   |   |   |   |-- CharacterEntity.cs
 |   |   |   |   |-- GameModEntity.cs
@@ -61,11 +66,15 @@ This document lists the current files in the project, organized by directory.
 |   |       |-- ModAdvisorService.cs
 |   |       |-- ModEnums.cs
 |   |       |-- ModRecommendation.cs
+|   |       |-- ModLoadoutResult.cs
 |   |       |-- ModStat.cs
+|   |       |-- ModThresholdTransferDocument.cs
 |   |       |-- ModUpgradeThreshold.cs
+|   |       |-- RosterLoadoutPlan.cs
 |   |       |-- OperationState.cs
 |   |       |-- PlayerProfile.cs
 |   |       |-- PlayerService.cs
+|   |       |-- RecommendationSnapshot.cs
 |   |       `-- ScrapeProgress.cs
 |   |   `-- Services
 |   |       |-- ComlinkService.cs
@@ -75,8 +84,13 @@ This document lists the current files in the project, organized by directory.
 |   |       |-- ModAssignmentService.cs
 |   |       |-- ModFilterService.cs
 |   |       |-- ModMechanicsService.cs
-|   |       `-- SettingsService.cs
+|   |       |-- ModThresholdTransferService.cs
+|   |       |-- PlayerProfileParser.cs
+|   |       |-- SecondaryStatFilterService.cs
+|   |       |-- SettingsService.cs
+|   |       `-- SwgohGgRecommendationParser.cs
 |   `-- swgoh-command-bridge.UI
+|       |-- ApplicationComposition.cs
 |       |-- App.axaml
 |       |-- App.axaml.cs
 |       |-- Program.cs
@@ -86,9 +100,11 @@ This document lists the current files in the project, organized by directory.
 |       |-- ViewModels
 |       |   |-- CharacterPrioritiesViewModel.cs
 |       |   |-- CharactersViewModel.cs
+|       |   |-- DiagnosticsViewModel.cs
 |       |   |-- MainWindowViewModel.cs
 |       |   |-- ModOptimizerViewModel.cs
 |       |   |-- ModThresholdsViewModel.cs
+|       |   |-- SettingsViewModel.cs
 |       |   |-- ModsViewModel.cs
 |       |   `-- ViewModelBase.cs
 |       `-- Views
@@ -96,6 +112,10 @@ This document lists the current files in the project, organized by directory.
 |           |-- CharacterPrioritiesView.axaml.cs
 |           |-- CharactersView.axaml
 |           |-- CharactersView.axaml.cs
+|           |-- DiagnosticsView.axaml
+|           |-- DiagnosticsView.axaml.cs
+|           |-- HomeView.axaml
+|           |-- HomeView.axaml.cs
 |           |-- MainWindow.axaml
 |           |-- MainWindow.axaml.cs
 |           |-- ModOptimizerView.axaml
@@ -103,14 +123,23 @@ This document lists the current files in the project, organized by directory.
 |           |-- ModThresholdsView.axaml
 |           |-- ModThresholdsView.axaml.cs
 |           |-- ModsView.axaml
-|           `-- ModsView.axaml.cs
+|           |-- ModsView.axaml.cs
+|           |-- SettingsView.axaml
+|           `-- SettingsView.axaml.cs
 `-- tests
     `-- swgoh-command-bridge.Tests
         |-- ModAdvisorServiceTests.cs
+        |-- ModAssignmentServiceTests.cs
+        |-- ComlinkServiceTests.cs
         |-- ModFilterServiceTests.cs
         |-- OperationStateTests.cs
+        |-- PlayerRepositoryTests.cs
         |-- PlayerServiceTests.cs
+        |-- SecondaryStatFilterServiceTests.cs
         |-- SettingsServiceTests.cs
-        |-- UnitTest1.cs
+        |-- ModThresholdTransferServiceTests.cs
+        |-- RecommendationSnapshotTests.cs
+        |-- SwgohGgRecommendationParserTests.cs
+        |-- SwgohGgScraperServiceTests.cs
         `-- swgoh-command-bridge.Tests.csproj
 ```

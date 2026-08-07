@@ -1,5 +1,7 @@
 #nullable enable
 
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace swgoh_command_bridge.Core.Database.Entities
 {
     /// <summary>
@@ -12,6 +14,13 @@ namespace swgoh_command_bridge.Core.Database.Entities
         public string PlayerAllyCode { get; set; } = string.Empty;
         
         public string CharacterId { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the display name projected from the cached character roster for UI rendering.
+        /// This value is not persisted because the character entity owns the canonical name.
+        /// </summary>
+        [NotMapped]
+        public string OwnerDisplayName { get; set; } = string.Empty;
         
         public int Set { get; set; }
         
@@ -22,6 +31,12 @@ namespace swgoh_command_bridge.Core.Database.Entities
         public int Tier { get; set; }
         
         public int Rarity { get; set; }
+
+        public string PrimaryStatType { get; set; } = "None";
+
+        public double PrimaryStatValue { get; set; }
+
+        public string SecondaryStatsJson { get; set; } = "[]";
         
         public virtual PlayerEntity Player { get; set; } = null!;
     }

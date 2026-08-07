@@ -13,6 +13,8 @@ public record Character(
     Dictionary<ModSlot, GameMod> EquippedMods
 )
 {
+    public int Stars { get; init; }
+
     /// <summary>
     /// Gets the current set bonuses active on this character.
     /// </summary>
