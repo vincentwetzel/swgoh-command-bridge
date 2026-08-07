@@ -38,6 +38,16 @@
         </StackPanel>
       </Border>
 
+      <Border BorderBrush="#555555" BorderThickness="1" CornerRadius="6" Padding="16">
+        <StackPanel Spacing="8">
+          <TextBlock Text="Recent application events" FontSize="18" FontWeight="SemiBold"/>
+          <TextBlock Text="{Binding RecentEventsText}"
+                     TextWrapping="Wrap"
+                     FontFamily="Consolas"
+                     Foreground="Gray"/>
+        </StackPanel>
+      </Border>
+
       <TextBlock Text="Exports exclude full ally codes, account payloads, and access keys. Review a report before sharing it." TextWrapping="Wrap" Foreground="Gray"/>
     </StackPanel>
   </ScrollViewer>

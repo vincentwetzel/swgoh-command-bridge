@@ -62,6 +62,32 @@ public sealed class ComlinkServiceTests
         Assert.Equal(1, attempts);
     }
 
+    [Fact]
+    public async Task FetchMetaDataRawAsync_SendsJsonAcceptAndClientHeaders()
+    {
+        HttpRequestMessage? observedRequest = null;
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            observedRequest = request;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{}")
+            });
+        });
+        using var client = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("http://localhost:3000")
+        };
+        var service = new ComlinkService(client, NullLogger<ComlinkService>.Instance);
+
+        await service.FetchMetaDataRawAsync();
+
+        Assert.NotNull(observedRequest);
+        Assert.Contains(observedRequest!.Headers.Accept, header =>
+            string.Equals(header.MediaType, "application/json", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains("SWGOHCommandBridge/1.0", observedRequest.Headers.UserAgent.ToString());
+    }
+
     private sealed class StubHttpMessageHandler : HttpMessageHandler
     {
         private readonly Func<HttpRequestMessage, Task<HttpResponseMessage>> _handler;

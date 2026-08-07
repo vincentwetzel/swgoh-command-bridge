@@ -185,7 +185,11 @@ namespace swgoh_command_bridge.UI.ViewModels
                 var selectedCharacterId = SelectedCharacter?.Id;
                 var query = _context.Characters.AsNoTracking();
                 var activeAllyCode = _activeAllyCodeProvider?.Invoke()?.Trim();
-                if (!string.IsNullOrWhiteSpace(activeAllyCode))
+                if (_activeAllyCodeProvider != null && string.IsNullOrWhiteSpace(activeAllyCode))
+                {
+                    query = query.Where(character => false);
+                }
+                else if (!string.IsNullOrWhiteSpace(activeAllyCode))
                 {
                     query = query.Where(c => c.PlayerAllyCode == activeAllyCode);
                 }

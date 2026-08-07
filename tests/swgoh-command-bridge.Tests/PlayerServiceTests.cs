@@ -134,6 +134,27 @@ namespace swgoh_command_bridge.Tests
         }
 
         [Fact]
+        public async Task SyncPlayerProfileAsync_ReportsProgressPhases()
+        {
+            var progressUpdates = new List<PlayerSyncProgress>();
+            var fakeRepo = new FakePlayerRepository();
+            var service = new PlayerService(
+                new FakeComlinkService("{\"name\":\"Progress\",\"rosterUnit\":[]}"),
+                fakeRepo,
+                NullLogger<PlayerService>.Instance);
+
+            await service.SyncPlayerProfileAsync(
+                "123456789",
+                progress: new InlineProgress<PlayerSyncProgress>(progressUpdates.Add));
+
+            Assert.Equal(
+                new[] { "connecting", "mapping", "persisting", "complete" },
+                progressUpdates.Select(update => update.Phase));
+            Assert.Equal(4, progressUpdates[^1].CompletedSteps);
+            Assert.Equal(4, progressUpdates[^1].TotalSteps);
+        }
+
+        [Fact]
         public async Task SyncPlayerProfileAsync_WithInventoryMods_PreservesStarsAndStatSnapshots()
         {
             var payload = @"
@@ -179,6 +200,33 @@ namespace swgoh_command_bridge.Tests
             Assert.Equal("Health", savedMod.PrimaryStatType);
             Assert.Contains("Speed", savedMod.SecondaryStatsJson);
             Assert.Contains("3", savedMod.SecondaryStatsJson);
+        }
+
+        [Fact]
+        public async Task SyncPlayerProfileAsync_UsesComlinkMetadataNamesWithoutMakingMetadataMandatory()
+        {
+            var payload = @"
+            {
+                ""rosterUnit"": [
+                    { ""definitionId"": ""REY:SEVEN_STAR"" }
+                ]
+            }";
+            var metadata = @"
+            {
+                ""unitDefinitions"": [
+                    { ""baseId"": ""REY"", ""localizedName"": ""Rey"" }
+                ]
+            }";
+            var fakeRepo = new FakePlayerRepository();
+            var service = new PlayerService(
+                new FakeComlinkService(payload, metadata),
+                fakeRepo,
+                NullLogger<PlayerService>.Instance);
+
+            var result = await service.SyncPlayerProfileAsync("123456789");
+
+            Assert.Equal("Rey", Assert.Single(result.Characters).Name);
+            Assert.False(result.Diagnostics.HasWarnings);
         }
 
         [Fact]
@@ -234,18 +282,76 @@ namespace swgoh_command_bridge.Tests
             Assert.Equal(2, result.Mods.Count);
             Assert.Contains(result.Mods, mod => mod.Id == "shared-mod" && mod.Primary.Type == StatType.Speed);
             Assert.Contains(result.Mods, mod => mod.Id == "inventory-mod" && mod.Pips == 6);
+            Assert.Equal(2, result.Diagnostics.RosterRecordsSeen);
+            Assert.Equal(1, result.Diagnostics.RosterRecordsSkipped);
+            Assert.Equal(2, result.Diagnostics.InventoryRecordsSeen);
+            Assert.Equal(1, result.Diagnostics.DuplicateModsSkipped);
+            Assert.True(result.Diagnostics.HasWarnings);
+        }
+
+        [Fact]
+        public async Task GetPlayerProfileAsync_WithNestedCharacterMetadataAndMalformedEquippedMod_UsesMetadataAndReportsLoss()
+        {
+            var payload = @"
+            {
+                ""units"": [
+                    {
+                        ""character"": {
+                            ""unitDefId"": ""REY:SEVEN_STAR"",
+                            ""displayName"": ""Rey""
+                        },
+                        ""equippedStatMod"": [
+                            { ""slot"": 1 },
+                            { ""id"": ""rey-mod"", ""slot"": 2, ""set"": 4 }
+                        ]
+                    }
+                ]
+            }";
+
+            var service = new PlayerService(
+                new FakeComlinkService(payload),
+                new FakePlayerRepository(),
+                NullLogger<PlayerService>.Instance);
+
+            var result = await service.GetPlayerProfileAsync("555666777");
+
+            var character = Assert.Single(result.Characters);
+            Assert.Equal("REY", character.Id);
+            Assert.Equal("Rey", character.Name);
+            Assert.Single(result.Mods);
+            Assert.Equal(2, result.Diagnostics.EquippedModRecordsSeen);
+            Assert.Equal(1, result.Diagnostics.EquippedModRecordsSkipped);
+            Assert.Contains(result.Diagnostics.Warnings, warning =>
+                warning.Contains("equipped mod", StringComparison.OrdinalIgnoreCase));
         }
 
         private class FakeComlinkService : IComlinkService
         {
             private readonly string _response;
+            private readonly string _metadataResponse;
 
-            public FakeComlinkService(string response)
+            public FakeComlinkService(string response, string metadataResponse = "{}")
             {
                 _response = response;
+                _metadataResponse = metadataResponse;
             }
 
             public Task<string> FetchPlayerRawAsync(string allyCode, CancellationToken cancellationToken = default) => Task.FromResult(_response);
+
+            public Task<string> FetchMetaDataRawAsync(CancellationToken cancellationToken = default) =>
+                Task.FromResult(_metadataResponse);
+        }
+
+        private sealed class InlineProgress<T> : IProgress<T>
+        {
+            private readonly Action<T> _handler;
+
+            public InlineProgress(Action<T> handler)
+            {
+                _handler = handler;
+            }
+
+            public void Report(T value) => _handler(value);
         }
 
         private class FakePlayerRepository : IPlayerRepository
@@ -257,6 +363,9 @@ namespace swgoh_command_bridge.Tests
                 SavedPlayer = player;
                 return Task.CompletedTask;
             }
+
+            public Task<bool> DeletePlayerAsync(string allyCode, CancellationToken cancellationToken = default) =>
+                Task.FromResult(false);
         }
     }
 }

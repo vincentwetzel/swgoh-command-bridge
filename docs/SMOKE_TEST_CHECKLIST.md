@@ -17,6 +17,8 @@ Run `dotnet build swgoh-command-bridge.sln` and `dotnet test swgoh-command-bridg
 - [ ] Sync a test account and confirm the result summary reports useful counts.
 - [ ] Confirm characters, priorities, mods, equipped owners, and optimizer data refresh without restarting.
 - [ ] Close and reopen the app with Comlink unavailable; confirm cached data remains viewable offline.
+- [ ] Select a different cached account from Home and confirm Characters, Mods, Priorities, and Optimizer remain scoped to that account without a Comlink request.
+- [ ] Remove a selected cached account only after confirmation and confirm its character/mod data is gone while other cached accounts remain.
 
 ## Comlink and input failures
 
@@ -39,3 +41,4 @@ Run `dotnet build swgoh-command-bridge.sln` and `dotnet test swgoh-command-bridg
 - [ ] Confirm ally codes, access keys, and account payloads are not written to logs or diagnostics output.
 - [ ] Confirm a recommendation refresh can be cancelled and leaves the previous valid cache intact.
 - [ ] Confirm stale or missing `swgoh.gg` data is labeled and does not silently appear as current.
+- [ ] Disable local recommendation scraping in Settings, confirm cached recommendations remain readable, and confirm refresh actions explain that new scraping is disabled.

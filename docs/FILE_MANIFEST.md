@@ -32,6 +32,7 @@ The root-level C# files are legacy drafts retained for reference; the active imp
 |   |-- DIAGNOSTICS.md
 |   |-- FILE_MANIFEST.md
 |   |-- MOD_MECHANICS.md
+|   |-- RELEASE_GUIDE.md
 |   |-- SMOKE_TEST_CHECKLIST.md
 |   |-- SPEC.md
 |   `-- STATE_FLOW.md
@@ -57,6 +58,8 @@ The root-level C# files are legacy drafts retained for reference; the active imp
 |   |   |       |-- IPlayerRepository.cs
 |   |   |       `-- PlayerRepository.cs
 |   |   |-- Models
+|   |       |-- AllyCodeValidator.cs
+|   |       |-- AppDataPaths.cs
 |   |       |-- AppSettings.cs
 |   |       |-- AssignedModDetail.cs
 |   |       |-- Character.cs
@@ -64,20 +67,29 @@ The root-level C# files are legacy drafts retained for reference; the active imp
 |   |       |-- IModAdvisorService.cs
 |   |       |-- IPlayerService.cs
 |   |       |-- ModAdvisorService.cs
+|   |       |-- ModAssignmentAlternative.cs
 |   |       |-- ModEnums.cs
-|   |       |-- ModRecommendation.cs
 |   |       |-- ModLoadoutResult.cs
+|   |       |-- ModRecommendation.cs
 |   |       |-- ModStat.cs
 |   |       |-- ModThresholdTransferDocument.cs
 |   |       |-- ModUpgradeThreshold.cs
-|   |       |-- RosterLoadoutPlan.cs
 |   |       |-- OperationState.cs
 |   |       |-- PlayerProfile.cs
 |   |       |-- PlayerService.cs
+|   |       |-- PlayerSyncDiagnostics.cs
+|   |       |-- PlayerSyncProgress.cs
 |   |       |-- RecommendationSnapshot.cs
-|   |       `-- ScrapeProgress.cs
+|   |       |-- RosterLoadoutPlan.cs
+|   |       |-- ScrapeCharacterResult.cs
+|   |       |-- ScrapeProgress.cs
+|   |       `-- SettingsTransferDocument.cs
 |   |   `-- Services
+|   |       |-- CharacterMetadataParser.cs
+|   |       |-- ComlinkErrorFormatter.cs
 |   |       |-- ComlinkService.cs
+|   |       |-- DiagnosticEventLog.cs
+|   |       |-- DiagnosticLogger.cs
 |   |       |-- IComlinkService.cs
 |   |       |-- IModAssignmentService.cs
 |   |       |-- ISettingsService.cs
@@ -88,6 +100,7 @@ The root-level C# files are legacy drafts retained for reference; the active imp
 |   |       |-- PlayerProfileParser.cs
 |   |       |-- SecondaryStatFilterService.cs
 |   |       |-- SettingsService.cs
+|   |       |-- SettingsTransferService.cs
 |   |       `-- SwgohGgRecommendationParser.cs
 |   `-- swgoh-command-bridge.UI
 |       |-- ApplicationComposition.cs
@@ -128,15 +141,29 @@ The root-level C# files are legacy drafts retained for reference; the active imp
 |           `-- SettingsView.axaml.cs
 `-- tests
     `-- swgoh-command-bridge.Tests
+        |-- AllyCodeValidatorTests.cs
+        |-- AppDataPathsTests.cs
         |-- ModAdvisorServiceTests.cs
+        |-- ModAdvisorDecisionMatrixTests.cs
         |-- ModAssignmentServiceTests.cs
+        |-- ComlinkErrorFormatterTests.cs
         |-- ComlinkServiceTests.cs
+        |-- DiagnosticEventLogTests.cs
+        |-- DiagnosticLoggerTests.cs
         |-- ModFilterServiceTests.cs
         |-- OperationStateTests.cs
         |-- PlayerRepositoryTests.cs
         |-- PlayerServiceTests.cs
         |-- SecondaryStatFilterServiceTests.cs
         |-- SettingsServiceTests.cs
+        |-- SettingsTransferServiceTests.cs
+        |-- SettingsViewModelTests.cs
+        |-- CharacterViewModelTests.cs
+        |-- CharacterMetadataParserTests.cs
+        |-- ModsViewModelTests.cs
+        |-- ModOptimizerViewModelTests.cs
+        |-- MainWindowViewModelTests.cs
+        |-- ViewModelErrorStateTests.cs
         |-- ModThresholdTransferServiceTests.cs
         |-- RecommendationSnapshotTests.cs
         |-- SwgohGgRecommendationParserTests.cs

@@ -402,7 +402,11 @@ public class ModsViewModel : ViewModelBase
         {
             var activeAllyCode = _activeAllyCodeProvider?.Invoke()?.Trim();
             var modsQuery = _context.Mods.AsNoTracking();
-            if (!string.IsNullOrWhiteSpace(activeAllyCode))
+            if (_activeAllyCodeProvider != null && string.IsNullOrWhiteSpace(activeAllyCode))
+            {
+                modsQuery = modsQuery.Where(mod => false);
+            }
+            else if (!string.IsNullOrWhiteSpace(activeAllyCode))
             {
                 modsQuery = modsQuery.Where(mod => mod.PlayerAllyCode == activeAllyCode);
             }
@@ -416,7 +420,11 @@ public class ModsViewModel : ViewModelBase
             _allMods.Clear();
             _allMods.AddRange(mods);
             var charactersQuery = _context.Characters.AsNoTracking();
-            if (!string.IsNullOrWhiteSpace(activeAllyCode))
+            if (_activeAllyCodeProvider != null && string.IsNullOrWhiteSpace(activeAllyCode))
+            {
+                charactersQuery = charactersQuery.Where(character => false);
+            }
+            else if (!string.IsNullOrWhiteSpace(activeAllyCode))
             {
                 charactersQuery = charactersQuery.Where(character => character.PlayerAllyCode == activeAllyCode);
             }

@@ -23,4 +23,11 @@ public sealed record ModLoadoutResult(
     bool IsComplete,
     bool MeetsSetRules,
     string Status,
-    IReadOnlyList<ModAssignmentExplanation> Explanations);
+    IReadOnlyList<ModAssignmentExplanation> Explanations)
+{
+    public IReadOnlyList<ModAssignmentAlternative> Alternatives { get; init; } =
+        System.Array.Empty<ModAssignmentAlternative>();
+
+    public IReadOnlyList<ModSwapPlan> SwapRecommendations { get; init; } =
+        System.Array.Empty<ModSwapPlan>();
+}

@@ -37,6 +37,7 @@ public sealed class CacheSchemaMigrator
             using var transaction = connection.BeginTransaction();
             Execute(connection, transaction,
                 "CREATE TABLE IF NOT EXISTS \"__CacheSchema\" (\"Id\" INTEGER NOT NULL PRIMARY KEY, \"Version\" INTEGER NOT NULL);");
+            EnsureCurrentTables(connection, transaction);
             var previousVersion = ReadVersion(connection, transaction);
             if (previousVersion > CurrentVersion)
             {
@@ -105,6 +106,39 @@ public sealed class CacheSchemaMigrator
         command.CommandText = "SELECT \"Version\" FROM \"__CacheSchema\" WHERE \"Id\" = 1;";
         var value = command.ExecuteScalar();
         return value == null || value == DBNull.Value ? 0 : Convert.ToInt32(value);
+    }
+
+    private static void EnsureCurrentTables(DbConnection connection, DbTransaction transaction)
+    {
+        Execute(connection, transaction,
+            "CREATE TABLE IF NOT EXISTS \"Players\" (" +
+            "\"AllyCode\" TEXT NOT NULL CONSTRAINT \"PK_Players\" PRIMARY KEY, " +
+            "\"Name\" TEXT NOT NULL, \"Level\" INTEGER NOT NULL, \"GalacticPower\" INTEGER NOT NULL);");
+        Execute(connection, transaction,
+            "CREATE TABLE IF NOT EXISTS \"Characters\" (" +
+            "\"Id\" TEXT NOT NULL, \"PlayerAllyCode\" TEXT NOT NULL, \"Name\" TEXT NOT NULL, " +
+            "\"Level\" INTEGER NOT NULL, \"Stars\" INTEGER NOT NULL, \"GearLevel\" INTEGER NOT NULL, " +
+            "\"GalacticPower\" INTEGER NOT NULL, \"Priority\" INTEGER NOT NULL, " +
+            "CONSTRAINT \"PK_Characters\" PRIMARY KEY (\"Id\", \"PlayerAllyCode\"), " +
+            "CONSTRAINT \"FK_Characters_Players_PlayerAllyCode\" FOREIGN KEY (\"PlayerAllyCode\") " +
+            "REFERENCES \"Players\" (\"AllyCode\") ON DELETE CASCADE);");
+        Execute(connection, transaction,
+            "CREATE TABLE IF NOT EXISTS \"Mods\" (" +
+            "\"Id\" TEXT NOT NULL, \"PlayerAllyCode\" TEXT NOT NULL, \"CharacterId\" TEXT NOT NULL, " +
+            "\"Set\" INTEGER NOT NULL, \"Slot\" INTEGER NOT NULL, \"Level\" INTEGER NOT NULL, " +
+            "\"Tier\" INTEGER NOT NULL, \"Rarity\" INTEGER NOT NULL, " +
+            "\"PrimaryStatType\" TEXT NOT NULL DEFAULT 'None', \"PrimaryStatValue\" REAL NOT NULL DEFAULT 0, " +
+            "\"SecondaryStatsJson\" TEXT NOT NULL DEFAULT '[]', " +
+            "CONSTRAINT \"PK_Mods\" PRIMARY KEY (\"Id\", \"PlayerAllyCode\"), " +
+            "CONSTRAINT \"FK_Mods_Players_PlayerAllyCode\" FOREIGN KEY (\"PlayerAllyCode\") " +
+            "REFERENCES \"Players\" (\"AllyCode\") ON DELETE CASCADE);");
+        Execute(connection, transaction,
+            "CREATE TABLE IF NOT EXISTS \"SwgohGgRecommendations\" (" +
+            "\"CharacterId\" TEXT NOT NULL CONSTRAINT \"PK_SwgohGgRecommendations\" PRIMARY KEY, " +
+            "\"Source\" TEXT NOT NULL DEFAULT 'swgoh.gg', \"RecommendationSchemaVersion\" INTEGER NOT NULL DEFAULT 1, " +
+            "\"SourceUrl\" TEXT NOT NULL DEFAULT '', \"PrimaryStatsJson\" TEXT NOT NULL DEFAULT '{}', " +
+            "\"SetRecommendationsJson\" TEXT NOT NULL DEFAULT '[]', \"PopularityPercentage\" REAL NOT NULL, " +
+            "\"LastUpdatedUtc\" TEXT NOT NULL);");
     }
 
     private static void EnsureColumns(

@@ -15,7 +15,8 @@ namespace swgoh_command_bridge.Core.Models
         bool AutomaticallyCheckForUpdates = true,
         List<ModUpgradeThresholdSetting>? UpgradeThresholds = null,
         string? DefaultUpgradeThresholdId = null,
-        RecommendationScrapeSummary? LastRecommendationScrape = null
+        RecommendationScrapeSummary? LastRecommendationScrape = null,
+        bool EnableLocalRecommendationScraping = true
     );
 
     /// <summary>

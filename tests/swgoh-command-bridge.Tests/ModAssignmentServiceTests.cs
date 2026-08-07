@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using swgoh_command_bridge.Core.Database;
 using swgoh_command_bridge.Core.Database.Entities;
+using swgoh_command_bridge.Core.Models;
 using swgoh_command_bridge.Core.Services;
 using Xunit;
 
@@ -83,6 +84,66 @@ public sealed class ModAssignmentServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task CalculateOptimalLoadoutResultAsync_ReportsAlternativeCandidatesPerSlot()
+    {
+        var inventory = Enumerable.Range(1, 6)
+            .Select(index => CreateMod(
+                $"selected-{index}",
+                index,
+                index <= 2 ? 1 : 2,
+                6))
+            .Append(CreateMod("alternative-square", 1, 4, 5))
+            .ToList();
+        var service = new ModAssignmentService(
+            _context,
+            NullLogger<ModAssignmentService>.Instance);
+
+        var result = await service.CalculateOptimalLoadoutResultAsync("CHARACTER", inventory);
+
+        Assert.True(result.IsComplete);
+        Assert.Contains(result.Alternatives, alternative => alternative.ModId == "alternative-square");
+        Assert.All(result.Alternatives, alternative => Assert.InRange(alternative.Slot, 1, 6));
+    }
+
+    [Fact]
+    public async Task CalculateOptimalLoadoutResultAsync_UsesPersistedRecommendationProvenance()
+    {
+        _context.SwgohGgRecommendations.Add(new SwgohGgRecommendationEntity
+        {
+            CharacterId = "CHARACTER",
+            Source = "fixture-source",
+            RecommendationSchemaVersion = 1,
+            SourceUrl = "https://example.test/character",
+            SetRecommendationsJson =
+                $"[{{\"name\":\"{ModSet.Health}\",\"percentage\":80}}]",
+            PrimaryStatsJson =
+                "{\"Slot 1\":[{\"statName\":\"Speed\",\"percentage\":95}]}"
+        });
+        await _context.SaveChangesAsync();
+
+        var inventory = Enumerable.Range(1, 6)
+            .Select(index => CreateMod(
+                $"recommended-{index}",
+                index,
+                index == 1 ? 1 : 2,
+                6))
+            .ToList();
+        inventory[0].PrimaryStatType = "Speed";
+
+        var service = new ModAssignmentService(
+            _context,
+            NullLogger<ModAssignmentService>.Instance);
+
+        var result = await service.CalculateOptimalLoadoutResultAsync("CHARACTER", inventory);
+
+        Assert.True(result.HasRecommendation);
+        Assert.True(result.IsComplete);
+        Assert.True(result.MeetsSetRules);
+        Assert.Contains(result.Explanations, explanation =>
+            explanation.Reason.Contains("recommended", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public async Task CalculateRosterLoadoutsAsync_ReservesEachModOnceAndHonorsPriority()
     {
         var inventory = Enumerable.Range(1, 12)
@@ -126,6 +187,63 @@ public sealed class ModAssignmentServiceTests : IDisposable
         Assert.Equal(6, result.Conflicts.Count);
         Assert.All(result.Conflicts, conflict => Assert.Equal("SECOND", conflict.CharacterId));
         Assert.Contains("priority-first", result.Status);
+    }
+
+    [Fact]
+    public async Task CalculateRosterLoadoutsAsync_ReportsMissingSlotsWhenInventoryWasNeverAvailable()
+    {
+        var inventory = new[]
+        {
+            CreateMod("only-square", 1, 1, 6)
+        };
+        var characters = new[]
+        {
+            new CharacterEntity { Id = "ONLY", Name = "Only Character", Priority = 1 }
+        };
+        var service = new ModAssignmentService(
+            _context,
+            NullLogger<ModAssignmentService>.Instance);
+
+        var result = await service.CalculateRosterLoadoutsAsync(characters, inventory);
+
+        var plan = Assert.Single(result.Plans);
+        Assert.Equal(1, plan.Loadout.Mods.Count);
+        Assert.Equal(5, plan.Conflicts.Count);
+        Assert.Contains(plan.Conflicts, conflict =>
+            conflict.Slot == 2 && conflict.Reason.Contains("not available", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task CalculateRosterLoadoutsAsync_ConsolidatesAvailableSwapCandidates()
+    {
+        var inventory = new List<GameModEntity>
+        {
+            CreateMod("current-square", 1, (int)ModSet.Health, 5),
+            CreateMod("speed-arrow", 2, (int)ModSet.Speed, 6),
+            CreateMod("speed-diamond", 3, (int)ModSet.Speed, 6),
+            CreateMod("offense-triangle", 4, (int)ModSet.Offense, 6),
+            CreateMod("offense-circle", 5, (int)ModSet.Offense, 6),
+            CreateMod("health-cross", 6, (int)ModSet.Health, 5),
+            CreateMod("higher-scoring-but-invalid-square", 1, (int)ModSet.Speed, 6)
+        };
+        foreach (var mod in inventory)
+        {
+            mod.CharacterId = "EQUIPPED";
+        }
+
+        var service = new ModAssignmentService(
+            _context,
+            NullLogger<ModAssignmentService>.Instance);
+
+        var result = await service.CalculateRosterLoadoutsAsync(
+            new[] { new CharacterEntity { Id = "FIRST", Name = "First", Priority = 10 } },
+            inventory);
+
+        var swap = Assert.Single(result.SwapRecommendations);
+        Assert.Equal("FIRST", swap.CharacterId);
+        Assert.Equal("higher-scoring-but-invalid-square", swap.CandidateModId);
+        Assert.True(swap.CandidateAvailable);
+        Assert.Contains("available", swap.Reason, StringComparison.OrdinalIgnoreCase);
     }
 
     private static GameModEntity CreateMod(string id, int slot, int set, int rarity)

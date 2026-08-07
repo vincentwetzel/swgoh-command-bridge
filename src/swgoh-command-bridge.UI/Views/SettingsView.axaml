@@ -13,11 +13,22 @@
         <TextBox Text="{Binding DefaultAllyCode}" Watermark="123456789"/>
         <TextBlock Text="Theme"/>
         <TextBox Text="{Binding Theme}"/>
+        <CheckBox Content="Allow local swgoh.gg recommendation scraping" IsChecked="{Binding EnableLocalRecommendationScraping}"/>
+        <TextBlock Text="When disabled, cached recommendations remain available but the app will not make new local scraping requests. A future central recommendation service can replace this path." TextWrapping="Wrap" Foreground="Gray"/>
         <StackPanel Orientation="Horizontal" Spacing="10">
           <Button Content="Test connection" Command="{Binding TestConnectionCommand}"/>
           <Button Content="Save settings" Command="{Binding SaveCommand}"/>
         </StackPanel>
         <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" Foreground="Gray"/>
+        <Separator/>
+        <TextBlock Text="Portable settings" FontSize="18" FontWeight="SemiBold"/>
+        <TextBlock Text="Export or import the application settings as a versioned JSON document. Embedded URL credentials are excluded." TextWrapping="Wrap" Foreground="Gray"/>
+        <TextBox Text="{Binding SettingsTransferPath}" Watermark="C:\path\settings.json"/>
+        <StackPanel Orientation="Horizontal" Spacing="10">
+          <Button Content="Export settings" Command="{Binding ExportSettingsCommand}"/>
+          <Button Content="Import settings" Command="{Binding ImportSettingsCommand}"/>
+        </StackPanel>
+        <TextBlock Text="{Binding SettingsTransferStatusText}" TextWrapping="Wrap" Foreground="Gray"/>
         <Separator/>
         <TextBlock Text="Cache backup" FontSize="18" FontWeight="SemiBold"/>
         <TextBlock Text="Create a portable SQLite backup before resetting or troubleshooting the cache." TextWrapping="Wrap" Foreground="Gray"/>

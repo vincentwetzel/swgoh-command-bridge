@@ -51,7 +51,20 @@ namespace swgoh_command_bridge.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<bool> ScrapeCharacterRecommendationsAsync(string characterId, CancellationToken cancellationToken = default)
+        public async Task<bool> ScrapeCharacterRecommendationsAsync(
+            string characterId,
+            CancellationToken cancellationToken = default)
+        {
+            var result = await ScrapeCharacterRecommendationsWithResultAsync(
+                characterId,
+                cancellationToken).ConfigureAwait(false);
+            return result.Success;
+        }
+
+        /// <inheritdoc />
+        public async Task<ScrapeCharacterResult> ScrapeCharacterRecommendationsWithResultAsync(
+            string characterId,
+            CancellationToken cancellationToken = default)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(characterId);
 
@@ -64,7 +77,7 @@ namespace swgoh_command_bridge.Core.Services
             if (existingRec != null && (DateTime.UtcNow - existingRec.LastUpdatedUtc).TotalDays < 7.0)
             {
                 _logger.LogInformation("Recommendation for character {CharacterId} was updated recently ({LastUpdatedUtc} UTC). Skipping scrape.", characterId, existingRec.LastUpdatedUtc);
-                return true;
+                return new ScrapeCharacterResult(true, SkippedFreshData: true);
             }
 
             // swgoh.gg character paths use lowercased slug variants
@@ -73,23 +86,29 @@ namespace swgoh_command_bridge.Core.Services
 
             _logger.LogInformation("Scraping swgoh.gg recommendations for character {CharacterId} at {Uri}", characterId, requestUri);
 
-            var htmlContent = await FetchHtmlWithRetryAsync(requestUri, cancellationToken).ConfigureAwait(false);
-            if (string.IsNullOrWhiteSpace(htmlContent))
+            var fetchResult = await FetchHtmlWithRetryAsync(requestUri, cancellationToken).ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(fetchResult.Content))
             {
-                _logger.LogWarning("Empty response or failed parsing target for {CharacterId}", characterId);
-                return false;
+                var errorMessage = fetchResult.ErrorMessage ?? "No recommendation page content was returned.";
+                _logger.LogWarning(
+                    "Recommendation refresh failed for {CharacterId}: {ErrorMessage}",
+                    characterId,
+                    errorMessage);
+                return new ScrapeCharacterResult(false, errorMessage);
             }
 
             try
             {
-                var parsedRecommendations = RecommendationParser.Parse(htmlContent);
+                var parsedRecommendations = RecommendationParser.Parse(fetchResult.Content);
                 var recommendedSets = parsedRecommendations.Sets;
                 var primaryStats = parsedRecommendations.PrimaryStats;
 
                 if (recommendedSets.Count == 0 && primaryStats.Count == 0)
                 {
                     _logger.LogWarning("No specific recommendations found in HTML structure for {CharacterId}", characterId);
-                    return false;
+                    return new ScrapeCharacterResult(
+                        false,
+                        "The recommendation page contained no recognized sets or primary stats.");
                 }
 
                 var entity = await _context.SwgohGgRecommendations
@@ -129,7 +148,7 @@ namespace swgoh_command_bridge.Core.Services
 
                 await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
                 _logger.LogInformation("Successfully saved recommendations to DB cache for {CharacterId}", characterId);
-                return true;
+                return new ScrapeCharacterResult(true);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -138,7 +157,9 @@ namespace swgoh_command_bridge.Core.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed parsing or persisting scraped mod data for {CharacterId}", characterId);
-                return false;
+                return new ScrapeCharacterResult(
+                    false,
+                    "The recommendation page could not be parsed or cached. Check the scraper fixture and retry.");
             }
         }
 
@@ -182,11 +203,11 @@ namespace swgoh_command_bridge.Core.Services
 
                 try
                 {
-                    success = await ScrapeCharacterRecommendationsAsync(character.Id, cancellationToken).ConfigureAwait(false);
-                    if (!success)
-                    {
-                        errorMessage = "Scrape returned no data.";
-                    }
+                    var result = await ScrapeCharacterRecommendationsWithResultAsync(
+                        character.Id,
+                        cancellationToken).ConfigureAwait(false);
+                    success = result.Success;
+                    errorMessage = result.ErrorMessage;
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
@@ -235,7 +256,9 @@ namespace swgoh_command_bridge.Core.Services
             return rec != null && (DateTime.UtcNow - rec.LastUpdatedUtc).TotalDays < 7.0;
         }
 
-        private async Task<string?> FetchHtmlWithRetryAsync(string requestUri, CancellationToken cancellationToken)
+        private async Task<ScrapeFetchResult> FetchHtmlWithRetryAsync(
+            string requestUri,
+            CancellationToken cancellationToken)
         {
             using var client = _httpClientFactory.CreateClient("SwgohGgClient");
 
@@ -261,7 +284,9 @@ namespace swgoh_command_bridge.Core.Services
                         if (retry == maxRetries)
                         {
                             _logger.LogWarning("HTTP 429 rate limit persisted for {Uri} after {Attempts} attempts", requestUri, retry + 1);
-                            return null;
+                            return new ScrapeFetchResult(
+                                null,
+                                $"swgoh.gg rate limiting persisted after {retry + 1} attempts.");
                         }
 
                         var delay = GetRetryDelay(response, retryDelayMs);
@@ -275,14 +300,43 @@ namespace swgoh_command_bridge.Core.Services
                         continue;
                     }
 
-                    response.EnsureSuccessStatusCode();
-                    return await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                    if (IsTransient(response.StatusCode) && retry < maxRetries)
+                    {
+                        var delay = GetRetryDelay(response, retryDelayMs);
+                        _logger.LogWarning(
+                            "Transient swgoh.gg response {StatusCode}. Retrying {Attempt}/{MaxAttempts} after {DelayMs}ms",
+                            (int)response.StatusCode,
+                            retry + 1,
+                            maxRetries,
+                            delay);
+                        await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+                        retryDelayMs *= 2;
+                        continue;
+                    }
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        return new ScrapeFetchResult(
+                            null,
+                            $"swgoh.gg returned HTTP {(int)response.StatusCode} for the character page.");
+                    }
+
+                    return new ScrapeFetchResult(
+                        await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false),
+                        null);
                 }
                 catch (HttpRequestException ex) when (retry < maxRetries)
                 {
                     _logger.LogWarning("Transient request failure: {Message}. Retry {Attempt}/{Max}", ex.Message, retry + 1, maxRetries);
                     await Task.Delay(retryDelayMs, cancellationToken).ConfigureAwait(false);
                     retryDelayMs *= 2;
+                }
+                catch (HttpRequestException ex)
+                {
+                    _logger.LogError(ex, "Network retries exhausted while connecting to swgoh.gg target {Uri}", requestUri);
+                    return new ScrapeFetchResult(
+                        null,
+                        $"Could not reach swgoh.gg after {retry + 1} attempts.");
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
@@ -291,13 +345,20 @@ namespace swgoh_command_bridge.Core.Services
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Terminal exception while connecting to swgoh.gg target {Uri}", requestUri);
-                    return null;
+                    return new ScrapeFetchResult(null, "The recommendation request failed unexpectedly.");
                 }
             }
 
             _logger.LogError("Exhausted all network retries without response success for {Uri}", requestUri);
-            return null;
+            return new ScrapeFetchResult(null, "The recommendation request exhausted its retry policy.");
         }
+
+        private static bool IsTransient(HttpStatusCode statusCode) =>
+            statusCode == HttpStatusCode.RequestTimeout ||
+            statusCode == HttpStatusCode.TooManyRequests ||
+            (int)statusCode >= 500;
+
+        private sealed record ScrapeFetchResult(string? Content, string? ErrorMessage);
 
         private static int GetRetryDelay(HttpResponseMessage response, int fallbackDelayMs)
         {

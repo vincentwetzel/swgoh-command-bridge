@@ -2,7 +2,6 @@
 
 using System;
 using System.Net.Http;
-using Microsoft.Extensions.Logging.Abstractions;
 using swgoh_command_bridge.Core.Database;
 using swgoh_command_bridge.Core.Database.Repositories;
 using swgoh_command_bridge.Core.Models;
@@ -24,6 +23,8 @@ public sealed class ApplicationComposition : IDisposable
         HttpClient comlinkClient,
         IComlinkService comlinkService,
         IPlayerService playerService,
+        IPlayerRepository playerRepository,
+        DiagnosticEventLog eventLog,
         IModAdvisorService advisorService,
         IModAssignmentService assignmentService,
         ISwgohGgScraperService scraperService,
@@ -31,9 +32,11 @@ public sealed class ApplicationComposition : IDisposable
     {
         Database = database;
         Settings = settings;
+        EventLog = eventLog;
         ComlinkClient = comlinkClient;
         ComlinkService = comlinkService;
         PlayerService = playerService;
+        PlayerRepository = playerRepository;
         AdvisorService = advisorService;
         AssignmentService = assignmentService;
         ScraperService = scraperService;
@@ -44,11 +47,15 @@ public sealed class ApplicationComposition : IDisposable
 
     public ISettingsService Settings { get; }
 
+    public DiagnosticEventLog EventLog { get; }
+
     public HttpClient ComlinkClient { get; }
 
     public IComlinkService ComlinkService { get; }
 
     public IPlayerService PlayerService { get; }
+
+    public IPlayerRepository PlayerRepository { get; }
 
     public IModAdvisorService AdvisorService { get; }
 
@@ -59,11 +66,17 @@ public sealed class ApplicationComposition : IDisposable
     /// <summary>
     /// Creates the default desktop application service graph.
     /// </summary>
-    public static ApplicationComposition CreateDefault(AppDbContext? database = null)
+    public static ApplicationComposition CreateDefault(
+        AppDbContext? database = null,
+        ISettingsService? settingsService = null)
     {
         var resolvedDatabase = database ?? new AppDbContext();
-        var settings = new SettingsService(NullLogger<SettingsService>.Instance);
-        settings.LoadSettingsAsync().GetAwaiter().GetResult();
+        var eventLog = new DiagnosticEventLog();
+        var settings = settingsService ?? new SettingsService(new DiagnosticLogger<SettingsService>(eventLog));
+        if (settingsService == null)
+        {
+            settings.LoadSettingsAsync().GetAwaiter().GetResult();
+        }
 
         var comlinkClient = new HttpClient
         {
@@ -71,24 +84,24 @@ public sealed class ApplicationComposition : IDisposable
         };
         var comlinkService = new ComlinkService(
             comlinkClient,
-            NullLogger<ComlinkService>.Instance);
+            new DiagnosticLogger<ComlinkService>(eventLog));
         var playerRepository = new PlayerRepository(
             resolvedDatabase,
-            NullLogger<PlayerRepository>.Instance);
+            new DiagnosticLogger<PlayerRepository>(eventLog));
         var playerService = new PlayerService(
             comlinkService,
             playerRepository,
-            NullLogger<PlayerService>.Instance);
+            new DiagnosticLogger<PlayerService>(eventLog));
         var advisorService = new ModAdvisorService(
-            NullLogger<ModAdvisorService>.Instance,
+            new DiagnosticLogger<ModAdvisorService>(eventLog),
             new ModMechanicsService());
         var assignmentService = new ModAssignmentService(
             resolvedDatabase,
-            NullLogger<ModAssignmentService>.Instance);
+            new DiagnosticLogger<ModAssignmentService>(eventLog));
         var scraperService = new SwgohGgScraperService(
             new PerCallHttpClientFactory(),
             resolvedDatabase,
-            NullLogger<SwgohGgScraperService>.Instance);
+            new DiagnosticLogger<SwgohGgScraperService>(eventLog));
 
         return new ApplicationComposition(
             resolvedDatabase,
@@ -96,6 +109,8 @@ public sealed class ApplicationComposition : IDisposable
             comlinkClient,
             comlinkService,
             playerService,
+            playerRepository,
+            eventLog,
             advisorService,
             assignmentService,
             scraperService,

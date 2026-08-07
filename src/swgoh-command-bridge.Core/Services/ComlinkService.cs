@@ -3,6 +3,7 @@
 using System;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -88,12 +89,19 @@ namespace swgoh_command_bridge.Core.Services
                 HttpResponseMessage response;
                 try
                 {
-                    using var content = serializedPayload == null
-                        ? null
-                        : new StringContent(serializedPayload, Encoding.UTF8, "application/json");
-                    response = await _httpClient.PostAsync(
-                        path,
-                        content,
+                    using var request = new HttpRequestMessage(HttpMethod.Post, path);
+                    request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                    request.Headers.UserAgent.ParseAdd("SWGOHCommandBridge/1.0");
+                    if (serializedPayload != null)
+                    {
+                        request.Content = new StringContent(serializedPayload, Encoding.UTF8, "application/json");
+                    }
+
+                    // Authentication, when required by a deployment's reverse proxy, is supplied through
+                    // HttpClient default headers by the composition root. It is never serialized into settings.
+                    response = await _httpClient.SendAsync(
+                        request,
+                        HttpCompletionOption.ResponseHeadersRead,
                         cancellationToken).ConfigureAwait(false);
                 }
                 catch (HttpRequestException) when (attempt < MaxAttempts)

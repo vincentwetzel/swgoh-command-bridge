@@ -63,6 +63,22 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
+            <TextBlock Text="Alternatives" FontSize="16" FontWeight="SemiBold" IsVisible="{Binding HasAlternatives}"/>
+            <ItemsControl ItemsSource="{Binding AlternativeSummaries}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding}" TextWrapping="Wrap" Foreground="Gray" Margin="6,0,0,0"/>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="Swap candidates" FontSize="16" FontWeight="SemiBold" IsVisible="{Binding HasSwapRecommendations}"/>
+            <ItemsControl ItemsSource="{Binding SwapRecommendationSummaries}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding}" TextWrapping="Wrap" Foreground="#FFCC80" Margin="6,0,0,0"/>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
             <Separator Margin="0,8"/>
             <TextBlock Text="Priority roster plan" FontSize="18" FontWeight="SemiBold"/>
             <TextBlock Text="{Binding RosterPlanStatusText}" TextWrapping="Wrap" Foreground="Gray"/>
@@ -70,6 +86,15 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
                   <TextBlock Text="{Binding}" TextWrapping="Wrap" Foreground="Gray" Margin="6,0,0,0"/>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="Roster swap candidates" FontSize="16" FontWeight="SemiBold"
+                       IsVisible="{Binding HasRosterSwapRecommendations}"/>
+            <ItemsControl ItemsSource="{Binding RosterSwapSummaries}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding}" TextWrapping="Wrap" Foreground="#FFCC80" Margin="6,0,0,0"/>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
@@ -92,6 +117,15 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
                   <TextBlock Text="{Binding}" TextWrapping="Wrap" Foreground="Gray" Margin="6,0,0,0"/>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="Roster swap candidates" FontSize="16" FontWeight="SemiBold"
+                       IsVisible="{Binding HasRosterSwapRecommendations}"/>
+            <ItemsControl ItemsSource="{Binding RosterSwapSummaries}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding}" TextWrapping="Wrap" Foreground="#FFCC80" Margin="6,0,0,0"/>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>

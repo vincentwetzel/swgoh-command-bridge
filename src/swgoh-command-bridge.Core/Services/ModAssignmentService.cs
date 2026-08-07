@@ -112,7 +112,8 @@ namespace swgoh_command_bridge.Core.Services
                     hasRecommendation,
                     targetSets,
                     targetPrimaries,
-                    "No inventory mods are available for this character.");
+                    "No inventory mods are available for this character.",
+                    candidatesBySlot);
             }
 
             if (candidatesBySlot.Count < 6)
@@ -122,7 +123,8 @@ namespace swgoh_command_bridge.Core.Services
                     hasRecommendation,
                     targetSets,
                     targetPrimaries,
-                    $"Not enough inventory to fill all six mod slots ({candidatesBySlot.Count} of 6 available).");
+                    $"Not enough inventory to fill all six mod slots ({candidatesBySlot.Count} of 6 available).",
+                    candidatesBySlot);
             }
 
             var slots = Enum.GetValues<ModSlot>();
@@ -154,7 +156,8 @@ namespace swgoh_command_bridge.Core.Services
                 hasRecommendation,
                 targetSets,
                 targetPrimaries,
-                status);
+                status,
+                candidatesBySlot);
         }
 
         public async Task<RosterLoadoutResult> CalculateRosterLoadoutsAsync(
@@ -194,19 +197,24 @@ namespace swgoh_command_bridge.Core.Services
                 var characterConflicts = new List<RosterLoadoutConflict>();
                 foreach (var slot in Enum.GetValues<ModSlot>())
                 {
-                    if (result.Mods.Any(mod => mod.Slot == (int)slot) ||
-                        !initialInventoryBySlot.TryGetValue((int)slot, out var initialCount) ||
-                        initialCount == 0 ||
-                        remainingInventory.Any(mod => mod.Slot == (int)slot))
+                    if (result.Mods.Any(mod => mod.Slot == (int)slot))
                     {
                         continue;
                     }
+
+                    var hasRemainingMod = remainingInventory.Any(mod => mod.Slot == (int)slot);
+                    var reason = !initialInventoryBySlot.TryGetValue((int)slot, out var initialCount) ||
+                                 initialCount == 0
+                        ? $"No {slot} mod is available in the cached inventory."
+                        : hasRemainingMod
+                            ? $"A {slot} mod remains, but no valid complete loadout could use it with the set rules."
+                            : $"No {slot} mod remained after higher-priority assignments reserved the available inventory.";
 
                     characterConflicts.Add(new RosterLoadoutConflict(
                         character.Id,
                         character.Name,
                         (int)slot,
-                        $"No {slot} mod remained after higher-priority assignments reserved the available inventory."));
+                        reason));
                 }
 
                 conflicts.AddRange(characterConflicts);
@@ -224,11 +232,68 @@ namespace swgoh_command_bridge.Core.Services
                 ? "No characters are available for roster planning."
                 : $"Planned {plans.Count} character(s) in priority-first order; {completeCount} complete loadout(s), {conflicts.Count} inventory conflict(s).";
 
+            var assignedPlansByModKey = plans
+                .SelectMany(plan => plan.Loadout.Mods.Select(mod => new
+                {
+                    ModKey = GetModKey(mod),
+                    Plan = plan
+                }))
+                .GroupBy(item => item.ModKey, StringComparer.Ordinal)
+                .ToDictionary(group => group.Key, group => group.First().Plan, StringComparer.Ordinal);
+            var inventoryById = remainingInventory
+                .Concat(plans.SelectMany(plan => plan.Loadout.Mods))
+                .GroupBy(mod => mod.Id, StringComparer.Ordinal)
+                .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+            var rosterSwaps = new List<RosterSwapRecommendation>();
+
+            foreach (var plan in plans)
+            {
+                foreach (var swap in plan.Loadout.SwapRecommendations)
+                {
+                    var candidate = inventoryById.GetValueOrDefault(swap.CandidateModId);
+                    var candidateOwner = candidate == null
+                        ? null
+                        : assignedPlansByModKey.GetValueOrDefault(GetModKey(candidate));
+                    var isAvailable = candidate != null && candidateOwner == null;
+                    var reason = candidate == null
+                        ? "Candidate is no longer present in the cached inventory."
+                        : candidateOwner == null
+                            ? "Candidate is available in the unassigned roster inventory; verify set rules before applying."
+                            : candidateOwner.CharacterId == plan.CharacterId
+                                ? "Candidate is already assigned to this character; verify the slot-level swap manually."
+                                : $"Candidate is currently reserved by {candidateOwner.CharacterName}; compare the priority trade-off before moving it.";
+
+                    rosterSwaps.Add(new RosterSwapRecommendation(
+                        plan.CharacterId,
+                        plan.CharacterName,
+                        plan.Priority,
+                        swap.CurrentModId,
+                        swap.CandidateModId,
+                        swap.Slot,
+                        swap.ScoreGain,
+                        isAvailable,
+                        reason));
+                }
+            }
+
+            rosterSwaps = rosterSwaps
+                .OrderByDescending(swap => swap.CandidateAvailable)
+                .ThenByDescending(swap => swap.ScoreGain)
+                .ThenByDescending(swap => swap.Priority)
+                .ThenBy(swap => swap.CharacterId, StringComparer.Ordinal)
+                .ThenBy(swap => swap.Slot)
+                .ThenBy(swap => swap.CandidateModId, StringComparer.Ordinal)
+                .Take(50)
+                .ToList();
+
             return new RosterLoadoutResult(
                 plans.AsReadOnly(),
                 conflicts.AsReadOnly(),
                 complete,
-                status);
+                status)
+            {
+                SwapRecommendations = rosterSwaps.AsReadOnly()
+            };
         }
 
         private static void SearchValidLoadouts(
@@ -343,7 +408,8 @@ namespace swgoh_command_bridge.Core.Services
             bool hasRecommendation,
             IReadOnlySet<string> targetSets,
             IReadOnlyDictionary<int, IReadOnlyList<RecommendedPrimary>> targetPrimaries,
-            string status)
+            string status,
+            IReadOnlyDictionary<int, List<GameModEntity>>? candidatesBySlot = null)
         {
             var complete = loadout.Count == 6;
             var explanations = loadout
@@ -351,13 +417,68 @@ namespace swgoh_command_bridge.Core.Services
                 .ToList()
                 .AsReadOnly();
 
-            return new ModLoadoutResult(
+            var result = new ModLoadoutResult(
                 loadout.ToList().AsReadOnly(),
                 hasRecommendation,
                 complete,
                 complete && IsValidSetDistribution(loadout),
                 status,
                 explanations);
+
+            if (candidatesBySlot == null)
+            {
+                return result;
+            }
+
+            var chosenKeys = loadout.Select(GetModKey).ToHashSet(StringComparer.Ordinal);
+            var alternatives = new List<ModAssignmentAlternative>();
+            var swaps = new List<ModSwapPlan>();
+            foreach (var selected in loadout.OrderBy(mod => mod.Slot).ThenBy(mod => mod.Id, StringComparer.Ordinal))
+            {
+                if (!candidatesBySlot.TryGetValue(selected.Slot, out var candidates))
+                {
+                    continue;
+                }
+
+                var selectedScore = ScoreMod(selected, targetSets, targetPrimaries);
+                var alternativesForSlot = candidates
+                    .Where(candidate => !chosenKeys.Contains(GetModKey(candidate)))
+                    .Select(candidate => new
+                    {
+                        Mod = candidate,
+                        Score = ScoreMod(candidate, targetSets, targetPrimaries)
+                    })
+                    .OrderByDescending(candidate => candidate.Score)
+                    .ThenBy(candidate => candidate.Mod.Id, StringComparer.Ordinal)
+                    .Take(2)
+                    .ToList();
+
+                foreach (var alternative in alternativesForSlot)
+                {
+                    var explanation = BuildExplanation(alternative.Mod, targetSets, targetPrimaries);
+                    alternatives.Add(new ModAssignmentAlternative(
+                        alternative.Mod.Id,
+                        alternative.Mod.Slot,
+                        alternative.Score,
+                        explanation.Reason));
+
+                    if (!string.IsNullOrWhiteSpace(selected.CharacterId) && alternative.Score > selectedScore)
+                    {
+                        swaps.Add(new ModSwapPlan(
+                            selected.Id,
+                            alternative.Mod.Id,
+                            selected.Slot,
+                            alternative.Score - selectedScore,
+                            $"Candidate scores {alternative.Score - selectedScore:F1} higher; recheck set-bonus validity before swapping."));
+                    }
+                }
+            }
+
+            return result with
+            {
+                Alternatives = alternatives.AsReadOnly(),
+                SwapRecommendations = swaps.AsReadOnly()
+            };
         }
 
         private static ModAssignmentExplanation BuildExplanation(

@@ -69,9 +69,30 @@ namespace swgoh_command_bridge.UI.ViewModels
         public ObservableCollection<string> LoadoutExplanations { get; } = new();
 
         /// <summary>
+        /// Gets lower-ranked candidates that can be considered for individual slots.
+        /// </summary>
+        public ObservableCollection<string> AlternativeSummaries { get; } = new();
+
+        /// <summary>
+        /// Gets actionable replacement candidates for equipped mods.
+        /// </summary>
+        public ObservableCollection<string> SwapRecommendationSummaries { get; } = new();
+
+        public bool HasAlternatives => AlternativeSummaries.Count > 0;
+
+        public bool HasSwapRecommendations => SwapRecommendationSummaries.Count > 0;
+
+        /// <summary>
         /// Gets the concise priority-roster assignment summaries.
         /// </summary>
         public ObservableCollection<string> RosterPlanSummaries { get; } = new();
+
+        /// <summary>
+        /// Gets roster-level swap candidates with inventory reservation context.
+        /// </summary>
+        public ObservableCollection<string> RosterSwapSummaries { get; } = new();
+
+        public bool HasRosterSwapRecommendations => RosterSwapSummaries.Count > 0;
 
         public OperationState<IReadOnlyList<GameModEntity>> State
         {
@@ -345,13 +366,20 @@ namespace swgoh_command_bridge.UI.ViewModels
         public async Task CalculateRosterAsync()
         {
             RosterPlanSummaries.Clear();
+            RosterSwapSummaries.Clear();
+            OnPropertyChanged(nameof(HasRosterSwapRecommendations));
             RosterPlanStatusText = "Calculating a priority-first roster plan...";
             try
             {
                 var activeAllyCode = _activeAllyCodeProvider?.Invoke()?.Trim();
                 var charactersQuery = _context.Characters.AsNoTracking();
                 var modsQuery = _context.Mods.AsNoTracking();
-                if (!string.IsNullOrWhiteSpace(activeAllyCode))
+                if (_activeAllyCodeProvider != null && string.IsNullOrWhiteSpace(activeAllyCode))
+                {
+                    charactersQuery = charactersQuery.Where(character => false);
+                    modsQuery = modsQuery.Where(mod => false);
+                }
+                else if (!string.IsNullOrWhiteSpace(activeAllyCode))
                 {
                     charactersQuery = charactersQuery.Where(character => character.PlayerAllyCode == activeAllyCode);
                     modsQuery = modsQuery.Where(mod => mod.PlayerAllyCode == activeAllyCode);
@@ -375,7 +403,18 @@ namespace swgoh_command_bridge.UI.ViewModels
                     }
                 }
 
-                RosterPlanStatusText = plan.Status;
+                foreach (var swap in plan.SwapRecommendations)
+                {
+                    var availability = swap.CandidateAvailable ? "available" : "reserved/unavailable";
+                    RosterSwapSummaries.Add(
+                        $"P{swap.Priority} {swap.CharacterName}, slot {swap.Slot}: " +
+                        $"{swap.CurrentModId} -> {swap.CandidateModId} (+{swap.ScoreGain:F1}, {availability}) — {swap.Reason}");
+                }
+                OnPropertyChanged(nameof(HasRosterSwapRecommendations));
+
+                RosterPlanStatusText = plan.SwapRecommendations.Count == 0
+                    ? plan.Status
+                    : $"{plan.Status} {plan.SwapRecommendations.Count} roster swap candidate(s) consolidated below.";
             }
             catch (Exception ex)
             {
@@ -385,6 +424,12 @@ namespace swgoh_command_bridge.UI.ViewModels
 
         private async Task ScrapeSelectedAsync()
         {
+            if (_settingsService?.CurrentSettings.EnableLocalRecommendationScraping == false)
+            {
+                ScrapeStatusText = "Local recommendation scraping is disabled in Settings. Enable it before refreshing community data.";
+                return;
+            }
+
             if (_scraperService == null || SelectedCharacter == null)
             {
                 ScrapeStatusText = "Select a character and configure the scraper before updating recommendations.";
@@ -401,13 +446,14 @@ namespace swgoh_command_bridge.UI.ViewModels
 
             try
             {
-                scrapeSucceeded = await _scraperService.ScrapeCharacterRecommendationsAsync(
+                var scrapeResult = await _scraperService.ScrapeCharacterRecommendationsWithResultAsync(
                     SelectedCharacter.Id,
                     _scrapeCancellation.Token);
+                scrapeSucceeded = scrapeResult.Success;
                 scrapeFailed = !scrapeSucceeded;
                 ScrapeStatusText = scrapeSucceeded
                     ? "Recommendation data refreshed."
-                    : "No recommendation data was returned for this character.";
+                    : scrapeResult.ErrorMessage ?? "No recommendation data was returned for this character.";
 
                 if (scrapeSucceeded)
                 {
@@ -440,6 +486,12 @@ namespace swgoh_command_bridge.UI.ViewModels
 
         private async Task ScrapeAllAsync()
         {
+            if (_settingsService?.CurrentSettings.EnableLocalRecommendationScraping == false)
+            {
+                ScrapeStatusText = "Local recommendation scraping is disabled in Settings. Enable it before refreshing community data.";
+                return;
+            }
+
             if (_scraperService == null)
             {
                 ScrapeStatusText = "The recommendation scraper is not configured.";
@@ -556,7 +608,11 @@ namespace swgoh_command_bridge.UI.ViewModels
             {
                 var activeAllyCode = _activeAllyCodeProvider?.Invoke()?.Trim();
                 var charactersQuery = _context.Characters.AsNoTracking();
-                if (!string.IsNullOrWhiteSpace(activeAllyCode))
+                if (_activeAllyCodeProvider != null && string.IsNullOrWhiteSpace(activeAllyCode))
+                {
+                    charactersQuery = charactersQuery.Where(character => false);
+                }
+                else if (!string.IsNullOrWhiteSpace(activeAllyCode))
                 {
                     charactersQuery = charactersQuery.Where(character => character.PlayerAllyCode == activeAllyCode);
                 }
@@ -592,6 +648,10 @@ namespace swgoh_command_bridge.UI.ViewModels
                 TargetSets.Clear();
                 TargetPrimaries.Clear();
                 LoadoutExplanations.Clear();
+                AlternativeSummaries.Clear();
+                SwapRecommendationSummaries.Clear();
+                OnPropertyChanged(nameof(HasAlternatives));
+                OnPropertyChanged(nameof(HasSwapRecommendations));
                 PopularityText = "No community recommendation data available.";
                 LastUpdatedText = string.Empty;
                 RecommendationSourceUrlText = string.Empty;
@@ -616,6 +676,10 @@ namespace swgoh_command_bridge.UI.ViewModels
                 TargetSets.Clear();
                 TargetPrimaries.Clear();
                 LoadoutExplanations.Clear();
+                AlternativeSummaries.Clear();
+                SwapRecommendationSummaries.Clear();
+                OnPropertyChanged(nameof(HasAlternatives));
+                OnPropertyChanged(nameof(HasSwapRecommendations));
                 PopularityText = "No community recommendation data available.";
                 LastUpdatedText = string.Empty;
                 RecommendationSourceUrlText = string.Empty;
@@ -672,7 +736,11 @@ namespace swgoh_command_bridge.UI.ViewModels
                 {
                     var activeAllyCode = _activeAllyCodeProvider?.Invoke()?.Trim();
                     var modsQuery = _context.Mods.AsNoTracking();
-                    if (!string.IsNullOrWhiteSpace(activeAllyCode))
+                    if (_activeAllyCodeProvider != null && string.IsNullOrWhiteSpace(activeAllyCode))
+                    {
+                        modsQuery = modsQuery.Where(mod => false);
+                    }
+                    else if (!string.IsNullOrWhiteSpace(activeAllyCode))
                     {
                         modsQuery = modsQuery.Where(mod => mod.PlayerAllyCode == activeAllyCode);
                     }
@@ -705,8 +773,20 @@ namespace swgoh_command_bridge.UI.ViewModels
                 }
                 foreach (var explanation in loadoutResult.Explanations)
                 {
-                    LoadoutExplanations.Add($"Slot {explanation.Slot} — {explanation.ModId}: {explanation.Reason}");
+                    LoadoutExplanations.Add($"Slot {explanation.Slot} - {explanation.ModId}: {explanation.Reason}");
                 }
+                foreach (var alternative in loadoutResult.Alternatives)
+                {
+                    AlternativeSummaries.Add(
+                        $"Slot {alternative.Slot} - {alternative.ModId}: {alternative.Reason}");
+                }
+                foreach (var swap in loadoutResult.SwapRecommendations)
+                {
+                    SwapRecommendationSummaries.Add(
+                        $"Replace {swap.CurrentModId} with {swap.CandidateModId} in slot {swap.Slot} (+{swap.ScoreGain:F1}): {swap.Reason}");
+                }
+                OnPropertyChanged(nameof(HasAlternatives));
+                OnPropertyChanged(nameof(HasSwapRecommendations));
                 LoadoutStatusText = loadoutResult.Status;
                 OnPropertyChanged(nameof(HasLoadout));
                 OnPropertyChanged(nameof(IsEmpty));

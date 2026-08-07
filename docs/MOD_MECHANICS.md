@@ -53,3 +53,5 @@ The active advisor applies these decisions in order so the same inventory produc
 7. **Sell** is the final result when no actionable upgrade, slice, keep, or compatible swap applies.
 
 These are recommendations only; the application does not perform game actions or consume slicing materials.
+
+The settings and transfer formats preserve an optional minimum-efficiency field for forward compatibility, but the current advisor contract does not use efficiency to change a recommendation. Speed, rarity/pips, tier, level, and compatible ownership are the active decision inputs.

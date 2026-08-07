@@ -20,6 +20,7 @@ public sealed class DiagnosticsViewModel : ViewModelBase
     private readonly AppDbContext _context;
     private readonly ISettingsService _settingsService;
     private readonly Func<string?> _activeAllyCodeProvider;
+    private readonly DiagnosticEventLog _eventLog;
     private OperationState<bool> _state = OperationState<bool>.ToEmpty();
     private string _statusText = "Refresh diagnostics to inspect the local cache.";
     private string _exportStatusText = string.Empty;
@@ -29,6 +30,7 @@ public sealed class DiagnosticsViewModel : ViewModelBase
     private string _cachePath = "Unavailable";
     private string _backupDirectory = "Unavailable";
     private string _lastScrapeSummary = "No completed recommendation refresh has been recorded.";
+    private string _recentEventsText = "No application events recorded in this session.";
     private int _playerCount;
     private int _characterCount;
     private int _modCount;
@@ -37,7 +39,8 @@ public sealed class DiagnosticsViewModel : ViewModelBase
     public DiagnosticsViewModel(
         AppDbContext context,
         ISettingsService settingsService,
-        Func<string?> activeAllyCodeProvider)
+        Func<string?> activeAllyCodeProvider,
+        DiagnosticEventLog? eventLog = null)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(settingsService);
@@ -46,6 +49,7 @@ public sealed class DiagnosticsViewModel : ViewModelBase
         _context = context;
         _settingsService = settingsService;
         _activeAllyCodeProvider = activeAllyCodeProvider;
+        _eventLog = eventLog ?? new DiagnosticEventLog();
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
         ExportCommand = new AsyncRelayCommand(ExportAsync);
     }
@@ -117,6 +121,12 @@ public sealed class DiagnosticsViewModel : ViewModelBase
         private set => SetField(ref _lastScrapeSummary, value);
     }
 
+    public string RecentEventsText
+    {
+        get => _recentEventsText;
+        private set => SetField(ref _recentEventsText, value);
+    }
+
     public int PlayerCount
     {
         get => _playerCount;
@@ -155,6 +165,7 @@ public sealed class DiagnosticsViewModel : ViewModelBase
         CachePath = _context.CachePath ?? "Unavailable or in-memory database";
         BackupDirectory = _context.CacheBackupDirectory ?? "Unavailable";
         LastScrapeSummary = FormatScrapeSummary(settings.LastRecommendationScrape);
+        RecentEventsText = _eventLog.FormatRecent();
 
         try
         {
@@ -173,10 +184,12 @@ public sealed class DiagnosticsViewModel : ViewModelBase
                 .CountAsync()
                 .ConfigureAwait(true);
             State = OperationState<bool>.ToSuccess(true);
+            _eventLog.Info("diagnostics", "Local cache diagnostics refreshed.");
         }
         catch (Exception ex)
         {
             ClearCounts();
+            _eventLog.Error("diagnostics", "Local cache diagnostics failed.");
             State = OperationState<bool>.ToError($"Diagnostics failed: {ex.Message}");
         }
     }
@@ -205,6 +218,9 @@ public sealed class DiagnosticsViewModel : ViewModelBase
                 .AppendLine($"Mods: {ModCount}")
                 .AppendLine($"Recommendations: {RecommendationCount}")
                 .AppendLine($"Last recommendation refresh: {LastScrapeSummary}")
+                .AppendLine()
+                .AppendLine("Recent application events:")
+                .AppendLine(_eventLog.FormatRecent())
                 .ToString();
 
             await File.WriteAllTextAsync(reportPath, report).ConfigureAwait(true);
@@ -212,6 +228,7 @@ public sealed class DiagnosticsViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
+            _eventLog.Error("diagnostics-export", "Diagnostics export failed.");
             ExportStatusText = $"Diagnostics export failed: {ex.Message}";
         }
     }

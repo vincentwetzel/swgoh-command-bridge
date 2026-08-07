@@ -186,6 +186,56 @@ namespace swgoh_command_bridge.Tests
         }
 
         [Fact]
+        public async Task ScrapeCharacterRecommendationsWithResultAsync_ReportsEndpointFailure()
+        {
+            var handler = new FakeHttpMessageHandler(req =>
+            {
+                var response = new HttpResponseMessage(HttpStatusCode.NotFound);
+                return Task.FromResult(response);
+            });
+            var scraper = new SwgohGgScraperService(
+                new FakeHttpClientFactory(new HttpClient(handler)),
+                _context,
+                NullLogger<SwgohGgScraperService>.Instance);
+
+            var result = await scraper.ScrapeCharacterRecommendationsWithResultAsync(
+                "MISSING_CHARACTER",
+                CancellationToken.None);
+
+            Assert.False(result.Success);
+            Assert.Contains("HTTP 404", result.ErrorMessage);
+        }
+
+        [Fact]
+        public async Task ScrapeCharacterRecommendationsAsync_SendsIdentifyingRequestHeaders()
+        {
+            HttpRequestMessage? observedRequest = null;
+            var handler = new FakeHttpMessageHandler(req =>
+            {
+                observedRequest = req;
+                var response = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(
+                        "<div class=\"mod-set-image\" alt=\"Speed\"></div><div class=\"mod-set-percent\">60%</div>")
+                };
+                return Task.FromResult(response);
+            });
+            var scraper = new SwgohGgScraperService(
+                new FakeHttpClientFactory(new HttpClient(handler)),
+                _context,
+                NullLogger<SwgohGgScraperService>.Instance);
+
+            var success = await scraper.ScrapeCharacterRecommendationsAsync(
+                "HEADER_CHECK",
+                CancellationToken.None);
+
+            Assert.True(success);
+            Assert.NotNull(observedRequest);
+            Assert.Contains("SWGOHCommandBridge", observedRequest!.Headers.UserAgent.ToString());
+            Assert.Contains("text/html", string.Join(",", observedRequest.Headers.Accept));
+        }
+
+        [Fact]
         public async Task ScrapeAllCharactersIncrementalAsync_ReportsProgressForRequestedAllyCode()
         {
             _context.Players.Add(new PlayerEntity

@@ -1,6 +1,7 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,6 +21,7 @@ namespace swgoh_command_bridge.Core.Services
         private readonly IPlayerRepository _playerRepository;
         private readonly ILogger<PlayerService> _logger;
         private readonly PlayerProfileParser _profileParser = new();
+        private readonly CharacterMetadataParser _metadataParser = new();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="PlayerService"/> class.
@@ -38,7 +40,7 @@ namespace swgoh_command_bridge.Core.Services
         /// <inheritdoc />
         public async Task<PlayerProfile> GetPlayerProfileAsync(string allyCode, CancellationToken cancellationToken = default)
         {
-            ArgumentNullException.ThrowIfNull(allyCode);
+            allyCode = AllyCodeValidator.NormalizeOrThrow(allyCode);
 
             _logger.LogInformation("Retrieving profile for player with ally code {AllyCode}", allyCode);
 
@@ -48,10 +50,11 @@ namespace swgoh_command_bridge.Core.Services
             {
                 var profile = _profileParser.Parse(allyCode, rawJson);
                 _logger.LogInformation(
-                    "Successfully parsed profile for {PlayerName} with {CharacterCount} characters and {ModCount} mods",
+                    "Successfully parsed profile for {PlayerName} with {CharacterCount} characters and {ModCount} mods; {WarningCount} parser warning(s)",
                     profile.Name,
                     profile.Characters.Count,
-                    profile.Mods.Count);
+                    profile.Mods.Count,
+                    profile.Diagnostics.Warnings.Count);
                 return profile;
             }
             catch (Exception ex)
@@ -62,23 +65,88 @@ namespace swgoh_command_bridge.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<PlayerProfile> SyncPlayerProfileAsync(string allyCode, CancellationToken cancellationToken = default)
+        public async Task<PlayerProfile> SyncPlayerProfileAsync(
+            string allyCode,
+            CancellationToken cancellationToken = default,
+            IProgress<PlayerSyncProgress>? progress = null)
         {
-            ArgumentNullException.ThrowIfNull(allyCode);
+            allyCode = AllyCodeValidator.NormalizeOrThrow(allyCode);
 
             _logger.LogInformation("Starting live account sync for ally code {AllyCode}", allyCode);
+            progress?.Report(new PlayerSyncProgress(
+                "connecting",
+                "Connecting to Comlink...",
+                0,
+                4));
 
             // Fetch fresh profile from Comlink API
-            var profile = await GetPlayerProfileAsync(allyCode, cancellationToken).ConfigureAwait(false);
+            var profile = await GetPlayerProfileForSyncAsync(allyCode, cancellationToken).ConfigureAwait(false);
+            progress?.Report(new PlayerSyncProgress(
+                "mapping",
+                $"Mapped {profile.Characters.Count} characters and {profile.Mods.Count} mods.",
+                1,
+                4));
 
             // Map domain models into database-ready representation entities
             var entity = MapToEntity(profile);
+            progress?.Report(new PlayerSyncProgress(
+                "persisting",
+                "Saving the refreshed account cache...",
+                2,
+                4));
 
             // Persist full configuration update atomically to local SQLite storage
             await _playerRepository.SavePlayerAsync(entity, cancellationToken).ConfigureAwait(false);
 
+            progress?.Report(new PlayerSyncProgress(
+                "complete",
+                "Account cache saved successfully.",
+                4,
+                4));
             _logger.LogInformation("Successfully completed account sync and cached profile updates in SQLite for {AllyCode}", allyCode);
             return profile;
+        }
+
+        private async Task<PlayerProfile> GetPlayerProfileForSyncAsync(
+            string allyCode,
+            CancellationToken cancellationToken)
+        {
+            var rawJson = await _comlinkService.FetchPlayerRawAsync(allyCode, cancellationToken).ConfigureAwait(false);
+            IReadOnlyDictionary<string, string>? metadataNames = null;
+            string? metadataWarning = null;
+
+            try
+            {
+                var metadataJson = await _comlinkService.FetchMetaDataRawAsync(cancellationToken).ConfigureAwait(false);
+                metadataNames = _metadataParser.Parse(metadataJson);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                metadataWarning = $"Character display metadata was unavailable; roster IDs were retained ({ex.GetType().Name}).";
+                _logger.LogWarning(ex, "Comlink metadata enrichment failed; continuing with player payload names");
+            }
+
+            var profile = _profileParser.Parse(allyCode, rawJson, metadataNames);
+            if (metadataWarning == null)
+            {
+                return profile;
+            }
+
+            var warnings = new List<string>(profile.Diagnostics.Warnings)
+            {
+                metadataWarning
+            };
+            return profile with
+            {
+                Diagnostics = profile.Diagnostics with
+                {
+                    Warnings = warnings.AsReadOnly()
+                }
+            };
         }
 
         private static PlayerEntity MapToEntity(PlayerProfile profile)

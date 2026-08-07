@@ -18,6 +18,13 @@ namespace swgoh_command_bridge.Core.Services
         Task<bool> ScrapeCharacterRecommendationsAsync(string characterId, CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Scrapes one character and returns a privacy-safe reason when the refresh cannot produce data.
+        /// </summary>
+        Task<ScrapeCharacterResult> ScrapeCharacterRecommendationsWithResultAsync(
+            string characterId,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Scrapes recommendations sequentially for all characters with a polite delay to respect rate limit policies.
         /// </summary>
         Task ScrapeAllCharactersIncrementalAsync(

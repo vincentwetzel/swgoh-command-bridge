@@ -48,6 +48,24 @@ public sealed class PlayerRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task DeletePlayerAsync_RemovesPlayerAndAccountOwnedRows()
+    {
+        var repository = new PlayerRepository(
+            _context,
+            NullLogger<PlayerRepository>.Instance);
+
+        await repository.SavePlayerAsync(CreatePlayer("To Remove", 60));
+
+        var removed = await repository.DeletePlayerAsync("123456789");
+
+        Assert.True(removed);
+        Assert.Empty(await _context.Players.ToListAsync());
+        Assert.Empty(await _context.Characters.ToListAsync());
+        Assert.Empty(await _context.Mods.ToListAsync());
+        Assert.False(await repository.DeletePlayerAsync("123456789"));
+    }
+
+    [Fact]
     public async Task ResetDatabaseAsync_RecreatesAnEmptyCache()
     {
         _context.Players.Add(new PlayerEntity
@@ -90,6 +108,63 @@ public sealed class PlayerRepositoryTests : IDisposable
         Assert.NotNull(_context.LastSchemaMigration);
         Assert.Equal(3, _context.LastSchemaMigration!.PreviousVersion);
         Assert.False(_context.LastSchemaMigration.Changed);
+    }
+
+    [Fact]
+    public void CacheSchemaMigrator_RebuildsMissingTablesForAnOlderPartialCache()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText =
+                "CREATE TABLE \"__CacheSchema\" (\"Id\" INTEGER NOT NULL PRIMARY KEY, \"Version\" INTEGER NOT NULL);" +
+                "INSERT INTO \"__CacheSchema\" (\"Id\", \"Version\") VALUES (1, 1);" +
+                "CREATE TABLE \"Players\" (\"AllyCode\" TEXT NOT NULL PRIMARY KEY, \"Name\" TEXT NOT NULL, \"Level\" INTEGER NOT NULL, \"GalacticPower\" INTEGER NOT NULL);";
+            command.ExecuteNonQuery();
+        }
+
+        var result = new CacheSchemaMigrator().Migrate(connection);
+
+        Assert.Equal(1, result.PreviousVersion);
+        Assert.Equal(CacheSchemaMigrator.CurrentVersion, result.CurrentVersion);
+        Assert.Contains("3: recommendation provenance", result.AppliedMigrations);
+
+        using var tableCommand = connection.CreateCommand();
+        tableCommand.CommandText =
+            "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' " +
+            "AND name IN ('Players', 'Characters', 'Mods', 'SwgohGgRecommendations');";
+        Assert.Equal(4L, tableCommand.ExecuteScalar());
+    }
+
+    [Fact]
+    public void CacheSchemaMigrator_AddsCurrentColumnsToLegacyTables()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText =
+                "CREATE TABLE \"__CacheSchema\" (\"Id\" INTEGER NOT NULL PRIMARY KEY, \"Version\" INTEGER NOT NULL);" +
+                "INSERT INTO \"__CacheSchema\" (\"Id\", \"Version\") VALUES (1, 1);" +
+                "CREATE TABLE \"Mods\" (\"Id\" TEXT NOT NULL, \"PlayerAllyCode\" TEXT NOT NULL, \"Slot\" INTEGER NOT NULL);";
+            command.ExecuteNonQuery();
+        }
+
+        new CacheSchemaMigrator().Migrate(connection);
+
+        using var columnCommand = connection.CreateCommand();
+        columnCommand.CommandText = "PRAGMA table_info('Mods');";
+        using var reader = columnCommand.ExecuteReader();
+        var columns = new List<string>();
+        while (reader.Read())
+        {
+            columns.Add(reader.GetString(1));
+        }
+
+        Assert.Contains("PrimaryStatType", columns);
+        Assert.Contains("PrimaryStatValue", columns);
+        Assert.Contains("SecondaryStatsJson", columns);
     }
 
     [Fact]
@@ -187,6 +262,57 @@ public sealed class PlayerRepositoryTests : IDisposable
 
             await context.RestoreDatabaseAsync(backupPath);
 
+            Assert.Equal("Original Player", (await context.Players.SingleAsync()).Name);
+        }
+        finally
+        {
+            if (Directory.Exists(testDirectory))
+            {
+                Directory.Delete(testDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task RestoreDatabaseAsync_RejectsBackupFromAnUnsupportedFutureSchema()
+    {
+        var testDirectory = Path.Combine(
+            Path.GetTempPath(),
+            "swgoh-command-bridge-tests",
+            Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(testDirectory);
+
+        try
+        {
+            var databasePath = Path.Combine(testDirectory, "cache.db");
+            using var connection = new SqliteConnection($"Data Source={databasePath}");
+            await connection.OpenAsync();
+            var options = new DbContextOptionsBuilder<AppDbContext>()
+                .UseSqlite(connection)
+                .Options;
+            await using var context = new AppDbContext(options);
+            await context.Database.EnsureCreatedAsync();
+            context.InitializeDatabase();
+            context.Players.Add(new PlayerEntity
+            {
+                AllyCode = "123456789",
+                Name = "Original Player"
+            });
+            await context.SaveChangesAsync();
+
+            var backupPath = await context.BackupDatabaseAsync();
+            using (var backupConnection = new SqliteConnection($"Data Source={backupPath}"))
+            {
+                await backupConnection.OpenAsync();
+                using var command = backupConnection.CreateCommand();
+                command.CommandText = "UPDATE \"__CacheSchema\" SET \"Version\" = 99 WHERE \"Id\" = 1;";
+                await command.ExecuteNonQueryAsync();
+            }
+
+            var exception = await Assert.ThrowsAsync<InvalidDataException>(
+                () => context.RestoreDatabaseAsync(backupPath));
+
+            Assert.Contains("schema version 99", exception.Message);
             Assert.Equal("Original Player", (await context.Players.SingleAsync()).Name);
         }
         finally

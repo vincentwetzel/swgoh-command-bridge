@@ -9,8 +9,8 @@ The solution is divided into three main projects. A few older root-level `.cs` d
 ### 1. `swgoh-command-bridge.Core`
 *   **Purpose:** This is the business logic and data layer of the application. It is a standard .NET library with no dependencies on any UI framework.
 *   **Contents:**
-    *   **Models:** Plain C# record types (`GameMod`, `Character`, `PlayerProfile`, etc.) plus small state/configuration records such as `OperationState<T>`, `AppSettings`, and scraper progress models.
-    *   **Services:** Classes responsible for fetching, caching, filtering, analyzing, and assigning data. This includes Comlink access, tolerant `PlayerProfileParser` mapping, player sync, settings persistence, threshold transfer, mod filtering/mechanics, mod upgrade advice, priority-first roster assignment planning, and `swgoh.gg` scraping.
+*   **Models:** Plain C# record types (`GameMod`, `Character`, `PlayerProfile`, etc.) plus small state/configuration records such as `OperationState<T>`, `AppSettings`, shared application-data paths, ally-code validation, player-sync diagnostics, and scraper progress models.
+*   **Services:** Classes responsible for fetching, caching, filtering, analyzing, and assigning data. This includes Comlink access, privacy-safe `ComlinkErrorFormatter` failure classification, tolerant `PlayerProfileParser` mapping with optional `CharacterMetadataParser` name enrichment, player sync, settings persistence and secret-safe transfer, threshold transfer, mod filtering/mechanics, mod upgrade advice, priority-first roster assignment planning, and `swgoh.gg` scraping. `PlayerRepository` owns transactional replacement and account-cache deletion so UI account management does not implement persistence rules itself.
     *   **Data:** EF Core and SQLite are compiled in the Core project. `AppDbContext`, database entities, and `PlayerRepository` live under `src/swgoh-command-bridge.Core/Database`. `SwgohGgRecommendationEntity` stores JSON payloads for recommended sets and slot primary stats, while player, character, and mod entities cache synced account data.
 
 ### 2. `swgoh-command-bridge.UI`
@@ -18,16 +18,16 @@ The solution is divided into three main projects. A few older root-level `.cs` d
 *   **Pattern:** It strictly follows the **MVVM** pattern to ensure a clean separation between the UI (the "View") and the application logic (the "ViewModel").
 *   **Contents:**
     *   **Views:** `.axaml` files that define the UI layout and controls. The code-behind (`.axaml.cs`) is kept minimal.
-*   **ViewModels:** Classes that expose data from the `Core` models to the `Views` and handle user commands. Character and priority viewmodels query SQLite-backed character data, the mods viewmodel filters, deterministically sorts, pages, and labels mod inventory before evaluating selected mods, and the optimizer viewmodel displays scraped community recommendation context alongside selected-character and priority-roster loadouts. Feature screens use explicit empty/loading/success/error state instead of preview fallback data.
-*   **Composition:** `src/swgoh-command-bridge.UI/ApplicationComposition.cs` is the desktop composition root. It creates the shared database, settings, Comlink client/service, repositories, player service, advisor, assignment service, and scraper, while `App` disposes the owned database and HTTP resources when the main window closes.
-*   **Diagnostics:** `DiagnosticsViewModel` reads only local metadata and aggregate cache counts, and exports a privacy-redacted report without account payloads or credentials.
-*   **Recommendation contract:** `SwgohGgRecommendationParser` converts page markup into a fixture-testable `SwgohGgRecommendationParseResult`; `RecommendationSnapshot` is then the shared boundary for persisted community data. The database retains the source, payload schema version, source URL, scrape time, set percentages, and per-slot primary recommendations for assignment and UI consumers. `ModLoadoutResult` carries completeness, set-rule validity, status, and per-mod explanations back to the optimizer, while `RosterLoadoutResult` carries priority-ordered, conflict-aware coverage.
+*   **ViewModels:** Classes that expose data from the `Core` models to the `Views` and handle user commands. The main window lists cached accounts, reports active character/mod counts, and switches the active ally-code scope offline; character and priority viewmodels query SQLite-backed character data, the mods viewmodel filters, deterministically sorts, pages, and labels mod inventory before evaluating selected mods, and the optimizer viewmodel displays scraped community recommendation context alongside selected-character and priority-roster loadouts. Settings explicitly controls whether new local `swgoh.gg` scraping requests are allowed; cached recommendations remain readable when that policy is disabled. Feature screens use explicit empty/loading/success/error state instead of preview fallback data.
+*   **Composition:** `src/swgoh-command-bridge.UI/ApplicationComposition.cs` is the desktop composition root. It creates the shared database, settings, Comlink client/service, repositories, player service, advisor, assignment service, and scraper, while `App` disposes the owned database and HTTP resources when the main window closes. `AppDataPaths` provides one case-stable application-data directory for cache, settings, diagnostics, and backups; composition also accepts injected settings for isolated shell tests.
+*   **Diagnostics:** `DiagnosticsViewModel` reads only local metadata and aggregate cache counts, includes a bounded in-memory `DiagnosticEventLog` plus `DiagnosticLogger<T>` capture for Core service activity, and exports a privacy-redacted report without account payloads or credentials.
+*   **Recommendation contract:** `SwgohGgRecommendationParser` converts page markup into a fixture-testable `SwgohGgRecommendationParseResult`; `RecommendationSnapshot` is then the shared boundary for persisted community data. The database retains the source, payload schema version, source URL, scrape time, set percentages, and per-slot primary recommendations for assignment and UI consumers. `ModLoadoutResult` carries completeness, set-rule validity, status, per-mod explanations, lower-ranked alternatives, and equipped-mod swap candidates back to the optimizer, while `RosterLoadoutResult` carries priority-ordered, conflict-aware coverage plus consolidated swap candidates annotated with inventory availability or reservation context.
     *   **ViewLocator:** A mechanism used by Avalonia to automatically find and render the correct `View` for a given `ViewModel`.
 
 ### 3. `swgoh-command-bridge.Tests`
 *   **Purpose:** Contains unit and integration tests for the `Core` project.
 *   **Framework:** Uses **xUnit** as the testing framework.
-*   **Scope:** Tests cover operation state behavior, settings load/save fallbacks, player profile parsing and repository sync, mod filtering, mod mechanics, and advisor recommendations.
+*   **Scope:** Tests cover operation states, settings and transfer validation, cache migration/recovery, player profile parsing and repository sync, diagnostics, UI view-model workflows, mod filtering/mechanics/advisor decisions, assignment planning, and recommendation parsing/scraping.
 
 ## External Dependencies
 
@@ -42,14 +42,20 @@ There are two primary data flows:
 2.  The **ViewModel** calls a service method in the **Core** project.
 3.  `PlayerService` makes an HTTP call to the configured local `swgoh-comlink` instance.
 4.  `swgoh-comlink` communicates with the official game servers.
-5.  The service receives the raw JSON, maps tolerant profile/roster/inventory variants through `PlayerProfileParser`, isolates malformed records, and then caches the usable Core models in SQLite through `PlayerRepository`.
+5.  The service receives the raw JSON, optionally reads the Comlink metadata catalog, maps tolerant profile/roster/inventory variants and nested/display-name metadata through `PlayerProfileParser`, isolates malformed equipped/inventory records, and then caches the usable Core models in SQLite through `PlayerRepository`. Metadata failure is recorded as a warning and does not discard the primary roster payload.
 6.  The service returns cached models to the **ViewModel**.
 7.  The **ViewModel** updates its properties, and through data binding, the **View** automatically updates to display the new information.
 
 **2. `swgoh.gg` Data Scraping:**
 1.  On a user-triggered command, the `SwgohGgScraperService` is invoked with progress reporting and cooperative cancellation.
-2.  The service reads cached roster characters from SQLite and processes them sequentially; the optimizer passes the active ally code for account-scoped refreshes, while explicit multi-account switching remains planned.
+2.  The service reads cached roster characters from SQLite and processes them sequentially; the optimizer passes the active ally code for account-scoped refreshes, and the shell can switch among cached accounts without contacting Comlink.
 3.  For each character without fresh cached data, the service makes an HTTP request to the corresponding `swgoh.gg` "best mods" page, retries transient failures, and backs off on rate limits.
 4.  The parser extracts recommended mod sets and primary stats from the page HTML.
 5.  The extracted data is stored in the local SQLite database as JSON fields on `SwgohGgRecommendationEntity`, overwriting old stale data for that character.
 6.  The optimizer viewmodel reads the cached recommendation data and displays target sets, target primaries, popularity, last-scraped time, missing-data state, loadout completeness, assignment explanations, and the calculated loadout.
+
+**3. Local recovery and account scope:**
+1.  `AppDataPaths` resolves the shared platform-local application directory for the SQLite cache, JSON settings, diagnostics, and cache backups.
+2.  `CacheSchemaMigrator` creates or repairs the required SQLite tables and columns inside a transaction, then records the supported schema version.
+3.  Settings can create an integrity-checked backup, restore only a backup from the cache backup directory, or reset cached feature data while preserving JSON settings. Unsupported future-schema backups are rejected before replacement.
+4.  `PlayerRepository` replaces one ally-code cache transactionally and deletes that account's character/mod rows transactionally. ViewModels always query the selected ally-code scope; cached-account switching is offline and never triggers a live sync.

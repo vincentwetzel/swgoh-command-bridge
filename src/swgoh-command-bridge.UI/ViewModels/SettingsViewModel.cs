@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
 using swgoh_command_bridge.Core.Models;
@@ -18,12 +19,18 @@ public class SettingsViewModel : ViewModelBase
     private readonly Func<Task>? _resetCache;
     private readonly Func<Task<string>>? _backupCache;
     private readonly Func<string, Task>? _restoreCache;
+    private readonly Func<Task>? _refreshAfterImport;
+    private readonly DiagnosticEventLog _eventLog;
+    private readonly SettingsTransferService _transferService = new();
     private string _comlinkBaseUrl;
     private string _defaultAllyCode;
     private string _theme;
+    private bool _enableLocalRecommendationScraping;
     private string _backupStatusText = "No cache backup created in this session.";
     private string _restoreBackupPath = string.Empty;
     private string _restoreStatusText = "No cache restore performed in this session.";
+    private string _settingsTransferPath = string.Empty;
+    private string _settingsTransferStatusText = "No settings transfer performed in this session.";
     private bool _confirmCacheReset;
     private bool _confirmCacheRestore;
     private OperationState<bool> _state = OperationState<bool>.ToEmpty();
@@ -35,7 +42,9 @@ public class SettingsViewModel : ViewModelBase
         Func<Task> testComlink,
         Func<Task>? resetCache = null,
         Func<Task<string>>? backupCache = null,
-        Func<string, Task>? restoreCache = null)
+        Func<string, Task>? restoreCache = null,
+        Func<Task>? refreshAfterImport = null,
+        DiagnosticEventLog? eventLog = null)
     {
         ArgumentNullException.ThrowIfNull(settingsService);
         ArgumentNullException.ThrowIfNull(applyComlinkUrl);
@@ -49,14 +58,19 @@ public class SettingsViewModel : ViewModelBase
         _resetCache = resetCache;
         _backupCache = backupCache;
         _restoreCache = restoreCache;
+        _refreshAfterImport = refreshAfterImport;
+        _eventLog = eventLog ?? new DiagnosticEventLog();
         _comlinkBaseUrl = settingsService.CurrentSettings.ComlinkBaseUrl;
         _defaultAllyCode = settingsService.CurrentSettings.DefaultAllyCode ?? string.Empty;
         _theme = settingsService.CurrentSettings.Theme;
+        _enableLocalRecommendationScraping = settingsService.CurrentSettings.EnableLocalRecommendationScraping;
         SaveCommand = new AsyncRelayCommand(SaveAsync);
         TestConnectionCommand = new AsyncRelayCommand(TestConnectionAsync);
         BackupCacheCommand = new AsyncRelayCommand(BackupCacheAsync);
         ResetCacheCommand = new AsyncRelayCommand(ResetCacheAsync);
         RestoreCacheCommand = new AsyncRelayCommand(RestoreCacheAsync);
+        ExportSettingsCommand = new AsyncRelayCommand(ExportSettingsAsync);
+        ImportSettingsCommand = new AsyncRelayCommand(ImportSettingsAsync);
     }
 
     public string HeaderText => "Application Settings";
@@ -77,6 +91,12 @@ public class SettingsViewModel : ViewModelBase
     {
         get => _theme;
         set => SetField(ref _theme, value);
+    }
+
+    public bool EnableLocalRecommendationScraping
+    {
+        get => _enableLocalRecommendationScraping;
+        set => SetField(ref _enableLocalRecommendationScraping, value);
     }
 
     public bool ConfirmCacheReset
@@ -107,6 +127,18 @@ public class SettingsViewModel : ViewModelBase
     {
         get => _confirmCacheRestore;
         set => SetField(ref _confirmCacheRestore, value);
+    }
+
+    public string SettingsTransferPath
+    {
+        get => _settingsTransferPath;
+        set => SetField(ref _settingsTransferPath, value);
+    }
+
+    public string SettingsTransferStatusText
+    {
+        get => _settingsTransferStatusText;
+        private set => SetField(ref _settingsTransferStatusText, value);
     }
 
     public OperationState<bool> State
@@ -144,6 +176,10 @@ public class SettingsViewModel : ViewModelBase
 
     public IAsyncRelayCommand RestoreCacheCommand { get; }
 
+    public IAsyncRelayCommand ExportSettingsCommand { get; }
+
+    public IAsyncRelayCommand ImportSettingsCommand { get; }
+
     private async Task SaveAsync()
     {
         if (!TryGetValidUrl(out var validatedUrl))
@@ -161,12 +197,15 @@ public class SettingsViewModel : ViewModelBase
             {
                 ComlinkBaseUrl = validatedUrl,
                 DefaultAllyCode = string.IsNullOrWhiteSpace(DefaultAllyCode) ? null : DefaultAllyCode.Trim(),
-                Theme = Theme.Trim()
+                Theme = Theme.Trim(),
+                EnableLocalRecommendationScraping = EnableLocalRecommendationScraping
             });
             State = OperationState<bool>.ToSuccess(true);
+            _eventLog.Info("settings", "Application settings saved.");
         }
         catch (Exception ex)
         {
+            _eventLog.Error("settings", "Application settings save failed.");
             State = OperationState<bool>.ToError($"Failed to save settings: {ex.Message}");
         }
     }
@@ -185,10 +224,13 @@ public class SettingsViewModel : ViewModelBase
             _applyComlinkUrl(validatedUrl);
             await _testComlink();
             State = OperationState<bool>.ToSuccess(true);
+            _eventLog.Info("comlink-test", "Comlink connection test succeeded.");
         }
         catch (Exception ex)
         {
-            State = OperationState<bool>.ToError($"Comlink connection failed: {ex.Message}");
+            _eventLog.Error("comlink-test", ComlinkErrorFormatter.Describe(ex, "Comlink connection test"));
+            State = OperationState<bool>.ToError(
+                ComlinkErrorFormatter.Describe(ex, "Comlink connection test"));
         }
     }
 
@@ -236,9 +278,11 @@ public class SettingsViewModel : ViewModelBase
             var backupPath = await _backupCache();
             BackupStatusText = $"Backup created: {backupPath}";
             State = OperationState<bool>.ToSuccess(true);
+            _eventLog.Info("cache-backup", "A local cache backup was created.");
         }
         catch (Exception ex)
         {
+            _eventLog.Error("cache-backup", "Local cache backup failed.");
             State = OperationState<bool>.ToError($"Failed to back up local cache: {ex.Message}");
         }
     }
@@ -272,11 +316,108 @@ public class SettingsViewModel : ViewModelBase
             ConfirmCacheRestore = false;
             RestoreStatusText = "Cache restored and feature data reloaded.";
             State = OperationState<bool>.ToSuccess(true);
+            _eventLog.Info("cache-restore", "A local cache backup was restored.");
         }
         catch (Exception ex)
         {
+            _eventLog.Error("cache-restore", "Local cache restore failed.");
             RestoreStatusText = $"Cache restore failed: {ex.Message}";
             State = OperationState<bool>.ToError($"Failed to restore local cache: {ex.Message}");
+        }
+    }
+
+    private async Task ExportSettingsAsync()
+    {
+        SettingsTransferStatusText = string.Empty;
+        if (string.IsNullOrWhiteSpace(SettingsTransferPath))
+        {
+            SettingsTransferStatusText = "Choose a JSON file path before exporting settings.";
+            return;
+        }
+
+        try
+        {
+            var path = GetSettingsTransferPath();
+            var json = _transferService.Serialize(_settingsService.CurrentSettings);
+            var directory = Path.GetDirectoryName(path);
+            if (!string.IsNullOrWhiteSpace(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            await WriteTransferFileAsync(path, json);
+            SettingsTransferStatusText = $"Exported settings to {path}. Embedded URL credentials are never included.";
+            _eventLog.Info("settings-transfer", "Application settings were exported without embedded credentials.");
+        }
+        catch (Exception ex)
+        {
+            _eventLog.Error("settings-transfer", "Application settings export failed.");
+            SettingsTransferStatusText = $"Failed to export settings: {ex.Message}";
+        }
+    }
+
+    private async Task ImportSettingsAsync()
+    {
+        SettingsTransferStatusText = string.Empty;
+        if (string.IsNullOrWhiteSpace(SettingsTransferPath))
+        {
+            SettingsTransferStatusText = "Choose a JSON file path before importing settings.";
+            return;
+        }
+
+        try
+        {
+            var path = GetSettingsTransferPath();
+            var json = await File.ReadAllTextAsync(path);
+            var imported = _transferService.DeserializeAndValidate(json);
+            await _settingsService.SaveSettingsAsync(imported);
+
+            ComlinkBaseUrl = imported.ComlinkBaseUrl;
+            DefaultAllyCode = imported.DefaultAllyCode ?? string.Empty;
+            Theme = imported.Theme;
+            EnableLocalRecommendationScraping = imported.EnableLocalRecommendationScraping;
+            _applyComlinkUrl(imported.ComlinkBaseUrl);
+            _applyAllyCode(DefaultAllyCode);
+            if (_refreshAfterImport != null)
+            {
+                await _refreshAfterImport();
+            }
+            State = OperationState<bool>.ToSuccess(true);
+            SettingsTransferStatusText = $"Imported settings from {path} and refreshed the active account scope.";
+            _eventLog.Info("settings-transfer", "Application settings were imported and the active scope refreshed.");
+        }
+        catch (Exception ex)
+        {
+            _eventLog.Error("settings-transfer", "Application settings import failed.");
+            SettingsTransferStatusText = $"Failed to import settings: {ex.Message}";
+        }
+    }
+
+    private string GetSettingsTransferPath()
+    {
+        var path = Path.GetFullPath(SettingsTransferPath.Trim());
+        if (string.IsNullOrWhiteSpace(Path.GetFileName(path)))
+        {
+            throw new InvalidDataException("The settings transfer path must include a file name.");
+        }
+
+        return path;
+    }
+
+    private static async Task WriteTransferFileAsync(string path, string contents)
+    {
+        var temporaryPath = path + ".tmp";
+        try
+        {
+            await File.WriteAllTextAsync(temporaryPath, contents);
+            File.Move(temporaryPath, path, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
         }
     }
 
@@ -284,7 +425,8 @@ public class SettingsViewModel : ViewModelBase
     {
         url = ComlinkBaseUrl.Trim();
         return Uri.TryCreate(url, UriKind.Absolute, out var parsed)
-            && (parsed.Scheme == Uri.UriSchemeHttp || parsed.Scheme == Uri.UriSchemeHttps);
+            && (parsed.Scheme == Uri.UriSchemeHttp || parsed.Scheme == Uri.UriSchemeHttps)
+            && string.IsNullOrWhiteSpace(parsed.UserInfo);
     }
 
     private void SetField<T>(ref T field, T value, [System.Runtime.CompilerServices.CallerMemberName] string? name = null)

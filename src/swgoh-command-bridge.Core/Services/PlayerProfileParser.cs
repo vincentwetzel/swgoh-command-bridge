@@ -17,7 +17,10 @@ public sealed class PlayerProfileParser
     private static readonly string[] RosterArrayNames = { "rosterUnit", "roster", "units" };
     private static readonly string[] InventoryArrayNames = { "mods", "mod", "inventoryMods", "modInventory", "inventory" };
 
-    public PlayerProfile Parse(string allyCode, string rawJson)
+    public PlayerProfile Parse(
+        string allyCode,
+        string rawJson,
+        IReadOnlyDictionary<string, string>? characterNames = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(allyCode);
         ArgumentNullException.ThrowIfNull(rawJson);
@@ -27,23 +30,35 @@ public sealed class PlayerProfileParser
         var characters = new List<Character>();
         var mods = new List<GameMod>();
         var seenModIds = new HashSet<string>(StringComparer.Ordinal);
+        var rosterRecordsSeen = 0;
+        var rosterRecordsSkipped = 0;
+        var inventoryRecordsSeen = 0;
+        var inventoryRecordsSkipped = 0;
+        var equippedModRecordsSeen = 0;
+        var equippedModRecordsSkipped = 0;
+        var duplicateModsSkipped = 0;
+        var warnings = new List<string>();
 
         if (TryGetArray(root, out var roster, RosterArrayNames))
         {
             foreach (var unit in roster.EnumerateArray())
             {
+                rosterRecordsSeen++;
                 if (unit.ValueKind != JsonValueKind.Object ||
                     !TryGetCharacterId(unit, out var characterId))
                 {
+                    rosterRecordsSkipped++;
                     continue;
                 }
 
                 var equippedMods = new Dictionary<ModSlot, GameMod>();
                 foreach (var modJson in EnumerateArrayProperties(unit, "equippedStatMod", "equippedMods", "mods"))
                 {
+                    equippedModRecordsSeen++;
                     var parsedMod = ParseGameMod(modJson, characterId);
                     if (parsedMod == null)
                     {
+                        equippedModRecordsSkipped++;
                         continue;
                     }
 
@@ -52,11 +67,15 @@ public sealed class PlayerProfileParser
                     {
                         mods.Add(parsedMod);
                     }
+                    else
+                    {
+                        duplicateModsSkipped++;
+                    }
                 }
 
                 var character = new Character(
                     Id: characterId,
-                    Name: GetString(unit, "name", "characterName") ?? ToDisplayName(characterId),
+                    Name: GetCharacterName(unit, characterId, characterNames),
                     Level: GetInt(unit, 1, "currentLevel", "level"),
                     GearLevel: GetInt(unit, 1, "currentGearLevel", "gearLevel"),
                     RelicTier: ParseRelicTier(unit),
@@ -73,12 +92,41 @@ public sealed class PlayerProfileParser
 
         foreach (var modJson in EnumerateInventoryMods(root))
         {
+            inventoryRecordsSeen++;
             var ownerId = GetString(modJson, "equippedUnitId", "characterId", "ownerId");
             var parsedMod = ParseGameMod(modJson, ownerId);
-            if (parsedMod != null && seenModIds.Add(parsedMod.Id))
+            if (parsedMod == null)
+            {
+                inventoryRecordsSkipped++;
+            }
+            else if (seenModIds.Add(parsedMod.Id))
             {
                 mods.Add(parsedMod);
             }
+            else
+            {
+                duplicateModsSkipped++;
+            }
+        }
+
+        if (rosterRecordsSkipped > 0)
+        {
+            warnings.Add($"Skipped {rosterRecordsSkipped} malformed roster record(s) out of {rosterRecordsSeen}.");
+        }
+
+        if (inventoryRecordsSkipped > 0)
+        {
+            warnings.Add($"Skipped {inventoryRecordsSkipped} malformed inventory mod record(s) out of {inventoryRecordsSeen}.");
+        }
+
+        if (equippedModRecordsSkipped > 0)
+        {
+            warnings.Add($"Skipped {equippedModRecordsSkipped} malformed equipped mod record(s) out of {equippedModRecordsSeen}.");
+        }
+
+        if (duplicateModsSkipped > 0)
+        {
+            warnings.Add($"Ignored {duplicateModsSkipped} duplicate mod record(s).");
         }
 
         return new PlayerProfile(
@@ -87,7 +135,20 @@ public sealed class PlayerProfileParser
             Level: GetInt(root, 0, "level", "playerLevel"),
             GalacticPower: GetLong(root, 0, "gp", "galacticPower"),
             Characters: characters.AsReadOnly(),
-            Mods: mods.AsReadOnly());
+            Mods: mods.AsReadOnly())
+        {
+            Diagnostics = new PlayerSyncDiagnostics(
+                rosterRecordsSeen,
+                rosterRecordsSkipped,
+                inventoryRecordsSeen,
+                inventoryRecordsSkipped,
+                duplicateModsSkipped,
+                warnings.AsReadOnly())
+            {
+                EquippedModRecordsSeen = equippedModRecordsSeen,
+                EquippedModRecordsSkipped = equippedModRecordsSkipped
+            }
+        };
     }
 
     private static IEnumerable<JsonElement> EnumerateInventoryMods(JsonElement root)
@@ -222,7 +283,11 @@ public sealed class PlayerProfileParser
 
     private static bool TryGetCharacterId(JsonElement unit, out string characterId)
     {
-        var definition = GetString(unit, "definitionId", "characterId", "unitId");
+        var definition = GetString(unit, "definitionId", "characterId", "unitId", "unitDefId", "baseId");
+        if (string.IsNullOrWhiteSpace(definition))
+        {
+            definition = GetNestedObjectString(unit, "character", "unit", "metadata", "definitionId", "characterId", "unitId", "unitDefId", "baseId");
+        }
         if (string.IsNullOrWhiteSpace(definition))
         {
             characterId = string.Empty;
@@ -235,6 +300,58 @@ public sealed class PlayerProfileParser
 
     private static string ToDisplayName(string characterId) =>
         characterId.Replace('_', ' ').Trim();
+
+    private static string GetCharacterName(
+        JsonElement unit,
+        string characterId,
+        IReadOnlyDictionary<string, string>? characterNames)
+    {
+        var name = GetString(unit, "name", "characterName", "displayName", "unitName");
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            return name;
+        }
+
+        var nestedName = GetNestedObjectString(
+            unit,
+            "character",
+            "unit",
+            "metadata",
+            "name",
+            "characterName",
+            "displayName",
+            "unitName");
+        if (!string.IsNullOrWhiteSpace(nestedName))
+        {
+            return nestedName;
+        }
+
+        return characterNames != null && characterNames.TryGetValue(characterId, out var metadataName)
+            ? metadataName
+            : ToDisplayName(characterId);
+    }
+
+    private static string? GetNestedObjectString(
+        JsonElement parent,
+        string firstProperty,
+        string secondProperty,
+        string thirdProperty,
+        params string[] names)
+    {
+        foreach (var propertyName in new[] { firstProperty, secondProperty, thirdProperty })
+        {
+            if (TryGetProperty(parent, propertyName, out var nested) && nested.ValueKind == JsonValueKind.Object)
+            {
+                var value = GetString(nested, names);
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    return value;
+                }
+            }
+        }
+
+        return null;
+    }
 
     private static bool TryGetArray(JsonElement parent, out JsonElement array, params string[] names)
     {

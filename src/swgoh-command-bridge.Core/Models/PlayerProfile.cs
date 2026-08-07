@@ -14,5 +14,9 @@ namespace swgoh_command_bridge.Core.Models
         long GalacticPower,
         IReadOnlyCollection<Character> Characters,
         IReadOnlyCollection<GameMod> Mods
-    );
+    )
+    {
+        public PlayerSyncDiagnostics Diagnostics { get; init; } =
+            new(0, 0, 0, 0, 0, new List<string>());
+    }
 }

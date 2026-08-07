@@ -32,19 +32,19 @@ namespace swgoh_command_bridge.Core.Services
 
         public string SettingsPath => _settingsFilePath;
 
-        public string DiagnosticsDirectory => Path.Combine(_settingsDirectory, "diagnostics");
+        public string DiagnosticsDirectory => AppDataPaths.DiagnosticsDirectory;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="SettingsService"/> class.
         /// </summary>
-        public SettingsService(ILogger<SettingsService> logger)
+        public SettingsService(ILogger<SettingsService> logger, string? settingsDirectory = null)
         {
             ArgumentNullException.ThrowIfNull(logger);
             _logger = logger;
 
-            // Rule 16: Cross-platform user settings directory in LocalApplicationData
-            var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            _settingsDirectory = Path.Combine(appData, "SWGOHCommandBridge");
+            _settingsDirectory = string.IsNullOrWhiteSpace(settingsDirectory)
+                ? AppDataPaths.ApplicationDirectory
+                : Path.GetFullPath(settingsDirectory);
             _settingsFilePath = Path.Combine(_settingsDirectory, "settings.json");
             _tempFilePath = Path.Combine(_settingsDirectory, "settings.json.tmp");
         }

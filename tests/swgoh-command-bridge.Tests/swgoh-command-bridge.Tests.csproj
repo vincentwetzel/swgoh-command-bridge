@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\swgoh-command-bridge.Core\swgoh-command-bridge.Core.csproj" />
+    <ProjectReference Include="..\..\src\swgoh-command-bridge.UI\swgoh-command-bridge.UI.csproj" />
   </ItemGroup>
 
 </Project>

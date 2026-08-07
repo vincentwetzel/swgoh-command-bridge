@@ -135,5 +135,79 @@ namespace swgoh_command_bridge.Core.Database.Repositories
                 }
             }
         }
+
+        /// <inheritdoc />
+        public async Task<bool> DeletePlayerAsync(
+            string allyCode,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(allyCode);
+            var normalizedAllyCode = allyCode.Trim();
+            if (normalizedAllyCode.Length == 0)
+            {
+                throw new ArgumentException("An ally code is required.", nameof(allyCode));
+            }
+
+            _logger.LogInformation(
+                "Removing cached player data for ally code {AllyCode}",
+                normalizedAllyCode);
+
+            IDbContextTransaction? transaction = null;
+            if (_context.Database.IsRelational())
+            {
+                transaction = await _context.Database
+                    .BeginTransactionAsync(cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            try
+            {
+                var player = await _context.Players
+                    .Include(candidate => candidate.Characters)
+                    .Include(candidate => candidate.Mods)
+                    .FirstOrDefaultAsync(
+                        candidate => candidate.AllyCode == normalizedAllyCode,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (player == null)
+                {
+                    if (transaction != null)
+                    {
+                        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                    }
+
+                    return false;
+                }
+
+                _context.Characters.RemoveRange(player.Characters);
+                _context.Mods.RemoveRange(player.Mods);
+                _context.Players.Remove(player);
+                await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+                if (transaction != null)
+                {
+                    await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                }
+
+                return true;
+            }
+            catch
+            {
+                if (transaction != null)
+                {
+                    await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+                }
+
+                throw;
+            }
+            finally
+            {
+                if (transaction != null)
+                {
+                    await transaction.DisposeAsync().ConfigureAwait(false);
+                }
+            }
+        }
     }
 }

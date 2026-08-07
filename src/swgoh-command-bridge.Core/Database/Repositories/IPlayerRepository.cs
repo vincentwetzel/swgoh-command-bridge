@@ -20,5 +20,10 @@ namespace swgoh_command_bridge.Core.Database.Repositories
         /// Persists or updates the player profile and its deep relations inside the cache.
         /// </summary>
         Task SavePlayerAsync(PlayerEntity player, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Removes a cached player and all account-owned roster and mod rows.
+        /// </summary>
+        Task<bool> DeletePlayerAsync(string allyCode, CancellationToken cancellationToken = default);
     }
 }

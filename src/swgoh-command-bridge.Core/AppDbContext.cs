@@ -221,6 +221,22 @@ namespace swgoh_command_bridge.Core.Database
             {
                 throw new InvalidDataException("The selected file is not a complete SWGOH Command Bridge cache.");
             }
+
+            using var versionCommand = connection.CreateCommand();
+            versionCommand.CommandText =
+                "SELECT Version FROM \"__CacheSchema\" WHERE Id = 1;";
+            var versionValue = versionCommand.ExecuteScalar();
+            if (versionValue == null || versionValue == DBNull.Value)
+            {
+                throw new InvalidDataException("The selected cache backup has no schema version marker.");
+            }
+
+            var version = Convert.ToInt32(versionValue);
+            if (version > CacheSchemaMigrator.CurrentVersion)
+            {
+                throw new InvalidDataException(
+                    $"The selected cache backup uses schema version {version}, which this application does not support.");
+            }
         }
 
         /// <summary>
@@ -242,8 +258,7 @@ namespace swgoh_command_bridge.Core.Database
         {
             if (!optionsBuilder.IsConfigured)
             {
-                var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                var appDir = Path.Combine(appData, "swgoh-command-bridge");
+                var appDir = AppDataPaths.ApplicationDirectory;
                 
                 if (!Directory.Exists(appDir))
                 {

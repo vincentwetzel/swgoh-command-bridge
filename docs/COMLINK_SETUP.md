@@ -17,7 +17,7 @@ progresso/swgoh-comlink:latest
 
 Verify that the container is running with `docker ps`. The application uses the proxy's HTTP API; it does not connect directly to game servers.
 
-The application defaults to `http://localhost:3000`. You can change the Comlink URL from the Settings screen and use Test Connection before syncing an account.
+The application defaults to `http://localhost:3000`. You can change the Comlink URL from the Settings screen and use Test Connection before syncing an account. Requests identify the client and request JSON responses; if a deployment places authentication in front of Comlink, provide it at that deployment boundary rather than in this application or its settings/transfer files. Sync accepts nine-digit ally codes and reports tolerated malformed or duplicate payload records after parsing, including malformed equipped-mod records and nested character display metadata when the response supplies them. It also attempts to enrich roster IDs from the `/metadata` endpoint; an unavailable metadata endpoint does not prevent the primary `/player` sync.
 
 ## Notes
 - Keep this service local; SWGOH Command Bridge is currently scoped as a read-only analysis tool.
@@ -25,12 +25,13 @@ The application defaults to `http://localhost:3000`. You can change the Comlink 
 - If the container already exists, restart it with `docker start swgoh-comlink`.
 - If the container was created with credentials, do not put those values in the repository or in screenshots. Stop and recreate the container to change them.
 - Player and metadata requests retry a small number of times for transient transport failures and HTTP 408, 429, and 5xx responses. Permanent client errors are reported immediately.
-- Community recommendation requests identify the client, use bounded retries, honor server-provided rate-limit delays, and propagate user cancellation. The optimizer keeps a seven-day freshness window and records the last refresh summary; contact metadata and parser hardening remain roadmap work.
-- The local SQLite cache is created on first launch. Existing caches receive compatible mod-stat columns and recommendation provenance columns through a transactional, idempotent compatibility migrator and record a supported cache schema version. Settings includes timestamped SQLite backup and integrity-checked restore commands plus a guarded reset that preserves settings. Thresholds can be transferred through the versioned JSON controls on the Thresholds screen; full settings-wide import/export and EF migration history are still planned.
+- Community recommendation requests identify the client, use bounded retries, honor server-provided rate-limit delays, propagate user cancellation, and report privacy-safe endpoint/failure reasons to the optimizer. The optimizer keeps a seven-day freshness window and records the last refresh summary; contact metadata and broader parser hardening remain roadmap work.
+- Local community scraping is an explicit Settings policy. Disabling it prevents new `swgoh.gg` requests while preserving cached recommendation data; this switch is the release boundary for a future central recommendation service.
+- The local SQLite cache is created on first launch. Existing compatible caches receive missing tables, columns, and recommendation provenance columns through a transactional, idempotent compatibility migrator and record a supported cache schema version. Settings includes timestamped SQLite backup and integrity-checked restore commands; restore is limited to the cache backup directory, unsupported future-schema backups are rejected before replacement, and guarded reset preserves settings. Thresholds and application settings can be transferred through versioned JSON controls; embedded URL credentials are excluded. Full EF migration history and richer profile management are still planned.
 
 ## Troubleshooting
 
-- **Test Connection fails:** Confirm the container is running, the configured URL includes the correct port, and no firewall or proxy blocks localhost.
-- **Sync fails:** Check the ally code and Comlink logs, then retry. A failed sync does not intentionally replace the last successful cache.
+- **Test Connection fails:** Confirm the container is running, the configured URL includes the correct port, and no firewall or proxy blocks localhost. HTTP 404 indicates an endpoint/version mismatch; HTTP 401/403 indicates a local service configuration issue.
+- **Sync fails:** Follow the categorized message in the Home screen and check the Comlink logs when indicated. A failed sync does not intentionally replace the last successful cache.
 - **The cache cannot open:** Use Diagnostics to capture the error and Settings to restore a verified backup or reset cached feature data. Reset does not remove JSON settings.
 - **Recommendation refresh is empty or partial:** This can indicate missing character cache data, stale or missing public pages, cancellation, or per-character request failures. Review the refresh summary and retry selectively.

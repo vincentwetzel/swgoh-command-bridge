@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 This unreleased work is not a packaged release. The product remains read-only and requires local Comlink configuration for live account sync.
 
 ### Added
+- Added ally-code validation, offline cached-account switching/removal, phased sync progress, tolerant parser diagnostics, optional Comlink metadata name enrichment, privacy-safe Comlink failure messages, and account-scoped cache refresh behavior.
+- Added cache recovery and support tooling: transactional schema repair, integrity-checked backup/restore, guarded cache reset, bounded diagnostic events, privacy-redacted diagnostic export, and versioned credential-safe settings transfer.
+- Added priority-roster assignment alternatives and consolidated swap candidates with explicit inventory, reservation, and conflict context.
 - Added a high-performance, non-allocating `OperationState` record struct in the Core layer to model explicit loading, empty, success, and error states across MVVM viewmodels.
 - Added comprehensive unit tests for `PlayerService` verifying live raw json parsing and synchronization pathways.
 - Added integration tests for `SettingsService` verifying atomic configuration storage and loaded fallbacks.
@@ -50,4 +53,4 @@ This unreleased work is not a packaged release. The product remains read-only an
 ### Changed
 - **Project Scope:** The primary goal has been refocused to be a **read-only** analysis and recommendation tool. Features related to direct account modification (e.g., equipping or upgrading mods) have been moved to stretch goals.
 - Documentation refreshed to identify `src/` as the compiled implementation and root-level C# files as retained historical drafts.
-- Documentation now reflects the active `src/` implementation, local cache/settings locations, recovery controls, privacy-redacted diagnostics, and the manual smoke-test gate.
+- Documentation now reflects the active `src/` implementation, account-scoped sync and offline cache behavior, local cache/settings locations, recovery controls, privacy-redacted diagnostics, recommendation scraping policy, release packaging guidance, and the manual smoke-test gate.

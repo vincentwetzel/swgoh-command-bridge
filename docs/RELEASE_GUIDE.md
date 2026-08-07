@@ -1,0 +1,66 @@
+# Release Guide
+
+This document defines the release targets and packaging policy for the read-only desktop application. It describes the commands the release operator should run; this repository change does not execute builds or publish artifacts.
+
+## Runtime matrix
+
+| Target | Runtime/package target | Status for this milestone | Notes |
+|---|---|---|---|
+| Windows x64 | `win-x64`, .NET 8 | Primary target | The Windows application manifest declares Windows 10 compatibility. Verify Windows 10 and 11 on a clean machine. |
+| Linux x64 | `linux-x64`, .NET 8 | Candidate target | Verify desktop dependencies and executable permissions on the chosen distribution before publishing. |
+| macOS x64 | `osx-x64`, .NET 8 | Candidate target | Verify windowing, local application-data paths, and Gatekeeper behavior before publishing. |
+| macOS arm64 | `osx-arm64`, .NET 8 | Candidate target | Verify native SQLite/Avalonia runtime assets on Apple Silicon. |
+
+The application must remain read-only against the game account on every target. Local SQLite and JSON cache/settings files are the only intended writes.
+
+## Framework-dependent publish
+
+Use this mode when the target machine is managed and has the matching .NET 8 desktop runtime installed. The examples use POSIX-style line continuation; in PowerShell, put the command on one line or replace each trailing `\` with a backtick:
+
+```text
+dotnet publish src/swgoh-command-bridge.UI/swgoh-command-bridge.UI.csproj \
+  --configuration Release \
+  --runtime win-x64 \
+  --self-contained false \
+  --output artifacts/publish/win-x64-framework-dependent
+```
+
+Replace `win-x64` with `linux-x64`, `osx-x64`, or `osx-arm64` after that target passes the manual smoke checklist.
+
+## Self-contained publish
+
+Use this mode for users who should not install .NET separately. It produces a larger artifact and still requires platform-specific manual verification. The same PowerShell line-continuation note applies:
+
+```text
+dotnet publish src/swgoh-command-bridge.UI/swgoh-command-bridge.UI.csproj \
+  --configuration Release \
+  --runtime win-x64 \
+  --self-contained true \
+  -p:PublishSingleFile=false \
+  -p:PublishTrimmed=false \
+  --output artifacts/publish/win-x64-self-contained
+```
+
+Trimming stays disabled until a release-specific test confirms that Avalonia XAML, EF Core, SQLite, and the view-model locator survive trimming. Single-file packaging is also deferred until native runtime loading has been verified for each target.
+
+## Upgrade and recovery policy
+
+1. Before upgrading, use Settings to create a timestamped cache backup.
+2. Keep the existing `SWGOHCommandBridge` application-data directory. Settings, cache, diagnostics, and backups share this case-stable platform-local directory and are not part of the published output.
+3. On first launch after an upgrade, startup applies the transactional compatibility pass and records the resulting schema version.
+4. If startup cannot initialize the cache, use the visible retry action, restore a verified backup, or reset the cache. Reset preserves JSON settings.
+5. A backup created by a newer unsupported schema is rejected before it can replace the active cache.
+6. Do not delete the previous release or its application-data directory until the upgraded build passes the smoke checklist.
+
+There is no automatic in-place rollback. The release operator owns artifact retention and should preserve the previous installer/publish directory until upgrade verification is complete.
+
+## Release gate
+
+The following are required before publishing an artifact:
+
+- `dotnet restore`, build, and test pass for the solution.
+- The release build/test commands use a writable temporary directory when the host environment does not permit MSBuild to write to its default temp location.
+- The target-specific publish command completes without warnings that affect runtime loading.
+- The fresh-install, populated-cache, offline, malformed-cache, backup/restore, and read-only scenarios in [SMOKE_TEST_CHECKLIST.md](SMOKE_TEST_CHECKLIST.md) pass.
+- The published directory contains the UI executable, Core assembly, Avalonia assets, SQLite provider assets, and all required runtime files.
+- The Comlink setup and support documentation names the exact artifact version and target runtime.

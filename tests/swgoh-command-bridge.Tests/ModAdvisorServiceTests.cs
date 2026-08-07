@@ -81,7 +81,7 @@ namespace swgoh_command_bridge.Tests
 
             // Assert
             Assert.Equal(ModRecommendationAction.Sell, recommendation.Action);
-            Assert.Contains("maximum potential Speed", recommendation.Reason);
+            Assert.Contains("can reach at most", recommendation.Reason);
         }
 
         [Fact]

@@ -16,28 +16,14 @@ namespace swgoh_command_bridge.Tests
     /// </summary>
     public class SettingsServiceTests : IDisposable
     {
-        private readonly string _appData;
         private readonly string _settingsDirectory;
-        private readonly string _settingsFilePath;
-        private readonly string _backupFilePath;
 
         public SettingsServiceTests()
         {
-            _appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            _settingsDirectory = Path.Combine(_appData, "SWGOHCommandBridge");
-            _settingsFilePath = Path.Combine(_settingsDirectory, "settings.json");
-            _backupFilePath = Path.Combine(_settingsDirectory, "settings.json.bak_test");
-
-            // Safe backup of any existing live settings
-            if (File.Exists(_settingsFilePath))
-            {
-                if (!Directory.Exists(_settingsDirectory))
-                {
-                    Directory.CreateDirectory(_settingsDirectory);
-                }
-                File.Copy(_settingsFilePath, _backupFilePath, overwrite: true);
-                File.Delete(_settingsFilePath);
-            }
+            _settingsDirectory = Path.Combine(
+                Path.GetTempPath(),
+                "swgoh-command-bridge-settings-tests",
+                Guid.NewGuid().ToString("N"));
         }
 
         [Fact]
@@ -48,7 +34,9 @@ namespace swgoh_command_bridge.Tests
             {
                 File.Delete(_settingsFilePath);
             }
-            var service = new SettingsService(NullLogger<SettingsService>.Instance);
+            var service = new SettingsService(
+                NullLogger<SettingsService>.Instance,
+                _settingsDirectory);
 
             // Act
             await service.LoadSettingsAsync();
@@ -63,7 +51,9 @@ namespace swgoh_command_bridge.Tests
         public async Task SaveSettingsAsync_WhenInvoked_PersistsSettingsCorrectly()
         {
             // Arrange
-            var service = new SettingsService(NullLogger<SettingsService>.Instance);
+            var service = new SettingsService(
+                NullLogger<SettingsService>.Instance,
+                _settingsDirectory);
             var customSettings = new AppSettings(
                 ComlinkBaseUrl: "http://192.168.1.50:3000",
                 DefaultAllyCode: "111222333",
@@ -80,7 +70,9 @@ namespace swgoh_command_bridge.Tests
             await service.SaveSettingsAsync(customSettings);
 
             // Force a reload on a new service instance to ensure persistence
-            var readerService = new SettingsService(NullLogger<SettingsService>.Instance);
+            var readerService = new SettingsService(
+                NullLogger<SettingsService>.Instance,
+                _settingsDirectory);
             await readerService.LoadSettingsAsync();
 
             // Assert
@@ -97,8 +89,10 @@ namespace swgoh_command_bridge.Tests
 
         public void Dispose()
         {
-            if (File.Exists(_settingsFilePath)) File.Delete(_settingsFilePath);
-            if (File.Exists(_backupFilePath)) File.Copy(_backupFilePath, _settingsFilePath, overwrite: true);
+            if (Directory.Exists(_settingsDirectory))
+            {
+                Directory.Delete(_settingsDirectory, recursive: true);
+            }
         }
     }
 }

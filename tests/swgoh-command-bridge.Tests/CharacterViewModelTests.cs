@@ -1,0 +1,120 @@
+#nullable enable
+
+using System;
+using System.Threading.Tasks;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using swgoh_command_bridge.Core.Database;
+using swgoh_command_bridge.Core.Database.Entities;
+using swgoh_command_bridge.Core.Models;
+using swgoh_command_bridge.UI.ViewModels;
+using Xunit;
+
+namespace swgoh_command_bridge.Tests;
+
+public sealed class CharacterViewModelTests : IDisposable
+{
+    private readonly SqliteConnection _connection;
+    private readonly AppDbContext _context;
+
+    public CharacterViewModelTests()
+    {
+        _connection = new SqliteConnection("Data Source=:memory:");
+        _connection.Open();
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlite(_connection)
+            .Options;
+        _context = new AppDbContext(options);
+        _context.Database.EnsureCreated();
+    }
+
+    [Fact]
+    public async Task CharactersViewModel_LoadsOnlyTheActiveAccountScope()
+    {
+        await SeedPlayersAsync();
+        var viewModel = new CharactersViewModel(_context, () => "123456789");
+
+        await viewModel.LoadCharactersAsync();
+
+        var character = Assert.Single(viewModel.Characters);
+        Assert.Equal("ACTIVE", character.Id);
+        Assert.Equal(OperationStatus.Success, viewModel.State.Status);
+    }
+
+    [Fact]
+    public async Task CharactersViewModel_WithEmptyActiveScopeDoesNotShowOtherAccounts()
+    {
+        await SeedPlayersAsync();
+        var viewModel = new CharactersViewModel(_context, () => string.Empty);
+
+        await viewModel.LoadCharactersAsync();
+
+        Assert.Empty(viewModel.Characters);
+        Assert.Equal(OperationStatus.Empty, viewModel.State.Status);
+    }
+
+    [Fact]
+    public async Task CharacterPrioritiesViewModel_ValidatesAndPersistsPriorityChanges()
+    {
+        await SeedPlayersAsync();
+        var viewModel = new CharacterPrioritiesViewModel(_context, () => "123456789");
+        await viewModel.LoadCharactersAsync();
+
+        var character = Assert.Single(viewModel.Characters);
+        viewModel.SelectedCharacter = character;
+        viewModel.SelectedCharacterPriority = 101;
+        await viewModel.SavePriorityCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.HasValidationError);
+        Assert.Contains("between 0 and 100", viewModel.ValidationError);
+
+        viewModel.SelectedCharacterPriority = 80;
+        await viewModel.SavePriorityCommand.ExecuteAsync(null);
+
+        var persisted = await _context.Characters
+            .SingleAsync(item => item.Id == "ACTIVE" && item.PlayerAllyCode == "123456789");
+        Assert.Equal(80, persisted.Priority);
+        Assert.False(viewModel.HasValidationError);
+    }
+
+    private async Task SeedPlayersAsync()
+    {
+        _context.Players.Add(new PlayerEntity
+        {
+            AllyCode = "123456789",
+            Name = "Active",
+            Characters =
+            {
+                new CharacterEntity
+                {
+                    Id = "ACTIVE",
+                    PlayerAllyCode = "123456789",
+                    Name = "Active Character",
+                    Priority = 10
+                }
+            }
+        });
+        _context.Players.Add(new PlayerEntity
+        {
+            AllyCode = "987654321",
+            Name = "Other",
+            Characters =
+            {
+                new CharacterEntity
+                {
+                    Id = "OTHER",
+                    PlayerAllyCode = "987654321",
+                    Name = "Other Character",
+                    Priority = 90
+                }
+            }
+        });
+        await _context.SaveChangesAsync();
+    }
+
+    public void Dispose()
+    {
+        _context.Dispose();
+        _connection.Dispose();
+    }
+}
