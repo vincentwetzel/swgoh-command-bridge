@@ -10,12 +10,12 @@
       <Button Content="Optimize roster" Command="{Binding OptimizeRosterCommand}" VerticalAlignment="Center"/>
     </StackPanel>
 
-    <Grid Grid.Row="1" ColumnDefinitions="260, *" ColumnSpacing="16">
+    <Grid Grid.Row="1" ColumnDefinitions="260, *">
       <Border BorderBrush="#555555" BorderThickness="1" CornerRadius="6">
         <ListBox ItemsSource="{Binding Characters}" SelectedItem="{Binding SelectedCharacter}">
           <ListBox.ItemTemplate>
             <DataTemplate>
-              <StackPanel Padding="8" Spacing="3">
+              <StackPanel Spacing="3">
                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
                 <TextBlock Text="{Binding Priority, StringFormat='Priority: {0}'}" Foreground="Gray"/>
               </StackPanel>
@@ -49,7 +49,7 @@
             <ListBox ItemsSource="{Binding RecommendedLoadout}">
               <ListBox.ItemTemplate>
                 <DataTemplate>
-                  <Grid ColumnDefinitions="100, *, Auto" Padding="6" ColumnSpacing="12">
+                  <Grid ColumnDefinitions="100, *, Auto">
                     <TextBlock Text="{Binding Slot, StringFormat='Slot {0}'}"/>
                     <TextBlock Grid.Column="1" Text="{Binding PrimaryStatType}"/>
                     <TextBlock Grid.Column="2" Text="{Binding Id}"/>

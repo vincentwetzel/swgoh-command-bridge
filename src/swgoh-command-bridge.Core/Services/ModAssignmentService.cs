@@ -1029,7 +1029,9 @@ namespace swgoh_command_bridge.Core.Services
             }
 
             var normalizedName = statName.Trim();
-            totals[normalizedName] = totals.GetValueOrDefault(normalizedName) + value;
+            totals[normalizedName] = totals.TryGetValue(normalizedName, out var existing)
+                ? existing + value
+                : value;
         }
 
         private static ModAssignmentExplanation BuildExplanation(

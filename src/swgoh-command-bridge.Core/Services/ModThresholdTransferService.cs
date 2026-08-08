@@ -130,7 +130,7 @@ public sealed class ModThresholdTransferService
             // Version 0 exports were plain arrays of threshold settings.
         }
 
-        var legacySettings = JsonSerializer.Deserialize<List<ModUpgradeThresholdSetting>(json, SerializerOptions);
+        var legacySettings = JsonSerializer.Deserialize<List<ModUpgradeThresholdSetting>>(json, SerializerOptions);
         return legacySettings ?? throw new InvalidDataException("The threshold file is empty or invalid.");
     }
 

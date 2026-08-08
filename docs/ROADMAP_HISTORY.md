@@ -10,6 +10,7 @@ This document records the implementation work verified during the roadmap audit.
 - The explicit composition root wires settings, database, logging, HTTP/Comlink, repositories, sync, scraper, advisor, and assignment services.
 - Startup creates or repairs the local schema through a transactional, versioned SQLite compatibility migrator with retryable errors, rollback, backup, restore, and isolated migration coverage.
 - Cache, settings, diagnostics, and backup paths are centralized and documented.
+- Windows x64 startup can reuse a healthy local Comlink, download pinned compatible releases, verify supplied digests, report progress, and stop the process owned by the application; other platforms use an external endpoint.
 - Runtime sample data and legacy demo dependencies were removed.
 
 ## Shell, navigation, and state
@@ -64,5 +65,5 @@ This document records the implementation work verified during the roadmap audit.
 - Migration coverage includes schema versions 0–5, repair, rollback, idempotence, unsupported versions, backup, and restore using isolated databases.
 - Diagnostics capture bounded privacy-safe events and redact ally codes/account payloads.
 - Crash-safe cache recovery, guarded reset, verified restore rollback, and offline behavior are implemented.
-- README, architecture, state-flow, Comlink setup, file manifest, release guide, and coding standards reflect the shipped behavior.
+- README, architecture, state-flow, Comlink setup, diagnostics, file manifest, release guide, and coding standards reflect the shipped behavior and platform support boundary.
 - The read-only boundary is documented in the README, specification, and smoke checklist.

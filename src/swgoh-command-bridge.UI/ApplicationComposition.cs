@@ -2,6 +2,8 @@
 
 using System;
 using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
 using swgoh_command_bridge.Core.Database;
 using swgoh_command_bridge.Core.Database.Repositories;
 using swgoh_command_bridge.Core.Models;
@@ -21,6 +23,7 @@ public sealed class ApplicationComposition : IDisposable
         AppDbContext database,
         ISettingsService settings,
         HttpClient comlinkClient,
+        IComlinkRuntimeManager comlinkRuntimeManager,
         IComlinkService comlinkService,
         IPlayerService playerService,
         IPlayerRepository playerRepository,
@@ -34,6 +37,7 @@ public sealed class ApplicationComposition : IDisposable
         Settings = settings;
         EventLog = eventLog;
         ComlinkClient = comlinkClient;
+        ComlinkRuntimeManager = comlinkRuntimeManager;
         ComlinkService = comlinkService;
         PlayerService = playerService;
         PlayerRepository = playerRepository;
@@ -50,6 +54,8 @@ public sealed class ApplicationComposition : IDisposable
     public DiagnosticEventLog EventLog { get; }
 
     public HttpClient ComlinkClient { get; }
+
+    public IComlinkRuntimeManager ComlinkRuntimeManager { get; }
 
     public IComlinkService ComlinkService { get; }
 
@@ -69,7 +75,8 @@ public sealed class ApplicationComposition : IDisposable
     public static ApplicationComposition CreateDefault(
         AppDbContext? database = null,
         ISettingsService? settingsService = null,
-        IPlayerService? playerServiceOverride = null)
+        IPlayerService? playerServiceOverride = null,
+        IComlinkRuntimeManager? comlinkRuntimeManagerOverride = null)
     {
         var resolvedDatabase = database ?? new AppDbContext();
         var eventLog = new DiagnosticEventLog();
@@ -83,6 +90,10 @@ public sealed class ApplicationComposition : IDisposable
         {
             BaseAddress = new Uri(GetSafeComlinkUrl(settings.CurrentSettings.ComlinkBaseUrl), UriKind.Absolute)
         };
+        var comlinkRuntimeManager = comlinkRuntimeManagerOverride ??
+            (database == null
+                ? new ComlinkRuntimeManager()
+                : NullComlinkRuntimeManager.Instance);
         var comlinkService = new ComlinkService(
             comlinkClient,
             new DiagnosticLogger<ComlinkService>(eventLog));
@@ -111,6 +122,7 @@ public sealed class ApplicationComposition : IDisposable
             resolvedDatabase,
             settings,
             comlinkClient,
+            comlinkRuntimeManager,
             comlinkService,
             playerService,
             playerRepository,
@@ -129,11 +141,25 @@ public sealed class ApplicationComposition : IDisposable
         }
 
         _disposed = true;
+        ComlinkRuntimeManager.Dispose();
         ComlinkClient.Dispose();
         if (_ownsDatabase)
         {
             Database.Dispose();
         }
+    }
+
+    public async Task<ComlinkRuntimeResult> EnsureComlinkReadyAsync(
+        IProgress<ComlinkRuntimeProgress>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        var requestedAddress = ComlinkClient.BaseAddress ?? new Uri("http://localhost:3000/");
+        var result = await ComlinkRuntimeManager.EnsureReadyAsync(
+            requestedAddress,
+            progress,
+            cancellationToken).ConfigureAwait(false);
+        ComlinkClient.BaseAddress = result.BaseAddress;
+        return result;
     }
 
     private static string GetSafeComlinkUrl(string configuredUrl)

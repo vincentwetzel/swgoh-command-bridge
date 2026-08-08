@@ -1,17 +1,17 @@
 # Release Guide
 
-This document defines the release targets and packaging policy for the read-only desktop application. It describes the commands the release operator should run; this repository change does not execute builds or publish artifacts.
+This document defines the release targets and packaging policy for the read-only desktop application. It describes the commands the release operator should run; this repository change does not execute builds or publish artifacts. The UI/Core code can target multiple desktop platforms, while automatic Comlink installation is currently Windows x64-only.
 
 The implementation audit is complete. Release readiness still requires a successful solution build/test run, target-specific publish verification, and the manual scenarios in [SMOKE_TEST_CHECKLIST.md](SMOKE_TEST_CHECKLIST.md). Record those results with the artifact version and target before removing the corresponding gates from `TODO.md`.
 
 ## Runtime matrix
 
-| Target | Runtime/package target | Status for this milestone | Notes |
+| Target | Runtime/package target | Status for this milestone | Comlink setup |
 |---|---|---|---|
-| Windows x64 | `win-x64`, .NET 8 | Primary target | The Windows application manifest declares Windows 10 compatibility. Verify Windows 10 and 11 on a clean machine. |
-| Linux x64 | `linux-x64`, .NET 8 | Candidate target | Verify desktop dependencies and executable permissions on the chosen distribution before publishing. |
-| macOS x64 | `osx-x64`, .NET 8 | Candidate target | Verify windowing, local application-data paths, and Gatekeeper behavior before publishing. |
-| macOS arm64 | `osx-arm64`, .NET 8 | Candidate target | Verify native SQLite/Avalonia runtime assets on Apple Silicon. |
+| Windows x64 | `win-x64`, .NET 8 | Primary target | Managed Comlink setup uses pinned releases `4.4.0`, then `4.2.0`. The application manifest declares Windows 10 compatibility; verify Windows 10 and 11. |
+| Linux x64 | `linux-x64`, .NET 8 | Candidate target | Provide and verify an externally managed Comlink endpoint; also verify desktop dependencies and executable permissions. |
+| macOS x64 | `osx-x64`, .NET 8 | Candidate target | Provide and verify an externally managed Comlink endpoint; also verify windowing, local application-data paths, and Gatekeeper behavior. |
+| macOS arm64 | `osx-arm64`, .NET 8 | Candidate target | Provide and verify an externally managed Comlink endpoint; also verify native SQLite/Avalonia runtime assets on Apple Silicon. |
 
 The application must remain read-only against the game account on every target. Local SQLite and JSON cache/settings files are the only intended writes.
 
@@ -27,7 +27,7 @@ dotnet publish src/swgoh-command-bridge.UI/swgoh-command-bridge.UI.csproj \
   --output artifacts/publish/win-x64-framework-dependent
 ```
 
-Replace `win-x64` with `linux-x64`, `osx-x64`, or `osx-arm64` after that target passes the manual smoke checklist.
+Replace `win-x64` with `linux-x64`, `osx-x64`, or `osx-arm64` after that target passes the manual smoke checklist. Non-Windows packages must document the externally managed Comlink prerequisite.
 
 ## Self-contained publish
 
@@ -66,4 +66,4 @@ The following are required before publishing an artifact:
 - The target-specific publish command completes without warnings that affect runtime loading.
 - The fresh-install, populated-cache, offline, malformed-cache, backup/restore, and read-only scenarios in [SMOKE_TEST_CHECKLIST.md](SMOKE_TEST_CHECKLIST.md) pass.
 - The published directory contains the UI executable, Core assembly, Avalonia assets, SQLite provider assets, and all required runtime files.
-- The Comlink setup and support documentation names the exact artifact version and target runtime.
+- Windows documentation identifies the managed Comlink release sequence and target architecture; non-Windows documentation identifies the external Comlink prerequisite.

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.Sqlite;
 using swgoh_command_bridge.Core.Database.Entities;
+using swgoh_command_bridge.Core.Models;
 
 namespace swgoh_command_bridge.Core.Database
 {

@@ -35,7 +35,7 @@ The current release target is read-only. Any feature that changes the game accou
 -   **Upgrade/Swap/Sell Logic:** Based on these thresholds, the system provides recommendations for each mod. It evaluates upgrade and slice potential first, then considers a faster compatible swap against prioritized equipped characters, and finally returns sell when no actionable recommendation applies. These are recommendations only; no game action is performed.
 
 ### 2.4. User Experience
--   **Cross-Platform:** The application must run natively on Windows, macOS, and Linux.
+-   **Desktop targets:** Avalonia and the Core library are intended for Windows, macOS, and Linux. Windows x64 is the primary verified target and the only target with automatic Comlink installation; other platforms require an externally managed Comlink endpoint until their release artifacts and smoke tests are verified.
 -   **Responsive UI:** The user interface should be clean, intuitive, and responsive, capable of handling and displaying large amounts of data without performance degradation.
 
 ### 2.5. Recovery and support
@@ -55,10 +55,10 @@ The current release target is read-only. Any feature that changes the game accou
 -   **UI:** Avalonia UI
 -   **Architecture:** Model-View-ViewModel (MVVM)
 -   **Local Database:** SQLite (via Entity Framework Core)
--   **Game API:** `swgoh-comlink` (via local HTTP calls)
+-   **Game API:** `swgoh-comlink` (via configured HTTP calls; Windows x64 can manage the default local runtime)
 -   **Community Data:** Public `swgoh.gg` pages via remote HTTP calls and HTML parsing
 
-The compiled implementation lives under `src/`; root-level C# files are retained historical drafts. The application is composed as a desktop process with no scheduled background worker: sync and recommendation refreshes begin only from explicit user actions.
+The compiled implementation lives under `src/`; root-level C# files are retained historical drafts. The application is composed as a desktop process with no scheduled background worker: sync and recommendation refreshes begin only from explicit user actions. On supported Windows x64 startup, the composition root may own a downloaded Comlink child process for the lifetime of the desktop process.
 
 ## 5. Data and privacy boundary
 - Account payloads and recommendation cache data remain local unless the user separately operates the configured Comlink or public recommendation requests.

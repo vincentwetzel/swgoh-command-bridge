@@ -24,7 +24,7 @@ namespace swgoh_command_bridge.Core.Services
             _mechanicsService = mechanicsService;
         }
 
-        public Task<ModRecommendation> AnalyzeModAsync(
+        public async Task<ModRecommendation> AnalyzeModAsync(
             GameMod mod,
             ModUpgradeThreshold threshold,
             IEnumerable<Character> characters,

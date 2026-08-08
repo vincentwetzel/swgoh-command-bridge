@@ -41,10 +41,12 @@ namespace swgoh_command_bridge.Core.Services
 
             _logger.LogInformation("Fetching raw player data for ally code {AllyCode}", allyCode);
 
-            var payload = new PlayerRequestPayload(allyCode);
+            var payload = new PlayerRequestEnvelope(
+                new PlayerRequestPayload(allyCode),
+                Enums: false);
             var serializedPayload = JsonSerializer.Serialize(
                 payload,
-                ComlinkSourceGenerationContext.Default.PlayerRequestPayload);
+                ComlinkSourceGenerationContext.Default.PlayerRequestEnvelope);
 
             try
             {
@@ -67,9 +69,16 @@ namespace swgoh_command_bridge.Core.Services
 
             try
             {
+                var payload = new MetadataRequestEnvelope(
+                    new MetadataRequestPayload(),
+                    Enums: false);
+                var serializedPayload = JsonSerializer.Serialize(
+                    payload,
+                    ComlinkSourceGenerationContext.Default.MetadataRequestEnvelope);
+
                 return await PostForStringAsync(
                     "/metadata",
-                    null,
+                    serializedPayload,
                     cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
@@ -159,7 +168,16 @@ namespace swgoh_command_bridge.Core.Services
 
     internal record PlayerRequestPayload(string AllyCode);
 
+    internal record PlayerRequestEnvelope(PlayerRequestPayload Payload, bool Enums);
+
+    internal record MetadataRequestPayload;
+
+    internal record MetadataRequestEnvelope(MetadataRequestPayload Payload, bool Enums);
+
     [JsonSerializable(typeof(PlayerRequestPayload))]
+    [JsonSerializable(typeof(PlayerRequestEnvelope))]
+    [JsonSerializable(typeof(MetadataRequestEnvelope))]
+    [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
     internal partial class ComlinkSourceGenerationContext : JsonSerializerContext
     {
     }

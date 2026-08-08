@@ -35,6 +35,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private string _activeCacheFreshnessText = "Sync freshness is unavailable for the active cache.";
     private string _activeSyncOutcomeText = "No sync attempt is recorded for the active account.";
     private string _nextStepText = "Enter a nine-digit ally code or choose a cached account to begin.";
+    private string _startupProgressText = string.Empty;
+    private double _startupProgressPercent;
+    private bool _startupProgressIndeterminate;
     private int _activeCharacterCount;
     private int _activeModCount;
     private bool _isActiveCacheStale;
@@ -307,9 +310,58 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
+        await PrepareComlinkAsync();
         await LoadCachedAccountsAsync();
         await LoadFeatureDataAsync();
     }
+
+    public string StartupProgressText
+    {
+        get => _startupProgressText;
+        private set
+        {
+            if (_startupProgressText == value)
+            {
+                return;
+            }
+
+            _startupProgressText = value;
+            OnPropertyChanged(nameof(StartupProgressText));
+            OnPropertyChanged(nameof(HasStartupProgress));
+        }
+    }
+
+    public double StartupProgressPercent
+    {
+        get => _startupProgressPercent;
+        private set
+        {
+            if (Math.Abs(_startupProgressPercent - value) < 0.01)
+            {
+                return;
+            }
+
+            _startupProgressPercent = value;
+            OnPropertyChanged(nameof(StartupProgressPercent));
+        }
+    }
+
+    public bool IsStartupProgressIndeterminate
+    {
+        get => _startupProgressIndeterminate;
+        private set
+        {
+            if (_startupProgressIndeterminate == value)
+            {
+                return;
+            }
+
+            _startupProgressIndeterminate = value;
+            OnPropertyChanged(nameof(IsStartupProgressIndeterminate));
+        }
+    }
+
+    public bool HasStartupProgress => !string.IsNullOrWhiteSpace(StartupProgressText);
 
     public OperationState<bool> StartupState
     {
@@ -493,6 +545,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
         try
         {
+            await _composition.EnsureComlinkReadyAsync(
+                new Progress<ComlinkRuntimeProgress>(update => SyncProgressText = update.Message),
+                _syncCancellation.Token);
             var profile = await _playerService.SyncPlayerProfileAsync(
                 allyCode,
                 _syncCancellation.Token,
@@ -545,7 +600,7 @@ public partial class MainWindowViewModel : ViewModelBase
         try
         {
             _context.InitializeDatabase();
-            StartupState = OperationState<bool>.ToSuccess(true);
+            await PrepareComlinkAsync();
             await LoadCachedAccountsAsync();
             await LoadFeatureDataAsync();
         }
@@ -554,6 +609,45 @@ public partial class MainWindowViewModel : ViewModelBase
             _composition.EventLog.Error("startup-retry", "Local cache retry failed.");
             StartupState = OperationState<bool>.ToError(
                 $"Local cache initialization failed: {ex.Message}");
+        }
+    }
+
+    private async Task PrepareComlinkAsync()
+    {
+        StartupState = OperationState<bool>.ToLoading();
+        StartupProgressText = "Preparing the account service...";
+        StartupProgressPercent = 0;
+        IsStartupProgressIndeterminate = true;
+
+        try
+        {
+            var progress = new Progress<ComlinkRuntimeProgress>(update =>
+            {
+                StartupProgressText = update.Message;
+                if (update.Percent.HasValue)
+                {
+                    StartupProgressPercent = update.Percent.Value;
+                    IsStartupProgressIndeterminate = false;
+                }
+                else
+                {
+                    IsStartupProgressIndeterminate = true;
+                }
+            });
+
+            await _composition.EnsureComlinkReadyAsync(progress).ConfigureAwait(true);
+            StartupState = OperationState<bool>.ToSuccess(true);
+        }
+        catch (Exception ex)
+        {
+            _composition.EventLog.Error("startup-comlink", "Account service setup failed.");
+            StartupState = OperationState<bool>.ToError(
+                $"Account service setup failed: {ex.Message} Cached data remains available offline.");
+        }
+        finally
+        {
+            StartupProgressText = string.Empty;
+            IsStartupProgressIndeterminate = false;
         }
     }
 
@@ -838,6 +932,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private async Task TestComlinkAsync()
     {
+        await _composition.EnsureComlinkReadyAsync();
         await _composition.ComlinkService.FetchMetaDataRawAsync();
     }
 

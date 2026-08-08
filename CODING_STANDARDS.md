@@ -79,13 +79,13 @@ To ensure consistency and maintainability, all code contributed to this project 
 - **Event Unsubscriptions:** Always unsubscribe from events or use weak event patterns to prevent memory leaks when binding short-lived objects (Views/ViewModels) to long-lived services.
 
 ## 11. Network & API Communication
-- **HttpClient Lifetime:** Never instantiate `HttpClient` directly via `new HttpClient()`. Use `IHttpClientFactory` or typed Dependency Injection clients to prevent socket exhaustion and respect DNS changes.
+- **HttpClient Lifetime:** Never instantiate short-lived `HttpClient` objects per request. Use `IHttpClientFactory`, typed clients, or a deliberately owned long-lived client such as the process-lifetime Comlink runtime manager uses.
 - **Resilience & Timeouts:** Always configure reasonable timeouts on outgoing HTTP calls. Implement exponential backoff retry policies (e.g., using Polly) for external API scraping to handle transient network issues cleanly without overloading the target servers.
 
 ## 12. Database (SQLite & EF Core) Guidelines
 - **Asynchronous Operations:** Always use asynchronous EF Core APIs (e.g., `SaveChangesAsync`, `ToListAsync`, `FirstOrDefaultAsync`) to ensure the UI remains fully responsive during database operations.
 - **No-Tracking for Read-Only Queries:** Use `.AsNoTracking()` for queries where the returned entities will not be modified. This improves performance and reduces memory consumption.
-- **Migration Safety:** Ensure database schema changes are managed via explicit, versioned migrations. Apply pending migrations automatically on application startup only if safe, or handle them via an explicit initialization phase.
+- **Migration Safety:** Ensure database schema changes are managed via explicit, versioned migrations or an equivalent transactional compatibility migrator. This repository uses `CacheSchemaMigrator` during startup to repair supported SQLite cache versions with rollback protection; changes must remain idempotent and reject unsupported future versions.
 
 ## 13. Security & Secrets Management
 - **No Hardcoded Secrets:** Never hardcode API keys, developer credentials, or user-session identifiers in the source code. Use configuration files, environment variables, or platform-specific secure storage (such as the OS credential manager).
@@ -183,3 +183,8 @@ To ensure consistency and maintainability, all code contributed to this project 
 - **No account writes:** Core and UI code may read through Comlink and calculate recommendations, but must not expose commands that equip, upgrade, slice, sell, or otherwise mutate game-account data.
 - **Redacted diagnostics:** Never write raw account payloads, access keys, session values, or full ally codes to logs or exported diagnostics. Prefer aggregate counts and masked identifiers.
 - **Cache recovery safety:** Backup and restore operations must validate the SQLite file before replacing the active cache. Reset must preserve JSON settings unless the user explicitly requests settings removal.
+
+## 30. Repository-specific release constraints
+- **Managed Comlink scope:** Automatic Comlink installation is currently limited to 64-bit Windows. Other platforms must use a configured external endpoint until their runtime workflow is verified.
+- **Packaging:** Keep trimming, single-file publishing, and Native AOT disabled unless a release-specific test proves Avalonia XAML, EF Core, SQLite, native assets, and the view-model locator still work.
+- **Desktop lifecycle:** The composition root owns long-lived services and any managed Comlink child process. Do not add scheduled sync or background scraping without updating `docs/AGENTS.md`, `docs/STATE_FLOW.md`, privacy boundaries, and the smoke checklist.

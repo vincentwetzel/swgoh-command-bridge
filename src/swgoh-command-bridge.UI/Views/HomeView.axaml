@@ -17,7 +17,7 @@
           <TextBlock Text="Refresh is recommended before relying on this cache for current recommendations."
                      IsVisible="{Binding IsActiveCacheStale}" TextWrapping="Wrap" Foreground="#FFCC80"/>
           <TextBlock Text="{Binding NextStepText}" TextWrapping="Wrap" Foreground="Gray"/>
-          <Grid ColumnDefinitions="Auto, Auto, Auto, *" ColumnSpacing="8" IsVisible="{Binding HasActiveCache}">
+          <Grid ColumnDefinitions="Auto, Auto, Auto, *" IsVisible="{Binding HasActiveCache}">
             <Button Grid.Column="0" Content="Inspect characters" Command="{Binding GoToCharactersCommand}" Padding="12,7"/>
             <Button Grid.Column="1" Content="Inspect mods" Command="{Binding GoToModsCommand}" Padding="12,7"/>
             <Button Grid.Column="2" Content="Open optimizer" Command="{Binding GoToOptimizerCommand}" Padding="12,7"/>
@@ -29,7 +29,7 @@
         <StackPanel Spacing="12">
           <TextBlock Text="Account sync" FontSize="20" FontWeight="SemiBold"/>
           <TextBlock Text="Comlink ally code"/>
-          <Grid ColumnDefinitions="*, Auto" ColumnSpacing="10">
+          <Grid ColumnDefinitions="*, Auto">
             <TextBox Grid.Column="0" Text="{Binding AllyCode}" Watermark="123456789"/>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
               <Button Content="Sync account" Command="{Binding SyncCommand}" Padding="18,8"/>
@@ -48,7 +48,7 @@
           <TextBlock Text="No cached accounts match this filter."
                      IsVisible="{Binding HasNoVisibleCachedAccounts}"
                      Foreground="#FFCC80"/>
-          <Grid ColumnDefinitions="*, Auto" ColumnSpacing="10" IsVisible="{Binding HasVisibleCachedAccounts}">
+          <Grid ColumnDefinitions="*, Auto" IsVisible="{Binding HasVisibleCachedAccounts}">
             <ComboBox Grid.Column="0"
                       ItemsSource="{Binding VisibleCachedAccounts}"
                       SelectedItem="{Binding SelectedCachedAccount}"
@@ -66,8 +66,7 @@
           </Grid>
           <CheckBox Content="I understand this removes the cached roster and mod data for the selected account."
                     IsChecked="{Binding ConfirmAccountRemoval}"
-                    IsVisible="{Binding HasCachedAccounts}"
-                    TextWrapping="Wrap"/>
+                    IsVisible="{Binding HasCachedAccounts}"/>
           <Button Content="Remove selected cached account"
                   Command="{Binding RemoveCachedAccountCommand}"
                   IsVisible="{Binding HasCachedAccounts}"

@@ -21,6 +21,8 @@ public static class AppDataPaths
 
     public static string DiagnosticsDirectory => Path.Combine(ApplicationDirectory, "diagnostics");
 
+    public static string ComlinkDirectory => Path.Combine(ApplicationDirectory, "comlink");
+
     private static string GetLocalApplicationDataRoot()
     {
         var localApplicationData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);

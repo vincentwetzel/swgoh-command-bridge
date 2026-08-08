@@ -7,10 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-This unreleased work is not a packaged release. The product remains read-only and requires local Comlink configuration for live account sync.
+This unreleased work is not a packaged release. The product remains read-only. Windows x64 can manage the local Comlink runtime; other platforms and externally managed deployments require a configured Comlink endpoint.
 
 ### Added
 - Added bounded per-account sync history for completed, failed, cancelled, and interrupted attempts, including privacy-safe status, counts, warning totals, and failure summaries in Diagnostics and Home.
+- Added a Windows x64 Comlink runtime manager that downloads pinned compatible releases, verifies supplied SHA-256 digests, starts a hidden local process, reports startup progress, reuses installed binaries, and stops owned processes on application shutdown.
 - Added explicit Dark/Light/System theme handling that is normalized and applied at startup, save, and settings import.
 - Added bounded joint roster assignment planning with one-time mod reservations, conflict reporting, consolidated swap candidates, and conservative persisted mod-stat projections.
 - Added configurable scraper retry/backoff/pacing policy with `Retry-After` support, response-size limits, cancellation propagation, optional contact metadata, and an explicit local scraping policy.
@@ -58,6 +59,7 @@ This unreleased work is not a packaged release. The product remains read-only an
 - **Project Scope:** The primary goal has been refocused to be a **read-only** analysis and recommendation tool. Features related to direct account modification (e.g., equipping or upgrading mods) have been moved to stretch goals.
 - Documentation refreshed to identify `src/` as the compiled implementation and root-level C# files as retained historical drafts.
 - Documentation now reflects the active `src/` implementation, account-scoped sync and offline cache behavior, local cache/settings locations, recovery controls, privacy-redacted diagnostics, recommendation scraping policy, release packaging guidance, and the manual smoke-test gate.
+- Documentation now distinguishes cross-platform UI/Core targets from the Windows x64-only automatic Comlink setup and records the external-service requirement for other platforms.
 
 ### Documentation status
 - `docs/ROADMAP_HISTORY.md` records the completed implementation audit; `TODO.md` now contains only open release gates and deferred scope.

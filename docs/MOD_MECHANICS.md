@@ -2,6 +2,8 @@
 
 This document outlines the process of upgrading mods in *Star Wars: Galaxy of Heroes*. Understanding this flow is critical for the "Mod Advisor" feature.
 
+The advisor uses this as a bounded analysis model. It estimates upgrade and slicing potential from the cached mod record; it does not simulate every in-game stat conversion, spend credits or materials, or make changes to the game account.
+
 ## 1. Mod Levels
 
 *   Mods can be upgraded from Level 1 to Level 15 using credits.

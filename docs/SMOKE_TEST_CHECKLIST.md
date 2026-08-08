@@ -10,6 +10,7 @@ Run `dotnet build swgoh-command-bridge.sln` and `dotnet test swgoh-command-bridg
 - [ ] Launch the application and confirm the shell opens without fabricated roster/mod data.
 - [ ] Confirm the local SQLite cache is created and empty states are readable.
 - [ ] Open Settings, enter a valid Comlink URL and ally code, save, close, and reopen the app.
+- [ ] On Linux/macOS candidate builds, configure a healthy externally managed Comlink endpoint and confirm the app does not assume the Windows managed runtime is available.
 
 ## Empty and populated cache
 
@@ -24,6 +25,9 @@ Run `dotnet build swgoh-command-bridge.sln` and `dotnet test swgoh-command-bridg
 
 ## Comlink and input failures
 
+- [ ] On a clean Windows x64 user profile without Docker, launch the app and confirm the managed Comlink setup shows download/startup progress and reaches a ready state.
+- [ ] Close the app and confirm the managed Comlink process is no longer running; relaunch and confirm the installed version is reused without downloading again.
+- [ ] On Windows x64 with an already healthy local Comlink endpoint, confirm the app reuses it and does not start a second managed process.
 - [ ] Use an unreachable Comlink URL and confirm Test Connection and Sync show actionable errors.
 - [ ] Exercise cancellation during a sync and confirm the UI returns to an idle/retryable state.
 - [ ] Enter an invalid URL and confirm Settings rejects it without changing the active client URL.

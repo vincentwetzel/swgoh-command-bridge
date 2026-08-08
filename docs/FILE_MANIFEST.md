@@ -2,29 +2,30 @@
 
 This document lists the current tracked source and documentation files in the project, organized by directory.
 
-The root-level C# files are legacy drafts retained for reference; the active implementation is under `src/` and only the project files under `src/` are compiled. Generated folders such as `bin/`, `obj/`, `.tmp/`, and `.VSCodeCounter/` are intentionally omitted.
+The active implementation is under `src/`; only the project files under `src/` are compiled. Older drafts are retained under `legacy/` for reference. Generated folders such as `bin/`, `obj/`, `.tmp/`, `.tmp-build/`, and `.VSCodeCounter/` are intentionally omitted.
 
 ```text
 .
 |-- .gitignore
 |-- CHANGELOG.md
-|-- CharacterEntity.cs
 |-- CODING_STANDARDS.md
-|-- ComlinkService.cs
-|-- ComlinkService.hpp
-|-- GameModEntity.cs
-|-- IComlinkService.cs
-|-- IModAssignmentService.cs
-|-- IPlayerRepository.cs
-|-- ISwgohGgScraperService.cs
-|-- ModAssignmentService.cs
-|-- PlayerEntity.cs
-|-- PlayerRepository.cs
 |-- README.md
-|-- SwgohGgRecommendationEntity.cs
-|-- SwgohGgScraperService.cs
 |-- TODO.md
 |-- swgoh-command-bridge.sln
+|-- legacy
+|   |-- CharacterEntity.cs
+|   |-- ComlinkService.cs
+|   |-- GameModEntity.cs
+|   |-- IComlinkService.cs
+|   |-- IModAssignmentService.cs
+|   |-- IPlayerRepository.cs
+|   |-- ISwgohGgScraperService.cs
+|   |-- ModAssignmentService.cs
+|   |-- PlayerEntity.cs
+|   |-- PlayerRepository.cs
+|   |-- SwgohGgRecommendationEntity.cs
+|   |-- SwgohGgScraperService.cs
+|   `-- build-probe.tmp
 |-- docs
 |   |-- AGENTS.md
 |   |-- ARCHITECTURE.md
@@ -39,6 +40,7 @@ The root-level C# files are legacy drafts retained for reference; the active imp
 |   `-- STATE_FLOW.md
 |-- src
 |   |-- ComlinkService.cpp
+|   |-- ComlinkService.hpp
 |   |-- swgoh-command-bridge.Core
 |   |   |-- AppDbContext.cs
 |   |   |-- ISwgohGgScraperService.cs
@@ -94,10 +96,12 @@ The root-level C# files are legacy drafts retained for reference; the active imp
 |   |   `-- Services
 |   |       |-- CharacterMetadataParser.cs
 |   |       |-- ComlinkErrorFormatter.cs
+|   |       |-- ComlinkRuntimeManager.cs
 |   |       |-- ComlinkService.cs
 |   |       |-- DiagnosticEventLog.cs
 |   |       |-- DiagnosticLogger.cs
 |   |       |-- IComlinkService.cs
+|   |       |-- IComlinkRuntimeManager.cs
 |   |       |-- IModAssignmentService.cs
 |   |       |-- ISettingsService.cs
 |   |       |-- ModAssignmentService.cs
@@ -184,6 +188,7 @@ The root-level C# files are legacy drafts retained for reference; the active imp
         |-- RecommendationSnapshotTests.cs
         |-- SwgohGgRecommendationParserTests.cs
         |-- SwgohGgScraperServiceTests.cs
+        |-- ScrapeRetryPolicyTests.cs
         |-- SyncHistoryRepositoryTests.cs
         |-- Fixtures
         |   |-- ComlinkPayloadFixtures.cs

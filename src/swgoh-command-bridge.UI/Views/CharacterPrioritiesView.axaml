@@ -4,12 +4,12 @@
              x:Class="swgoh_command_bridge.UI.Views.CharacterPrioritiesView"
              x:DataType="vm:CharacterPrioritiesViewModel">
   <Grid RowDefinitions="Auto, *" Margin="24">
-    <Grid Grid.Row="0" ColumnDefinitions="*, Auto" ColumnSpacing="12" Margin="0,0,0,16">
+    <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,16">
       <TextBlock Text="{Binding HeaderText}" FontSize="26" FontWeight="Bold"/>
       <Button Grid.Column="1" Content="Refresh" Command="{Binding RefreshCommand}"/>
     </Grid>
 
-    <Grid Grid.Row="1" ColumnDefinitions="*, 280" ColumnSpacing="16">
+    <Grid Grid.Row="1" ColumnDefinitions="*, 280">
       <Grid>
         <TextBlock Text="Loading characters..." IsVisible="{Binding IsLoading}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         <TextBlock Text="No cached characters. Sync an account from Home to begin." IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"/>
@@ -20,7 +20,7 @@
         <ListBox ItemsSource="{Binding Characters}" SelectedItem="{Binding SelectedCharacter}" IsVisible="{Binding HasCharacters}">
           <ListBox.ItemTemplate>
             <DataTemplate>
-              <Grid ColumnDefinitions="*, Auto" Padding="8" ColumnSpacing="12">
+              <Grid ColumnDefinitions="*, Auto">
                 <TextBlock Text="{Binding Name}"/>
                 <TextBlock Grid.Column="1" Text="{Binding Priority, StringFormat='Priority: {0}' }"/>
               </Grid>

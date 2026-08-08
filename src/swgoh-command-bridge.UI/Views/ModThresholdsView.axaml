@@ -4,14 +4,14 @@
              x:Class="swgoh_command_bridge.UI.Views.ModThresholdsView"
              x:DataType="vm:ModThresholdsViewModel">
   <Grid RowDefinitions="Auto, *" Margin="24">
-    <Grid Grid.Row="0" ColumnDefinitions="*, Auto, Auto, Auto" ColumnSpacing="10" Margin="0,0,0,16">
+    <Grid Grid.Row="0" ColumnDefinitions="*, Auto, Auto, Auto" Margin="0,0,0,16">
       <TextBlock Text="{Binding HeaderText}" FontSize="26" FontWeight="Bold"/>
       <Button Grid.Column="1" Content="New" Command="{Binding AddCommand}"/>
       <Button Grid.Column="2" Content="Duplicate" Command="{Binding DuplicateCommand}"/>
       <Button Grid.Column="3" Content="Refresh" Command="{Binding RefreshCommand}"/>
     </Grid>
 
-    <Grid Grid.Row="1" ColumnDefinitions="*, 300" ColumnSpacing="16">
+    <Grid Grid.Row="1" ColumnDefinitions="*, 300">
       <Grid>
         <TextBlock Text="Loading thresholds..." IsVisible="{Binding IsLoading}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         <TextBlock Text="No saved thresholds. Create one with New." IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -22,7 +22,7 @@
         <ListBox ItemsSource="{Binding Thresholds}" SelectedItem="{Binding SelectedThreshold}" IsVisible="{Binding HasThresholds}">
           <ListBox.ItemTemplate>
             <DataTemplate>
-              <StackPanel Padding="8" Spacing="3">
+              <StackPanel Spacing="3">
                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
                 <TextBlock Text="{Binding MinimumRarity, StringFormat='Minimum pips: {0}'}" Foreground="Gray"/>
                 <TextBlock Text="{Binding MinimumSpeed, StringFormat='Minimum speed: {0}'}" Foreground="Gray"/>

@@ -432,7 +432,7 @@ namespace swgoh_command_bridge.Core.Services
 
             try
             {
-                request.Headers.From = new MailAddress(contact);
+                request.Headers.From = contact;
             }
             catch (FormatException)
             {

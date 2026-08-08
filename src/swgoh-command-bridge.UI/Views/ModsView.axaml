@@ -4,15 +4,15 @@
              x:Class="swgoh_command_bridge.UI.Views.ModsView"
              x:DataType="vm:ModsViewModel">
   <Grid RowDefinitions="Auto, *" Margin="20">
-    <Grid Grid.Row="0" RowDefinitions="Auto, Auto" RowSpacing="10" Margin="0,0,0,16">
-      <Grid Grid.Row="0" ColumnDefinitions="*, Auto" ColumnSpacing="10">
+    <Grid Grid.Row="0" RowDefinitions="Auto, Auto" Margin="0,0,0,16">
+      <Grid Grid.Row="0" ColumnDefinitions="*, Auto">
         <TextBlock Text="{Binding HeaderText}" FontSize="26" FontWeight="Bold" VerticalAlignment="Center"/>
         <Button Grid.Column="1" Content="Refresh" Command="{Binding RefreshCommand}"/>
       </Grid>
       <Grid Grid.Row="1" RowDefinitions="Auto, Auto, Auto">
       <WrapPanel Grid.Row="0" Orientation="Horizontal" ItemHeight="32">
-      <TextBox Width="180" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Watermark="Search mods..."/>
-      <TextBox Width="190" Text="{Binding SecondaryFilter, UpdateSourceTrigger=PropertyChanged}" Watermark="Speed, OffensePercent&gt;=10"/>
+      <TextBox Width="180" Text="{Binding SearchText}" Watermark="Search mods..."/>
+      <TextBox Width="190" Text="{Binding SecondaryFilter}" Watermark="Speed, OffensePercent&gt;=10"/>
       <ComboBox Width="150" ItemsSource="{Binding PrimaryStatOptions}" SelectedItem="{Binding PrimaryFilter}"/>
       <ComboBox Width="120" SelectedIndex="{Binding RarityFilter}">
         <ComboBoxItem>All pips</ComboBoxItem>
@@ -48,17 +48,17 @@
         <ComboBoxItem>Potency</ComboBoxItem>
         <ComboBoxItem>Tenacity</ComboBoxItem>
       </ComboBox>
-      <TextBox Width="100" Text="{Binding MinimumLevelFilter, UpdateSourceTrigger=PropertyChanged}" Watermark="Min level"/>
-      <TextBox Width="90" Text="{Binding TierFilter, UpdateSourceTrigger=PropertyChanged}" Watermark="Tier"/>
+      <TextBox Width="100" Text="{Binding MinimumLevelFilter}" Watermark="Min level"/>
+      <TextBox Width="90" Text="{Binding TierFilter}" Watermark="Tier"/>
       <ComboBox Width="110" ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SortOption}"/>
       </WrapPanel>
       <TextBlock Grid.Row="1" Text="{Binding SecondaryFilterError}" IsVisible="{Binding HasSecondaryFilterError}" Foreground="#FF8A80"/>
-      <Grid Grid.Row="2" ColumnDefinitions="*, Auto" ColumnSpacing="8">
+      <Grid Grid.Row="2" ColumnDefinitions="*, Auto">
         <TextBlock Text="{Binding FilterSummaryText}" Foreground="Gray" VerticalAlignment="Center"/>
         <Button Grid.Column="1" Content="Clear filters" Command="{Binding ClearFiltersCommand}" IsVisible="{Binding HasActiveFilters}"/>
       </Grid>
       </Grid>
-      <Grid Grid.Row="2" ColumnDefinitions="*, Auto, Auto, Auto" ColumnSpacing="8" Margin="0,8,0,0">
+      <Grid Grid.Row="2" ColumnDefinitions="*, Auto, Auto, Auto" Margin="0,8,0,0">
         <TextBlock Text="{Binding ActiveThresholdText}" Foreground="Gray" VerticalAlignment="Center"/>
         <TextBlock Grid.Column="1" Text="{Binding PageText}" Foreground="Gray" VerticalAlignment="Center"/>
         <Button Grid.Column="2" Content="Previous" Command="{Binding PreviousPageCommand}" IsEnabled="{Binding CanPreviousPage}"/>
@@ -66,7 +66,7 @@
       </Grid>
     </Grid>
 
-    <Grid Grid.Row="1" ColumnDefinitions="*, 320" ColumnSpacing="16">
+    <Grid Grid.Row="1" ColumnDefinitions="*, 320">
       <Grid>
         <TextBlock Text="Loading mods..." IsVisible="{Binding IsLoading}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         <TextBlock Text="No cached mods. Sync an account from Home to begin." IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"/>
@@ -84,7 +84,7 @@
           </ListBox.ItemsPanel>
           <ListBox.ItemTemplate>
             <DataTemplate>
-              <Grid ColumnDefinitions="150, *, 150, 170" RowDefinitions="Auto, Auto" ColumnSpacing="12" Padding="8">
+              <Grid ColumnDefinitions="150, *, 150, 170" RowDefinitions="Auto, Auto">
                 <TextBlock Text="{Binding QualitySummary}" FontWeight="SemiBold" VerticalAlignment="Center"/>
                 <StackPanel Grid.Column="1" Spacing="2">
                   <TextBlock Text="{Binding Id}" FontWeight="SemiBold"/>

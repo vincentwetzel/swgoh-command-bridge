@@ -4,12 +4,12 @@
              x:Class="swgoh_command_bridge.UI.Views.CharactersView"
              x:DataType="vm:CharactersViewModel">
   <Grid RowDefinitions="Auto, Auto, *" Margin="24">
-    <Grid Grid.Row="0" ColumnDefinitions="*, Auto" ColumnSpacing="12">
+    <Grid Grid.Row="0" ColumnDefinitions="*, Auto">
       <TextBlock Text="{Binding HeaderText}" FontSize="26" FontWeight="Bold" VerticalAlignment="Center"/>
       <Button Grid.Column="1" Content="Refresh" Command="{Binding RefreshCommand}"/>
     </Grid>
 
-    <TextBox Grid.Row="1" Margin="0,16,0,16" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Watermark="Search characters..."/>
+    <TextBox Grid.Row="1" Margin="0,16,0,16" Text="{Binding SearchText}" Watermark="Search characters..."/>
 
     <Grid Grid.Row="2">
       <TextBlock Text="Loading characters..." IsVisible="{Binding IsLoading}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -23,7 +23,7 @@
         <ListBox.ItemTemplate>
           <DataTemplate>
             <Border BorderBrush="#444444" BorderThickness="0,0,0,1" Padding="8">
-              <Grid ColumnDefinitions="*, Auto, Auto, Auto" ColumnSpacing="18">
+              <Grid ColumnDefinitions="*, Auto, Auto, Auto">
                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
                 <TextBlock Grid.Column="1" Text="{Binding Stars, StringFormat='Stars: {0}'}"/>
                 <TextBlock Grid.Column="2" Text="{Binding GearLevel, StringFormat='Gear: {0}'}"/>

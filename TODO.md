@@ -26,13 +26,13 @@ These require packaged builds and runtime verification, which are intentionally 
 
 ## Current product boundary
 
-The current target is a local, read-only desktop product. It can configure Comlink, sync and cache player data by ally code, analyze persisted mods, retrieve recommendations under a release-controllable scraping policy, and produce deterministic explainable assignments.
+The current target is a local, read-only desktop product. It can configure Comlink, sync and cache player data by ally code, analyze persisted mods, retrieve recommendations under a release-controllable scraping policy, and produce deterministic explainable assignments. Windows x64 can manage the local Comlink runtime; Linux/macOS deployments currently require an external Comlink service.
 
 It does not write to the game, provide full game-stat simulation, or claim legal approval for public scraping.
 
 Known release assumptions:
 
-- Windows is the primary supported target; Linux/macOS remain candidate targets until their published artifacts are verified.
+- Windows x64 is the primary supported target and the only target with automatic Comlink installation; Linux/macOS remain candidate targets until their published artifacts, external-Comlink workflow, and smoke tests are verified.
 - Build, test, visual smoke, and packaged-runtime verification are release-operator responsibilities.
 - A generic hosted-worker architecture is not required for this desktop product.
 
