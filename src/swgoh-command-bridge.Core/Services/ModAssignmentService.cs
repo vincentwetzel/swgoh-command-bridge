@@ -217,6 +217,15 @@ namespace swgoh_command_bridge.Core.Services
                 remainingInventory.RemoveAll(mod => assignedKeys.Contains(GetModKey(mod)));
 
                 var characterConflicts = new List<RosterLoadoutConflict>();
+                if (result.Mods.Count == 6 && !result.MeetsSetRules)
+                {
+                    characterConflicts.Add(new RosterLoadoutConflict(
+                        character.Id,
+                        character.Name,
+                        0,
+                        "Six mods were available, but their set distribution cannot satisfy the required set-bonus rules."));
+                }
+
                 foreach (var slot in Enum.GetValues<ModSlot>())
                 {
                     if (result.Mods.Any(mod => mod.Slot == (int)slot))
@@ -248,8 +257,8 @@ namespace swgoh_command_bridge.Core.Services
                     characterConflicts.AsReadOnly()));
             }
 
-            var complete = plans.Count > 0 && plans.All(plan => plan.Loadout.IsComplete);
-            var completeCount = plans.Count(plan => plan.Loadout.IsComplete);
+            var complete = plans.Count > 0 && plans.All(plan => plan.Loadout.IsComplete && plan.Loadout.MeetsSetRules);
+            var completeCount = plans.Count(plan => plan.Loadout.IsComplete && plan.Loadout.MeetsSetRules);
             var status = plans.Count == 0
                 ? "No characters are available for roster planning."
                 : $"Planned {plans.Count} character(s) in priority-first order; {completeCount} complete loadout(s), {conflicts.Count} inventory conflict(s).";
@@ -576,6 +585,14 @@ namespace swgoh_command_bridge.Core.Services
                 var assignedKeys = result.Mods.Select(GetModKey).ToHashSet(StringComparer.Ordinal);
                 remainingInventory.RemoveAll(mod => assignedKeys.Contains(GetModKey(mod)));
                 var characterConflicts = new List<RosterLoadoutConflict>();
+                if (result.Mods.Count == 6 && !result.MeetsSetRules)
+                {
+                    characterConflicts.Add(new RosterLoadoutConflict(
+                        character.Id,
+                        character.Name,
+                        0,
+                        "Six mods were available, but their set distribution cannot satisfy the required set-bonus rules."));
+                }
 
                 foreach (var slot in Enum.GetValues<ModSlot>())
                 {
@@ -606,7 +623,7 @@ namespace swgoh_command_bridge.Core.Services
                     characterConflicts.AsReadOnly()));
             }
 
-            var completeCount = plans.Count(plan => plan.Loadout.IsComplete);
+            var completeCount = plans.Count(plan => plan.Loadout.IsComplete && plan.Loadout.MeetsSetRules);
             return new RosterLoadoutResult(
                 plans.AsReadOnly(),
                 conflicts.AsReadOnly(),
@@ -641,8 +658,8 @@ namespace swgoh_command_bridge.Core.Services
             {
                 var list = candidates.ToList();
                 return new RosterPlanQuality(
-                    list.Count(candidate => candidate.Loadout.IsComplete),
-                    list.Where(candidate => candidate.Loadout.IsComplete).Sum(candidate => candidate.Character.Priority),
+                    list.Count(candidate => candidate.Loadout.IsComplete && candidate.Loadout.MeetsSetRules),
+                    list.Where(candidate => candidate.Loadout.IsComplete && candidate.Loadout.MeetsSetRules).Sum(candidate => candidate.Character.Priority),
                     list.Sum(candidate => candidate.Score),
                     string.Join("|", list.Select(candidate => candidate.Key)));
             }

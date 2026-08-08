@@ -33,6 +33,7 @@ The root-level C# files are legacy drafts retained for reference; the active imp
 |   |-- FILE_MANIFEST.md
 |   |-- MOD_MECHANICS.md
 |   |-- RELEASE_GUIDE.md
+|   |-- ROADMAP_HISTORY.md
 |   |-- SMOKE_TEST_CHECKLIST.md
 |   |-- SPEC.md
 |   `-- STATE_FLOW.md
@@ -177,6 +178,7 @@ The root-level C# files are legacy drafts retained for reference; the active imp
         |-- CharacterMetadataParserTests.cs
         |-- ModOptimizerViewModelTests.cs
         |-- MainWindowViewModelTests.cs
+        |-- ApplicationCompositionTests.cs
         |-- ViewModelErrorStateTests.cs
         |-- ModThresholdTransferServiceTests.cs
         |-- RecommendationSnapshotTests.cs

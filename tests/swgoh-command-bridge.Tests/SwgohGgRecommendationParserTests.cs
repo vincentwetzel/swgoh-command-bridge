@@ -69,6 +69,19 @@ public sealed class SwgohGgRecommendationParserTests
     }
 
     [Fact]
+    public void Parse_HandlesFullPageNoiseDuplicateSetsAndMixedSlotMarkup()
+    {
+        var result = new SwgohGgRecommendationParser().Parse(
+            RecommendationPageFixtures.FullPageVariation);
+
+        Assert.Equal(2, result.Sets.Count);
+        Assert.Contains(result.Sets, set => set.Name == "Speed" && set.Percentage == 91);
+        Assert.Contains(result.Sets, set => set.Name == "Health" && set.Percentage == 55.5);
+        Assert.Equal(95, Assert.Single(result.PrimaryStats["Arrow"]).Percentage);
+        Assert.Equal(78.25, Assert.Single(result.PrimaryStats["Triangle"]).Percentage);
+    }
+
+    [Fact]
     public void Parse_ReportsNoRecommendationsForUnrelatedMarkup()
     {
         var result = new SwgohGgRecommendationParser().Parse("<html><body>Nothing useful</body></html>");

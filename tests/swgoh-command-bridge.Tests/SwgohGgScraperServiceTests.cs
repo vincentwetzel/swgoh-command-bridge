@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -228,7 +229,7 @@ namespace swgoh_command_bridge.Tests
         }
 
         [Fact]
-        public async Task ScrapeCharacterRecommendationsAsync_RetriesTransientResponsesUsingConfiguredPolicy()
+    public async Task ScrapeCharacterRecommendationsAsync_RetriesTransientResponsesUsingConfiguredPolicy()
         {
             var attempts = 0;
             var handler = new FakeHttpMessageHandler(_ =>
@@ -260,8 +261,53 @@ namespace swgoh_command_bridge.Tests
                 CancellationToken.None);
 
             Assert.True(result.Success);
-            Assert.Equal(2, attempts);
-        }
+        Assert.Equal(2, attempts);
+    }
+
+    [Fact]
+    public async Task ScrapeCharacterRecommendationsAsync_HonorsRetryAfterBeforeRetrying()
+    {
+        var attempts = 0;
+        var delays = new List<TimeSpan>();
+        var handler = new FakeHttpMessageHandler(_ =>
+        {
+            attempts++;
+            if (attempts == 1)
+            {
+                var rateLimited = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+                rateLimited.Headers.RetryAfter = new RetryConditionHeaderValue(TimeSpan.FromSeconds(3));
+                return Task.FromResult(rateLimited);
+            }
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    "<div class=\"mod-set-image\" alt=\"Speed\"></div><div class=\"mod-set-percent\">60%</div>")
+            });
+        });
+        var scraper = new SwgohGgScraperService(
+            new FakeHttpClientFactory(new HttpClient(handler)),
+            _context,
+            NullLogger<SwgohGgScraperService>.Instance,
+            retryPolicy: new ScrapeRetryPolicy(
+                maxAttempts: 2,
+                initialBackoff: TimeSpan.FromSeconds(1),
+                maximumBackoff: TimeSpan.FromSeconds(5),
+                interRequestDelay: TimeSpan.Zero),
+            delayAsync: (delay, _) =>
+            {
+                delays.Add(delay);
+                return Task.CompletedTask;
+            });
+
+        var result = await scraper.ScrapeCharacterRecommendationsWithResultAsync(
+            "RETRY_AFTER_CHECK",
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal(2, attempts);
+        Assert.Equal(new[] { TimeSpan.FromSeconds(3) }, delays);
+    }
 
         [Fact]
         public async Task ScrapeCharacterRecommendationsWithResultAsync_ReportsEndpointFailure()
@@ -314,7 +360,7 @@ namespace swgoh_command_bridge.Tests
         }
 
         [Fact]
-        public async Task ScrapeCharacterRecommendationsAsync_SendsConfiguredContactMetadata()
+    public async Task ScrapeCharacterRecommendationsAsync_SendsConfiguredContactMetadata()
         {
             HttpRequestMessage? observedRequest = null;
             var handler = new FakeHttpMessageHandler(req =>
@@ -339,6 +385,33 @@ namespace swgoh_command_bridge.Tests
 
             Assert.NotNull(observedRequest);
             Assert.Equal("operator@example.com", observedRequest!.Headers.From?.Address);
+        }
+
+        [Fact]
+        public async Task ScrapeCharacterRecommendationsAsync_IgnoresInvalidContactMetadata()
+        {
+            HttpRequestMessage? observedRequest = null;
+            var handler = new FakeHttpMessageHandler(req =>
+            {
+                observedRequest = req;
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(
+                        "<div class=\"mod-set-image\" alt=\"Speed\"></div><div class=\"mod-set-percent\">60%</div>")
+                });
+            });
+            var scraper = new SwgohGgScraperService(
+                new FakeHttpClientFactory(new HttpClient(handler)),
+                _context,
+                NullLogger<SwgohGgScraperService>.Instance,
+                () => "not-an-email");
+
+            Assert.True(await scraper.ScrapeCharacterRecommendationsAsync(
+                "INVALID_CONTACT_CHECK",
+                CancellationToken.None));
+
+            Assert.NotNull(observedRequest);
+            Assert.Null(observedRequest!.Headers.From);
         }
 
         [Fact]

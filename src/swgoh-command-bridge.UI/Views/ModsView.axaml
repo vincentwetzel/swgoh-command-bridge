@@ -84,12 +84,17 @@
           </ListBox.ItemsPanel>
           <ListBox.ItemTemplate>
             <DataTemplate>
-              <Grid ColumnDefinitions="Auto, *, Auto, Auto, Auto" ColumnSpacing="12" Padding="8">
-                <TextBlock Text="{Binding Rarity, StringFormat='Pips: {0}'}" FontWeight="SemiBold"/>
-                <TextBlock Grid.Column="1" Text="{Binding Id}"/>
-                <TextBlock Grid.Column="2" Text="{Binding Level, StringFormat='Level: {0}'}"/>
-                <TextBlock Grid.Column="3" Text="{Binding PrimaryStatType}"/>
-                <TextBlock Grid.Column="4" Text="{Binding OwnerDisplayName, StringFormat='Owner: {0}'}"/>
+              <Grid ColumnDefinitions="150, *, 150, 170" RowDefinitions="Auto, Auto" ColumnSpacing="12" Padding="8">
+                <TextBlock Text="{Binding QualitySummary}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="1" Spacing="2">
+                  <TextBlock Text="{Binding Id}" FontWeight="SemiBold"/>
+                  <TextBlock Text="{Binding SecondaryStatsSummary}" Foreground="Gray" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+                <TextBlock Grid.Column="2" Text="{Binding SetSlotSummary}" VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="3" Spacing="2">
+                  <TextBlock Text="{Binding PrimaryStatSummary}"/>
+                  <TextBlock Text="{Binding OwnerDisplayName, StringFormat='Owner: {0}'}" Foreground="Gray"/>
+                </StackPanel>
               </Grid>
             </DataTemplate>
           </ListBox.ItemTemplate>
@@ -113,6 +118,7 @@
             <TextBlock Text="{Binding SelectedMod.OwnerDisplayName, StringFormat='Equipped owner: {0}'}"/>
             <TextBlock Text="{Binding SelectedModRecommendation.Action, StringFormat='Recommendation: {0}'}" FontWeight="Bold"/>
             <TextBlock Text="{Binding SelectedModRecommendation.Score, StringFormat='Recommendation score: {0:F0}'}"/>
+            <TextBlock Text="{Binding SelectedModRecommendation.RuleSummary}" Foreground="Gray"/>
             <TextBlock Text="{Binding SelectedModRecommendation.EfficiencySummary}" Foreground="Gray" TextWrapping="Wrap"/>
             <TextBlock Text="{Binding SelectedModRecommendation.Reason}" TextWrapping="Wrap" Foreground="Gray"/>
           </StackPanel>

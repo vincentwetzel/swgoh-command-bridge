@@ -6,6 +6,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using swgoh_command_bridge.Core.Database;
+using swgoh_command_bridge.Core.Models;
 using swgoh_command_bridge.Core.Services;
 using swgoh_command_bridge.UI.ViewModels;
 using Xunit;
@@ -88,6 +89,18 @@ public sealed class ViewModelErrorStateTests
         AssertErrorState(viewModel.HasError, viewModel.ErrorMessage, "optimizer");
     }
 
+    [Fact]
+    public async Task Thresholds_LoadFailureProducesRetryableErrorState()
+    {
+        var viewModel = new ModThresholdsViewModel(new FailingSettingsService());
+
+        await viewModel.LoadThresholdsAsync();
+        AssertErrorState(viewModel.HasError, viewModel.ErrorMessage, "thresholds");
+
+        await viewModel.RefreshCommand.ExecuteAsync(null);
+        AssertErrorState(viewModel.HasError, viewModel.ErrorMessage, "thresholds");
+    }
+
     private static AppDbContext CreateContext(SqliteConnection connection)
     {
         connection.Open();
@@ -102,5 +115,18 @@ public sealed class ViewModelErrorStateTests
         Assert.True(hasError);
         Assert.False(string.IsNullOrWhiteSpace(message));
         Assert.Contains(screen, message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private sealed class FailingSettingsService : ISettingsService
+    {
+        public AppSettings CurrentSettings => throw new InvalidOperationException("threshold cache unavailable");
+
+        public string SettingsPath => "test-settings.json";
+
+        public string DiagnosticsDirectory => Environment.CurrentDirectory;
+
+        public Task LoadSettingsAsync() => Task.CompletedTask;
+
+        public Task SaveSettingsAsync(AppSettings settings) => Task.CompletedTask;
     }
 }

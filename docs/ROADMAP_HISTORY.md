@@ -1,0 +1,68 @@
+# Roadmap History — Completed Implementation Audit
+
+Audit date: 2026-08-07
+
+This document records the implementation work verified during the roadmap audit. It is intentionally separate from [`TODO.md`](../TODO.md), which contains only remaining work.
+
+## Foundation and startup
+
+- Core, UI, and test projects are structured with EF Core/SQLite, Avalonia, and xUnit.
+- The explicit composition root wires settings, database, logging, HTTP/Comlink, repositories, sync, scraper, advisor, and assignment services.
+- Startup creates or repairs the local schema through a transactional, versioned SQLite compatibility migrator with retryable errors, rollback, backup, restore, and isolated migration coverage.
+- Cache, settings, diagnostics, and backup paths are centralized and documented.
+- Runtime sample data and legacy demo dependencies were removed.
+
+## Shell, navigation, and state
+
+- Home, Characters, Priorities, Mods, Optimizer, Thresholds, Settings, and Diagnostics use real navigation.
+- Data screens provide intentional first-run empty states and explicit loading, success, error, and retry states.
+- Shared view-model state transitions and shell commands have focused coverage.
+- Settings supports Comlink URL, ally code, theme, cache actions, and versioned import/export.
+- Visual verification remains part of the release smoke checklist.
+
+## Account sync and cache
+
+- Home validates ally codes and supports sync progress, cancellation, bounded retry, failure categorization, parser warnings, and retry.
+- Comlink mapping supports bounded envelopes, known aliases, nested metadata, complete roster/inventory records, duplicate suppression, and record-level diagnostics.
+- Persisted mod snapshots retain primary/secondary stats, roll counts, ownership, level, tier, pips, slot, and set.
+- Character, priority, mod, optimizer, recommendation, and scraper data are scoped to the active ally code.
+- Cached accounts can be selected, searched, switched offline, and removed with confirmation.
+- Repository replacement, upsert, account removal, and failed-refresh rollback are transactional.
+- Representative Comlink fixtures cover empty, malformed, duplicate, partial, nested, and inventory-heavy responses.
+
+## Characters, priorities, and inventory
+
+- Characters and Priorities are database-backed with search, metadata, validation, save/cancel, dirty-state, refresh, and no-data behavior.
+- Mods supports SQLite-backed filtering by text, slot, set, primary, secondary combinations, equipped status, level, pips, tier, sorting, result counts, and reset.
+- Mods provides deterministic sorting, paging, virtualization, owner labels, selected details, and readable quality/set-slot/stat summaries.
+- Persisted entities map to domain models without dropping supported stats or tolerantly failing malformed stat values.
+- Advisor thresholds are loaded from persisted settings, selectable in the Mods workflow, and applied when selected-mod analysis refreshes.
+
+## Thresholds and advisor
+
+- Thresholds have stable IDs, duplicate/edit/delete/default operations, finite-value validation, and versioned JSON import/export.
+- Legacy threshold settings migrate into the versioned settings envelope with a valid default.
+- Upgrade, slice, sell, keep, and swap semantics cover rarity, level, tier, slice, missing stats, 5-dot behavior, set/primary compatibility, ownership, ties, and efficiency.
+- Advisor results include deterministic action ordering, score/reason details, affected character/mod, source threshold ID/name, current/projected efficiency, and explicit limitations.
+- Calculation is separated from UI and covered by decision-matrix, tie-break, persisted-inventory, and UI-handoff tests.
+
+## Recommendations and optimizer
+
+- Scraper, database, assignment service, and UI share a canonical account-scoped recommendation schema.
+- Recommendation parsing handles page noise, duplicate sections, localization, changed markup, missing sections, flexible attributes, nested markup, and absent values.
+- Scraping has configurable contact metadata, bounded responses, cancellation, stale-data checks, rate-limit handling, retry/backoff/pacing, incremental refresh, progress, and per-character failure reporting.
+- Local scraping can be disabled while cached recommendations remain readable; legal/release approval remains future scope.
+- Single-character assignment is deterministic, prevents duplicate mod reuse, applies set/primary popularity and rule constraints, reports alternatives/conflicts, and identifies equipped swaps.
+- Roster planning supports priority-first and bounded joint optimization, reservation/conflict reporting, cancellation, and large-roster fallback.
+- Optimizer UI exposes provenance, stale/missing states, explanations, alternatives, swap candidates, projected persisted-stat impact, and conflict summaries.
+- Fixtures and tests cover competing mods, equipped mods, missing slots, duplicates, set constraints, reserved inventory, invalid six-slot distributions, and roster conflicts.
+
+## Hardening and documentation
+
+- Named fixtures replace the old test placeholder and keep payload data separate from test helpers.
+- View-model, navigation, command, validation, no-data, backup/restore failure, threshold failure, and diagnostics retry coverage exists.
+- Migration coverage includes schema versions 0–5, repair, rollback, idempotence, unsupported versions, backup, and restore using isolated databases.
+- Diagnostics capture bounded privacy-safe events and redact ally codes/account payloads.
+- Crash-safe cache recovery, guarded reset, verified restore rollback, and offline behavior are implemented.
+- README, architecture, state-flow, Comlink setup, file manifest, release guide, and coding standards reflect the shipped behavior.
+- The read-only boundary is documented in the README, specification, and smoke checklist.

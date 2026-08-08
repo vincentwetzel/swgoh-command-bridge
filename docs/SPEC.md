@@ -58,7 +58,10 @@ The current release target is read-only. Any feature that changes the game accou
 -   **Game API:** `swgoh-comlink` (via local HTTP calls)
 -   **Community Data:** Public `swgoh.gg` pages via remote HTTP calls and HTML parsing
 
+The compiled implementation lives under `src/`; root-level C# files are retained historical drafts. The application is composed as a desktop process with no scheduled background worker: sync and recommendation refreshes begin only from explicit user actions.
+
 ## 5. Data and privacy boundary
 - Account payloads and recommendation cache data remain local unless the user separately operates the configured Comlink or public recommendation requests.
 - Logs and diagnostics must not contain full ally codes, access keys, session values, or raw account payloads.
 - The application may request public `swgoh.gg` recommendation pages, subject to the service's rate limits and freshness policy.
+- The local scraping switch prevents new recommendation requests while retaining previously cached recommendations for offline viewing.

@@ -31,4 +31,28 @@ internal static class RecommendationPageFixtures
           <div class='value'><strong class='mod-stat-percent'>64,25%</strong></div>
         </article>
         """;
+
+    public const string FullPageVariation = """
+        <!doctype html>
+        <html lang="en">
+          <body>
+            <header><h1>Best Mods</h1><span class="mod-set-percent">not a recommendation</span></header>
+            <section id="popular-sets">
+              <img data-set='Speed Set' class='mod-set-image' alt='ignored label'>
+              <span class='mod-set-percent'>88.0%</span>
+              <div class="card"><img alt="Health Set" class="mod-set-image"><span class="mod-set-percent">55,5%</span></div>
+              <div class="card"><img class="mod-set-image" alt="Speed Set"><span class="mod-set-percent">91%</span></div>
+            </section>
+            <section data-slot='2' class='primary-stat-card'>
+              <div class='label'><span class='mod-stat-name'>Speed</span></div>
+              <strong class='mod-stat-percent'>95%</strong>
+            </section>
+            <section>Slot 4
+              <span data-label='primary' class='mod-stat-name'>Critical Damage</span>
+              <span class='mod-stat-percent'>78,25%</span>
+            </section>
+            <footer><div class="mod-set-image">missing name</div></footer>
+          </body>
+        </html>
+        """;
 }

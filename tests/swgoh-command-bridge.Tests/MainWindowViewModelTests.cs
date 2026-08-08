@@ -121,6 +121,44 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task AccountSearch_FiltersCachedAccountsByNameOrAllyCodeAndRecoversOnClear()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlite(connection)
+            .Options;
+        await using var context = new AppDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+        context.Players.AddRange(
+            new PlayerEntity { AllyCode = "123456789", Name = "Alpha Account" },
+            new PlayerEntity { AllyCode = "987654321", Name = "Beta Account" },
+            new PlayerEntity { AllyCode = "111222333", Name = "Gamma Account" });
+        await context.SaveChangesAsync();
+
+        using var composition = ApplicationComposition.CreateDefault(context, new FakeSettingsService());
+        var viewModel = new MainWindowViewModel(composition);
+
+        await viewModel.InitializeAsync();
+        Assert.Equal(3, viewModel.VisibleCachedAccounts.Count);
+
+        viewModel.AccountSearchText = "beta";
+        Assert.Equal("987654321", Assert.Single(viewModel.VisibleCachedAccounts).AllyCode);
+        Assert.Contains("1 of 3", viewModel.CachedAccountFilterStatusText);
+
+        viewModel.AccountSearchText = "111222";
+        Assert.Equal("Gamma Account", Assert.Single(viewModel.VisibleCachedAccounts).Name);
+
+        viewModel.AccountSearchText = "no match";
+        Assert.Empty(viewModel.VisibleCachedAccounts);
+        Assert.True(viewModel.HasNoVisibleCachedAccounts);
+
+        viewModel.AccountSearchText = string.Empty;
+        Assert.Equal(3, viewModel.VisibleCachedAccounts.Count);
+        Assert.False(viewModel.HasNoVisibleCachedAccounts);
+    }
+
+    [Fact]
     public async Task SyncCommand_SuccessReportsCountsAndParserWarnings()
     {
         await using var connection = new SqliteConnection("Data Source=:memory:");

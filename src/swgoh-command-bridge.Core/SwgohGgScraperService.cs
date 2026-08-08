@@ -27,6 +27,7 @@ namespace swgoh_command_bridge.Core.Services
         private readonly ILogger<SwgohGgScraperService> _logger;
         private readonly Func<string?>? _contactEmailProvider;
         private readonly ScrapeRetryPolicy _retryPolicy;
+        private readonly Func<TimeSpan, CancellationToken, Task> _delayAsync;
 
         private const int MaxRecommendationPageBytes = 2 * 1024 * 1024;
 
@@ -46,7 +47,8 @@ namespace swgoh_command_bridge.Core.Services
             AppDbContext context,
             ILogger<SwgohGgScraperService> logger,
             Func<string?>? contactEmailProvider = null,
-            ScrapeRetryPolicy? retryPolicy = null)
+            ScrapeRetryPolicy? retryPolicy = null,
+            Func<TimeSpan, CancellationToken, Task>? delayAsync = null)
         {
             ArgumentNullException.ThrowIfNull(httpClientFactory);
             ArgumentNullException.ThrowIfNull(context);
@@ -57,6 +59,8 @@ namespace swgoh_command_bridge.Core.Services
             _logger = logger;
             _contactEmailProvider = contactEmailProvider;
             _retryPolicy = retryPolicy ?? new ScrapeRetryPolicy();
+            _delayAsync = delayAsync ?? ((delay, cancellationToken) =>
+                Task.Delay(delay, cancellationToken));
         }
 
         /// <inheritdoc />
@@ -260,7 +264,7 @@ namespace swgoh_command_bridge.Core.Services
                     _logger.LogDebug(
                         "Waiting {DelayMs}ms before processing the next request...",
                         _retryPolicy.InterRequestDelay.TotalMilliseconds);
-                    await Task.Delay(_retryPolicy.InterRequestDelay, cancellationToken).ConfigureAwait(false);
+                    await _delayAsync(_retryPolicy.InterRequestDelay, cancellationToken).ConfigureAwait(false);
                 }
             }
 
@@ -324,7 +328,7 @@ namespace swgoh_command_bridge.Core.Services
                             attempt,
                             _retryPolicy.MaxAttempts,
                             delay.TotalMilliseconds);
-                        await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+                        await _delayAsync(delay, cancellationToken).ConfigureAwait(false);
                         continue;
                     }
 
@@ -337,7 +341,7 @@ namespace swgoh_command_bridge.Core.Services
                             attempt,
                             _retryPolicy.MaxAttempts,
                             delay.TotalMilliseconds);
-                        await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+                        await _delayAsync(delay, cancellationToken).ConfigureAwait(false);
                         continue;
                     }
 
@@ -379,7 +383,7 @@ namespace swgoh_command_bridge.Core.Services
                         attempt,
                         _retryPolicy.MaxAttempts,
                         delay.TotalMilliseconds);
-                    await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+                    await _delayAsync(delay, cancellationToken).ConfigureAwait(false);
                 }
                 catch (HttpRequestException ex)
                 {

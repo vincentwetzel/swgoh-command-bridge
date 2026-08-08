@@ -49,7 +49,7 @@ The active advisor applies these decisions in order so the same inventory produc
 3. **Slice** a level-15 mod that meets the Speed requirement but is below the selected minimum tier. A level-15 5-dot gold mod that otherwise meets the threshold is recommended for 6-dot slicing.
 4. **Keep** a maxed mod when its rarity, tier, and required Speed all meet the threshold.
 5. **Slice** a below-Speed-threshold mod only when it is below gold and the mechanics estimate says slicing can reach the required Speed.
-6. **Swap** is considered only after upgrade/slicing options fail. The candidate must have the same set and primary-stat type as the target slot, must be faster than the equipped mod, and is never compared against the character currently equipping the candidate. Ties are resolved by character priority, then name, then ID.
+6. **Swap** is considered only after upgrade/slicing options fail. The candidate must have the same set and primary-stat type as the target slot, must be faster than the equipped mod, and is never compared against the character currently equipping the candidate. Targets are resolved by priority, then cached relic tier, gear level, Galactic Power, name, and ID; the selected target context is included in the explanation.
 7. **Sell** is the final result when no actionable upgrade, slice, keep, or compatible swap applies.
 8. **Efficiency thresholds** are evaluated from persisted secondary roll counts. Each currently revealed secondary is compared with a five-roll capacity; the advisor reports the observed percentage and a conservative projection that adds remaining level/tier roll opportunities. A nonzero minimum-efficiency threshold can block a keep or upgrade path when the observed/projected estimate is too low.
 

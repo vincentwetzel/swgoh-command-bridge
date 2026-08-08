@@ -106,6 +106,10 @@ namespace swgoh_command_bridge.Core.Database
                 throw new InvalidOperationException("A file-backed SQLite cache is required for backup.");
             }
 
+            // Backups must be self-describing even when a caller uses the context directly
+            // instead of going through the application composition root.
+            InitializeDatabase();
+
             var databasePath = Path.GetFullPath(dataSource);
             var databaseDirectory = Path.GetDirectoryName(databasePath);
             if (string.IsNullOrWhiteSpace(databaseDirectory))
@@ -179,22 +183,49 @@ namespace swgoh_command_bridge.Core.Database
 
             ValidateBackup(fullBackupPath);
             var temporaryPath = databasePath + $".restore-{Guid.NewGuid():N}.tmp";
+            var rollbackPath = databasePath + $".restore-rollback-{Guid.NewGuid():N}.tmp";
+            var hadExistingDatabase = File.Exists(databasePath);
 
             try
             {
                 Database.CloseConnection();
+                if (hadExistingDatabase)
+                {
+                    File.Copy(databasePath, rollbackPath, overwrite: true);
+                }
+
                 File.Copy(fullBackupPath, temporaryPath, overwrite: true);
                 cancellationToken.ThrowIfCancellationRequested();
                 File.Move(temporaryPath, databasePath, overwrite: true);
                 ChangeTracker.Clear();
                 InitializeDatabase();
-                await Task.CompletedTask.ConfigureAwait(false);
+                ValidateBackup(databasePath);
+            }
+            catch
+            {
+                Database.CloseConnection();
+                if (File.Exists(rollbackPath))
+                {
+                    File.Move(rollbackPath, databasePath, overwrite: true);
+                    ChangeTracker.Clear();
+                }
+                else if (!hadExistingDatabase && File.Exists(databasePath))
+                {
+                    File.Delete(databasePath);
+                }
+
+                throw;
             }
             finally
             {
                 if (File.Exists(temporaryPath))
                 {
                     File.Delete(temporaryPath);
+                }
+
+                if (File.Exists(rollbackPath))
+                {
+                    File.Delete(rollbackPath);
                 }
             }
         }

@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -322,6 +323,48 @@ public sealed class ModAssignmentServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task CalculateRosterLoadoutsAsync_ReportsSetConstraintConflictForSixInvalidSlots()
+    {
+        var inventory = Enumerable.Range(1, 6)
+            .Select(index => CreateMod($"invalid-set-{index}", index, index, 5))
+            .ToList();
+        var service = new ModAssignmentService(
+            _context,
+            NullLogger<ModAssignmentService>.Instance);
+
+        var result = await service.CalculateRosterLoadoutsAsync(
+            new[] { new CharacterEntity { Id = "INVALID", Name = "Invalid Set", Priority = 1 } },
+            inventory);
+
+        var plan = Assert.Single(result.Plans);
+        Assert.Equal(6, plan.Loadout.Mods.Count);
+        Assert.False(plan.Loadout.MeetsSetRules);
+        Assert.False(result.IsComplete);
+        Assert.Contains(plan.Conflicts, conflict =>
+            conflict.Slot == 0 && conflict.Reason.Contains("set distribution", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains("inventory conflict", result.Status, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CalculateGloballyOptimizedRosterLoadoutsAsync_DoesNotCountInvalidSetPlansAsComplete()
+    {
+        var inventory = Enumerable.Range(1, 6)
+            .Select(index => CreateMod($"global-invalid-{index}", index, index, 5))
+            .ToList();
+        var service = new ModAssignmentService(
+            _context,
+            NullLogger<ModAssignmentService>.Instance);
+
+        var result = await service.CalculateGloballyOptimizedRosterLoadoutsAsync(
+            new[] { new CharacterEntity { Id = "INVALID-GLOBAL", Name = "Invalid Global", Priority = 1 } },
+            inventory);
+
+        Assert.False(result.IsComplete);
+        Assert.Contains(result.Conflicts, conflict =>
+            conflict.Slot == 0 && conflict.Reason.Contains("set distribution", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public async Task CalculateRosterLoadoutsAsync_ConsolidatesAvailableSwapCandidates()
     {
         var inventory = new List<GameModEntity>
@@ -375,6 +418,46 @@ public sealed class ModAssignmentServiceTests : IDisposable
         Assert.All(result.Plans, plan => Assert.Equal(6, plan.Loadout.Mods.Count));
         Assert.Equal(12, result.Plans.SelectMany(plan => plan.Loadout.Mods).Select(mod => mod.Id).Distinct().Count());
         Assert.Contains("global roster optimization", result.Status, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CalculateGloballyOptimizedRosterLoadoutsAsync_ExplainsBoundedFallbackForLargeRosters()
+    {
+        var characters = Enumerable.Range(1, 13)
+            .Select(index => new CharacterEntity
+            {
+                Id = $"CHARACTER-{index:00}",
+                Name = $"Character {index:00}",
+                Priority = 100 - index
+            })
+            .ToList();
+        var service = new ModAssignmentService(
+            _context,
+            NullLogger<ModAssignmentService>.Instance);
+
+        var result = await service.CalculateGloballyOptimizedRosterLoadoutsAsync(
+            characters,
+            Array.Empty<GameModEntity>());
+
+        Assert.Equal(13, result.Plans.Count);
+        Assert.Contains("limited to 12", result.Status, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("priority-first planning was used", result.Status, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RosterPlanning_ObservesCancellationBeforeAllocatingPlans()
+    {
+        var service = new ModAssignmentService(
+            _context,
+            NullLogger<ModAssignmentService>.Instance);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            service.CalculateGloballyOptimizedRosterLoadoutsAsync(
+                Array.Empty<CharacterEntity>(),
+                Array.Empty<GameModEntity>(),
+                cancellation.Token));
     }
 
     private static GameModEntity CreateMod(string id, int slot, int set, int rarity)

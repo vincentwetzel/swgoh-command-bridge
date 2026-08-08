@@ -88,6 +88,35 @@ public sealed class ComlinkServiceTests
         Assert.Contains("SWGOHCommandBridge/1.0", observedRequest.Headers.UserAgent.ToString());
     }
 
+    [Fact]
+    public async Task FetchPlayerRawAsync_SendsTheSupportedJsonRequestContract()
+    {
+        string? path = null;
+        string? body = null;
+        string? mediaType = null;
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            path = request.RequestUri?.AbsolutePath;
+            body = request.Content?.ReadAsStringAsync().GetAwaiter().GetResult();
+            mediaType = request.Content?.Headers.ContentType?.MediaType;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{}")
+            });
+        });
+        using var client = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("http://localhost:3000")
+        };
+        var service = new ComlinkService(client, NullLogger<ComlinkService>.Instance);
+
+        await service.FetchPlayerRawAsync("123456789");
+
+        Assert.Equal("/player", path);
+        Assert.Contains("123456789", body);
+        Assert.Equal("application/json", mediaType);
+    }
+
     private sealed class StubHttpMessageHandler : HttpMessageHandler
     {
         private readonly Func<HttpRequestMessage, Task<HttpResponseMessage>> _handler;

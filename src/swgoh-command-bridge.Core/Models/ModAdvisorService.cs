@@ -49,6 +49,7 @@ namespace swgoh_command_bridge.Core.Services
             {
                 return Result(mod, ModRecommendationAction.Sell, 10,
                     $"Sell: rarity {mod.Pips} is below the required minimum of {threshold.MinimumRarity}.",
+                    threshold,
                     currentEfficiency,
                     projectedEfficiency);
             }
@@ -60,6 +61,7 @@ namespace swgoh_command_bridge.Core.Services
                 {
                     return Result(mod, ModRecommendationAction.Sell, 10,
                         $"Sell: this level {mod.Level} mod can reach at most {potentialSpeed:0.#} Speed, below the required {threshold.MinimumSpeed}.",
+                        threshold,
                         currentEfficiency,
                         projectedEfficiency);
                 }
@@ -68,12 +70,14 @@ namespace swgoh_command_bridge.Core.Services
                 {
                     return Result(mod, ModRecommendationAction.Sell, 10,
                         $"Sell: projected efficiency {projectedEfficiency:0.#}% cannot reach the required {threshold.MinimumEfficiency:0.#}%.",
+                        threshold,
                         currentEfficiency,
                         projectedEfficiency);
                 }
 
                 return Result(mod, ModRecommendationAction.LevelUp, 50,
                     $"Level up: the mod is level {mod.Level}/15 and has viable potential up to {potentialSpeed:0.#} Speed.",
+                    threshold,
                     currentEfficiency,
                     projectedEfficiency);
             }
@@ -86,6 +90,7 @@ namespace swgoh_command_bridge.Core.Services
             {
                 return Result(mod, ModRecommendationAction.Slice, 75,
                     $"Slice: current Speed +{speed:0.#} meets the threshold, but tier {mod.Tier} is below the required tier {threshold.MinimumTier}.",
+                    threshold,
                     currentEfficiency,
                     projectedEfficiency);
             }
@@ -96,12 +101,14 @@ namespace swgoh_command_bridge.Core.Services
                 {
                     return Result(mod, ModRecommendationAction.Slice, 90,
                         "Slice: a level 15, 5-dot gold mod that meets the threshold can be advanced to 6-dot.",
+                        threshold,
                         currentEfficiency,
                         projectedEfficiency);
                 }
 
                 return Result(mod, ModRecommendationAction.Keep, 100,
                     $"Keep: Speed +{speed:0.#}, tier {mod.Tier}, rarity {mod.Pips}, and efficiency {currentEfficiency:0.#}% meet the active threshold.",
+                    threshold,
                     currentEfficiency,
                     projectedEfficiency);
             }
@@ -111,6 +118,7 @@ namespace swgoh_command_bridge.Core.Services
             {
                 return Result(mod, ModRecommendationAction.Slice, 80,
                     $"Slice: current Speed +{speed:0.#} is below {threshold.MinimumSpeed}, but slicing can reach up to +{slicePotential:0.#}.",
+                    threshold,
                     currentEfficiency,
                     projectedEfficiency);
             }
@@ -119,13 +127,15 @@ namespace swgoh_command_bridge.Core.Services
             if (swap != null)
             {
                 return Result(mod, ModRecommendationAction.Swap, 80,
-                    $"Swap: +{speed:0.#} Speed beats {swap.Value.EquippedSpeed:0.#} on {swap.Value.Character.Name} ({swap.Value.Character.Id}), the highest-priority compatible target.",
+                    $"Swap: +{speed:0.#} Speed beats {swap.Value.EquippedSpeed:0.#} on {swap.Value.Character.Name} ({swap.Value.Character.Id}), the highest-priority compatible target ({FormatRosterContext(swap.Value.Character)}).",
+                    threshold,
                     currentEfficiency,
                     projectedEfficiency);
             }
 
             return Result(mod, ModRecommendationAction.Sell, 10,
                 $"Sell: Speed +{speed:0.#}/{threshold.MinimumSpeed}, efficiency {currentEfficiency:0.#}%, and no compatible higher-priority replacement target was found.",
+                threshold,
                 currentEfficiency,
                 projectedEfficiency);
         }
@@ -135,11 +145,14 @@ namespace swgoh_command_bridge.Core.Services
             ModRecommendationAction action,
             double score,
             string reason,
+            ModUpgradeThreshold threshold,
             double currentEfficiency,
             double projectedEfficiency) => new(mod.Id, action, reason, score)
             {
                 CurrentEfficiency = currentEfficiency,
-                ProjectedEfficiency = projectedEfficiency
+                ProjectedEfficiency = projectedEfficiency,
+                ThresholdId = threshold.Id,
+                ThresholdName = threshold.Name
             };
 
         private static (Character Character, double EquippedSpeed)? FindBestSwap(
@@ -160,11 +173,17 @@ namespace swgoh_command_bridge.Core.Services
                 })
                 .Where(candidate => candidateSpeed > candidate.EquippedSpeed)
                 .OrderByDescending(candidate => candidate.Character.Priority)
+                .ThenByDescending(candidate => candidate.Character.RelicTier)
+                .ThenByDescending(candidate => candidate.Character.GearLevel)
+                .ThenByDescending(candidate => candidate.Character.GalacticPower)
                 .ThenBy(candidate => candidate.Character.Name, StringComparer.Ordinal)
                 .ThenBy(candidate => candidate.Character.Id, StringComparer.Ordinal)
                 .FirstOrDefault();
 
             return selected.Character == null ? null : selected;
         }
+
+        private static string FormatRosterContext(Character character) =>
+            $"priority {character.Priority}, relic {character.RelicTier}, gear {character.GearLevel}, GP {character.GalacticPower:N0}";
     }
 }

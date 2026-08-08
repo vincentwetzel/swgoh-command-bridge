@@ -478,6 +478,7 @@ public class ModsViewModel : StateViewModelBase<IReadOnlyList<GameModEntity>>
                     : characterNames.TryGetValue(mod.CharacterId, out var ownerName)
                         ? ownerName
                         : mod.CharacterId;
+                PopulateDisplayFields(mod);
             }
 
             var equippedModsByCharacter = mods
@@ -717,5 +718,34 @@ public class ModsViewModel : StateViewModelBase<IReadOnlyList<GameModEntity>>
 
     private static string FormatSlot(int slot) =>
         Enum.IsDefined(typeof(ModSlot), slot) ? ((ModSlot)slot).ToString() : $"Slot {slot}";
+
+    private static void PopulateDisplayFields(GameModEntity mod)
+    {
+        mod.QualitySummary = $"{mod.Rarity}-dot • Level {mod.Level} • Tier {mod.Tier}";
+        mod.SetSlotSummary = $"{FormatSet(mod.Set)} • {FormatSlot(mod.Slot)}";
+        mod.PrimaryStatSummary = FormatPrimaryStat(mod.PrimaryStatType, mod.PrimaryStatValue);
+
+        var secondaries = ParseSecondarySummaries(mod.SecondaryStatsJson);
+        mod.SecondaryStatsSummary = secondaries.Count switch
+        {
+            0 => "No readable secondary stats",
+            1 => secondaries[0],
+            2 => string.Join(" • ", secondaries),
+            _ => string.Join(" • ", secondaries.Take(2)) + $" • +{secondaries.Count - 2} more"
+        };
+    }
+
+    private static string FormatPrimaryStat(string? statType, double value)
+    {
+        if (Enum.TryParse<StatType>(statType, true, out var type))
+        {
+            return $"Primary: {new ModStat(type, value).ToString()}";
+        }
+
+        return string.IsNullOrWhiteSpace(statType) ||
+               string.Equals(statType, "None", StringComparison.OrdinalIgnoreCase)
+            ? "Primary: unavailable"
+            : $"Primary: {statType} {value:F2}";
+    }
 
 }

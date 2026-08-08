@@ -21,6 +21,22 @@ namespace swgoh_command_bridge.Core.Database.Entities
         /// </summary>
         [NotMapped]
         public string OwnerDisplayName { get; set; } = string.Empty;
+
+        /// <summary>Gets or sets the compact quality summary projected for inventory rows.</summary>
+        [NotMapped]
+        public string QualitySummary { get; set; } = string.Empty;
+
+        /// <summary>Gets or sets the readable set and slot summary projected for inventory rows.</summary>
+        [NotMapped]
+        public string SetSlotSummary { get; set; } = string.Empty;
+
+        /// <summary>Gets or sets the readable primary-stat summary projected for inventory rows.</summary>
+        [NotMapped]
+        public string PrimaryStatSummary { get; set; } = string.Empty;
+
+        /// <summary>Gets or sets the compact secondary-stat summary projected for inventory rows.</summary>
+        [NotMapped]
+        public string SecondaryStatsSummary { get; set; } = string.Empty;
         
         public int Set { get; set; }
         

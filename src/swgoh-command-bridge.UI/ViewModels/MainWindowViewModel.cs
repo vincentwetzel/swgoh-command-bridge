@@ -30,6 +30,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private string _syncProgressText = string.Empty;
     private string _syncSummaryText = string.Empty;
     private string _accountManagementStatusText = string.Empty;
+    private string _accountSearchText = string.Empty;
     private string _activeAccountSummaryText = "No active account cache is selected.";
     private string _activeCacheFreshnessText = "Sync freshness is unavailable for the active cache.";
     private string _activeSyncOutcomeText = "No sync attempt is recorded for the active account.";
@@ -125,7 +126,35 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public ObservableCollection<PlayerEntity> CachedAccounts { get; } = new();
 
+    public ObservableCollection<PlayerEntity> VisibleCachedAccounts { get; } = new();
+
     public bool HasCachedAccounts => CachedAccounts.Count > 0;
+
+    public bool HasVisibleCachedAccounts => VisibleCachedAccounts.Count > 0;
+
+    public bool HasNoVisibleCachedAccounts => HasCachedAccounts && !HasVisibleCachedAccounts;
+
+    public string AccountSearchText
+    {
+        get => _accountSearchText;
+        set
+        {
+            if (_accountSearchText == value)
+            {
+                return;
+            }
+
+            _accountSearchText = value;
+            OnPropertyChanged(nameof(AccountSearchText));
+            ApplyCachedAccountFilter();
+        }
+    }
+
+    public string CachedAccountFilterStatusText => !HasCachedAccounts
+        ? string.Empty
+        : string.IsNullOrWhiteSpace(AccountSearchText)
+            ? $"{CachedAccounts.Count} cached account(s)."
+            : $"Showing {VisibleCachedAccounts.Count} of {CachedAccounts.Count} cached account(s).";
 
     public IAsyncRelayCommand UseCachedAccountCommand { get; }
 
@@ -644,10 +673,31 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         OnPropertyChanged(nameof(HasCachedAccounts));
+        ApplyCachedAccountFilter();
         RemoveCachedAccountCommand.NotifyCanExecuteChanged();
 
         SelectedCachedAccount = CachedAccounts.FirstOrDefault(account =>
             string.Equals(account.AllyCode, AllyCode.Trim(), StringComparison.Ordinal));
+    }
+
+    private void ApplyCachedAccountFilter()
+    {
+        var query = AccountSearchText.Trim();
+        var filtered = CachedAccounts
+            .Where(account => string.IsNullOrWhiteSpace(query) ||
+                (account.Name?.Contains(query, StringComparison.OrdinalIgnoreCase) == true) ||
+                account.AllyCode.Contains(query, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        VisibleCachedAccounts.Clear();
+        foreach (var account in filtered)
+        {
+            VisibleCachedAccounts.Add(account);
+        }
+
+        OnPropertyChanged(nameof(HasVisibleCachedAccounts));
+        OnPropertyChanged(nameof(HasNoVisibleCachedAccounts));
+        OnPropertyChanged(nameof(CachedAccountFilterStatusText));
     }
 
     private async Task UseCachedAccountAsync()

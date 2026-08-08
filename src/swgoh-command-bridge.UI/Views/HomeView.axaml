@@ -39,9 +39,18 @@
           </Grid>
           <TextBlock Text="{Binding AllyCodeValidationMessage}" IsVisible="{Binding HasAllyCodeValidationError}" Foreground="#FF8A80"/>
           <TextBlock Text="Cached accounts" IsVisible="{Binding HasCachedAccounts}"/>
-          <Grid ColumnDefinitions="*, Auto" ColumnSpacing="10" IsVisible="{Binding HasCachedAccounts}">
+          <TextBox Text="{Binding AccountSearchText}"
+                   Watermark="Filter cached accounts by name or ally code"
+                   IsVisible="{Binding HasCachedAccounts}"/>
+          <TextBlock Text="{Binding CachedAccountFilterStatusText}"
+                     IsVisible="{Binding HasCachedAccounts}"
+                     Foreground="Gray"/>
+          <TextBlock Text="No cached accounts match this filter."
+                     IsVisible="{Binding HasNoVisibleCachedAccounts}"
+                     Foreground="#FFCC80"/>
+          <Grid ColumnDefinitions="*, Auto" ColumnSpacing="10" IsVisible="{Binding HasVisibleCachedAccounts}">
             <ComboBox Grid.Column="0"
-                      ItemsSource="{Binding CachedAccounts}"
+                      ItemsSource="{Binding VisibleCachedAccounts}"
                       SelectedItem="{Binding SelectedCachedAccount}"
                       MaxWidth="420">
               <ComboBox.ItemTemplate>

@@ -49,6 +49,17 @@ namespace swgoh_command_bridge.Core.Models
         /// <summary>Estimated efficiency if remaining level/tier rolls improve the mod.</summary>
         public double ProjectedEfficiency { get; init; }
 
+        /// <summary>Gets the stable ID of the threshold used for this recommendation.</summary>
+        public string ThresholdId { get; init; } = string.Empty;
+
+        /// <summary>Gets the display name of the threshold used for this recommendation.</summary>
+        public string ThresholdName { get; init; } = string.Empty;
+
+        /// <summary>Explains which persisted rule produced the decision.</summary>
+        public string RuleSummary => string.IsNullOrWhiteSpace(ThresholdName)
+            ? $"Rule: {ThresholdId}"
+            : $"Rule: {ThresholdName} ({ThresholdId})";
+
         /// <summary>Explains the estimate without implying guaranteed game-stat gains.</summary>
         public string EfficiencySummary =>
             $"Estimated secondary-roll efficiency: {CurrentEfficiency:F0}% current; {ProjectedEfficiency:F0}% projected maximum.";

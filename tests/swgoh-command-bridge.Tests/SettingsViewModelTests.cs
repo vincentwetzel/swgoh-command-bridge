@@ -201,6 +201,58 @@ public sealed class SettingsViewModelTests
         Assert.False(viewModel.HasError);
     }
 
+    [Fact]
+    public async Task BackupCacheCommandSurfacesCallbackFailureAsRetryableError()
+    {
+        var settings = new FakeSettingsService();
+        var viewModel = new SettingsViewModel(
+            settings,
+            _ => { },
+            _ => { },
+            () => Task.CompletedTask,
+            backupCache: () => Task.FromException<string>(new IOException("backup unavailable")));
+
+        await viewModel.BackupCacheCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.HasError);
+        Assert.Contains("back up", viewModel.StatusText, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("backup unavailable", viewModel.StatusText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RestoreCacheCommandSurfacesCallbackFailureAndRetainsConfirmation()
+    {
+        var settings = new FakeSettingsService();
+        var viewModel = new SettingsViewModel(
+            settings,
+            _ => { },
+            _ => { },
+            () => Task.CompletedTask,
+            restoreCache: _ => Task.FromException(new IOException("restore unavailable")));
+        viewModel.ConfirmCacheRestore = true;
+        viewModel.RestoreBackupPath = "cache-backup.db";
+
+        await viewModel.RestoreCacheCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.HasError);
+        Assert.True(viewModel.ConfirmCacheRestore);
+        Assert.Contains("restore unavailable", viewModel.RestoreStatusText, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("restore", viewModel.StatusText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task SaveCommandSurfacesSettingsPersistenceFailure()
+    {
+        var settings = new FakeSettingsService { ThrowOnSave = true };
+        var viewModel = CreateViewModel(settings);
+
+        await viewModel.SaveCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.HasError);
+        Assert.Contains("save settings", viewModel.StatusText, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(settings.SavedSettings);
+    }
+
     private static SettingsViewModel CreateViewModel(FakeSettingsService settings) =>
         new(
             settings,
@@ -228,10 +280,17 @@ public sealed class SettingsViewModelTests
 
         public System.Collections.Generic.List<AppSettings> SavedSettings { get; } = new();
 
+        public bool ThrowOnSave { get; set; }
+
         public Task LoadSettingsAsync() => Task.CompletedTask;
 
         public Task SaveSettingsAsync(AppSettings settings)
         {
+            if (ThrowOnSave)
+            {
+                throw new IOException("settings persistence unavailable");
+            }
+
             CurrentSettings = settings;
             SavedSettings.Add(settings);
             return Task.CompletedTask;

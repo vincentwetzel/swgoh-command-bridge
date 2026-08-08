@@ -298,6 +298,9 @@ namespace swgoh_command_bridge.Tests
             Assert.Equal(20, recommendation.ProjectedEfficiency);
             Assert.Contains("efficiency 20", recommendation.Reason);
             Assert.Contains("projected maximum", recommendation.EfficiencySummary);
+            Assert.Equal("efficiency", recommendation.ThresholdId);
+            Assert.Equal("Efficiency", recommendation.ThresholdName);
+            Assert.Contains("Rule: Efficiency (efficiency)", recommendation.RuleSummary);
         }
 
         [Fact]
@@ -339,6 +342,50 @@ namespace swgoh_command_bridge.Tests
 
             Assert.Equal(ModRecommendationAction.Swap, recommendation.Action);
             Assert.Contains("a-owner", recommendation.Reason);
+        }
+
+        [Fact]
+        public async Task AnalyzeModAsync_WhenPriorityTies_UsesRosterInvestmentToChooseSwapTarget()
+        {
+            var candidateMod = new GameMod(
+                "candidate-investment",
+                level: 15,
+                pips: 5,
+                tier: 5,
+                ModSlot.Square,
+                ModSet.Health,
+                new ModStat(StatType.Offense, 0.5),
+                new List<ModStat> { new(StatType.Speed, 12) },
+                null);
+            var equipped = new GameMod(
+                "equipped-investment",
+                level: 15,
+                pips: 5,
+                tier: 5,
+                ModSlot.Square,
+                ModSet.Health,
+                new ModStat(StatType.Offense, 0.5),
+                new List<ModStat> { new(StatType.Speed, 8) },
+                "owner");
+
+            var characters = new[]
+            {
+                new Character("low-investment", "A Target", 85, 12, 1, 10000, 20,
+                    new Dictionary<ModSlot, GameMod> { [ModSlot.Square] = equipped }),
+                new Character("high-investment", "Z Target", 85, 12, 5, 50000, 20,
+                    new Dictionary<ModSlot, GameMod> { [ModSlot.Square] = equipped })
+            };
+
+            var recommendation = await _advisorService.AnalyzeModAsync(
+                candidateMod,
+                new ModUpgradeThreshold("investment", "Investment", 5, 5, 15, true, 0),
+                characters);
+
+            Assert.Equal(ModRecommendationAction.Swap, recommendation.Action);
+            Assert.Contains("high-investment", recommendation.Reason);
+            Assert.Contains("relic 5", recommendation.Reason);
+            Assert.Contains("gear 12", recommendation.Reason);
+            Assert.Contains("GP 50,000", recommendation.Reason);
         }
     }
 }

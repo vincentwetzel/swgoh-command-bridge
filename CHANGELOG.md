@@ -58,3 +58,7 @@ This unreleased work is not a packaged release. The product remains read-only an
 - **Project Scope:** The primary goal has been refocused to be a **read-only** analysis and recommendation tool. Features related to direct account modification (e.g., equipping or upgrading mods) have been moved to stretch goals.
 - Documentation refreshed to identify `src/` as the compiled implementation and root-level C# files as retained historical drafts.
 - Documentation now reflects the active `src/` implementation, account-scoped sync and offline cache behavior, local cache/settings locations, recovery controls, privacy-redacted diagnostics, recommendation scraping policy, release packaging guidance, and the manual smoke-test gate.
+
+### Documentation status
+- `docs/ROADMAP_HISTORY.md` records the completed implementation audit; `TODO.md` now contains only open release gates and deferred scope.
+- The file manifest and documentation index include the current source, test, and release-audit files.

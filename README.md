@@ -53,5 +53,9 @@ The application writes only local cache, settings, backup, and diagnostics files
 - [Smoke-test checklist](docs/SMOKE_TEST_CHECKLIST.md)
 - [Release guide](docs/RELEASE_GUIDE.md)
 - [File manifest](docs/FILE_MANIFEST.md)
+- [Completed implementation audit](docs/ROADMAP_HISTORY.md)
+- [Changelog](CHANGELOG.md)
 - [Coding standards](CODING_STANDARDS.md)
 - [Roadmap](TODO.md)
+
+The roadmap is split intentionally: `ROADMAP_HISTORY.md` records completed implementation work, while `TODO.md` contains only release gates and deferred product scope. The current release target is a read-only desktop build; packaged runtime and visual smoke verification remain release-operator gates.

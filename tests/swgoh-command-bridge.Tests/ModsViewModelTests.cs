@@ -54,6 +54,10 @@ public sealed class ModsViewModelTests : IDisposable
         var filtered = Assert.Single(viewModel.FilteredMods);
         Assert.Equal("active-000", filtered.Id);
         Assert.Equal("Un-equipped", filtered.OwnerDisplayName);
+        Assert.Equal("6-dot • Level 15 • Tier 5", filtered.QualitySummary);
+        Assert.Equal("Health • Square", filtered.SetSlotSummary);
+        Assert.Equal("Primary: +30 Speed", filtered.PrimaryStatSummary);
+        Assert.Equal("+15 Speed (3)", filtered.SecondaryStatsSummary);
         Assert.Equal("Advisor threshold: Test", viewModel.ActiveThresholdText);
         Assert.Contains("1 of 3", viewModel.FilterSummaryText);
 
@@ -128,6 +132,30 @@ public sealed class ModsViewModelTests : IDisposable
         advisor.CompleteFirstAnalysis();
         await Task.Yield();
         Assert.Equal(second.Id, viewModel.SelectedModRecommendation.ModId);
+    }
+
+    [Fact]
+    public async Task RefreshThresholdContext_ReanalyzesSelectedModWithTheCurrentThreshold()
+    {
+        await SeedModsAsync(1);
+        var threshold = new ModUpgradeThreshold("first", "First", 5, 1, 10, true, 0);
+        var advisor = new ThresholdRecordingAdvisorService();
+        var viewModel = new ModsViewModel(
+            _context,
+            advisor,
+            () => threshold,
+            () => "123456789");
+
+        await viewModel.LoadModsAsync();
+        viewModel.SelectedMod = Assert.Single(viewModel.FilteredMods);
+        await advisor.FirstCall.Task;
+
+        threshold = new ModUpgradeThreshold("second", "Second", 6, 5, 25, true, 70);
+        viewModel.RefreshThresholdContext();
+        await advisor.SecondCall.Task;
+
+        Assert.Equal(new[] { "first", "second" }, advisor.ThresholdIds);
+        Assert.Equal("Advisor threshold: Second", viewModel.ActiveThresholdText);
     }
 
     [Fact]
@@ -233,6 +261,83 @@ public sealed class ModsViewModelTests : IDisposable
 
         viewModel.SortOption = "Primary";
         Assert.Equal("delta-inventory", viewModel.FilteredMods[0].Id);
+    }
+
+    [Fact]
+    public async Task LoadModsAsync_SummarizesMultipleSecondariesWithoutHidingTheirCount()
+    {
+        await SeedFilterableModsAsync();
+        var viewModel = new ModsViewModel(
+            _context,
+            new StubAdvisorService(),
+            activeAllyCodeProvider: () => "123456789");
+
+        await viewModel.LoadModsAsync();
+
+        var mod = viewModel.FilteredMods.Single(item => item.Id == "alpha-equipped");
+        Assert.Equal("+15 Speed (3) • +5.00% Potency", mod.SecondaryStatsSummary);
+        Assert.Equal("Owner: Rey", $"Owner: {mod.OwnerDisplayName}");
+    }
+
+    [Fact]
+    public async Task SelectedModAnalysis_UsesPersistedStatsAndExposesRuleAndEfficiencyExplanation()
+    {
+        var player = new PlayerEntity
+        {
+            AllyCode = "123456789",
+            Name = "Advisor Account"
+        };
+        player.Mods.Add(new GameModEntity
+        {
+            Id = "advisor-mod",
+            PlayerAllyCode = "123456789",
+            Slot = 1,
+            Set = (int)ModSet.Health,
+            Level = 15,
+            Tier = 5,
+            Rarity = 5,
+            PrimaryStatType = "Offense",
+            PrimaryStatValue = 100,
+            SecondaryStatsJson = "[{\"Type\":\"Speed\",\"Value\":20,\"RollCount\":1},{\"Type\":\"Potency\",\"Value\":5,\"RollCount\":1}]"
+        });
+        _context.Players.Add(player);
+        await _context.SaveChangesAsync();
+
+        var threshold = new ModUpgradeThreshold(
+            "efficiency",
+            "Efficiency",
+            5,
+            5,
+            15,
+            true,
+            50);
+        var viewModel = new ModsViewModel(
+            _context,
+            new ModAdvisorService(
+                NullLogger<ModAdvisorService>.Instance,
+                new ModMechanicsService()),
+            () => threshold,
+            () => "123456789");
+        var recommendationReady = new TaskCompletionSource<ModRecommendation>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        viewModel.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(viewModel.SelectedModRecommendation) &&
+                viewModel.SelectedModRecommendation != null)
+            {
+                recommendationReady.TrySetResult(viewModel.SelectedModRecommendation);
+            }
+        };
+
+        await viewModel.LoadModsAsync();
+        viewModel.SelectedMod = Assert.Single(viewModel.FilteredMods);
+        var recommendation = await recommendationReady.Task;
+
+        Assert.Equal(ModRecommendationAction.Sell, recommendation.Action);
+        Assert.Equal("efficiency", recommendation.ThresholdId);
+        Assert.Contains("Rule: Efficiency (efficiency)", recommendation.RuleSummary);
+        Assert.Equal(20, recommendation.CurrentEfficiency);
+        Assert.Contains("projected maximum", recommendation.EfficiencySummary);
     }
 
     private async Task SeedModsAsync(int activeCount)
@@ -409,6 +514,40 @@ public sealed class ModsViewModelTests : IDisposable
                 ModRecommendationAction.Sell,
                 "Stale selection",
                 1));
+    }
+
+    private sealed class ThresholdRecordingAdvisorService : IModAdvisorService
+    {
+        public List<string> ThresholdIds { get; } = new();
+
+        public TaskCompletionSource<bool> FirstCall { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource<bool> SecondCall { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task<ModRecommendation> AnalyzeModAsync(
+            GameMod mod,
+            ModUpgradeThreshold threshold,
+            IEnumerable<Character> characters,
+            CancellationToken cancellationToken = default)
+        {
+            ThresholdIds.Add(threshold.Id);
+            if (ThresholdIds.Count == 1)
+            {
+                FirstCall.TrySetResult(true);
+            }
+            else if (ThresholdIds.Count == 2)
+            {
+                SecondCall.TrySetResult(true);
+            }
+
+            return Task.FromResult(new ModRecommendation(
+                mod.Id,
+                ModRecommendationAction.Keep,
+                threshold.Name,
+                100));
+        }
     }
 
     public void Dispose()

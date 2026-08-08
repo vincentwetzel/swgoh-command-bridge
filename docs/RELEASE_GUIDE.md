@@ -2,6 +2,8 @@
 
 This document defines the release targets and packaging policy for the read-only desktop application. It describes the commands the release operator should run; this repository change does not execute builds or publish artifacts.
 
+The implementation audit is complete. Release readiness still requires a successful solution build/test run, target-specific publish verification, and the manual scenarios in [SMOKE_TEST_CHECKLIST.md](SMOKE_TEST_CHECKLIST.md). Record those results with the artifact version and target before removing the corresponding gates from `TODO.md`.
+
 ## Runtime matrix
 
 | Target | Runtime/package target | Status for this milestone | Notes |
