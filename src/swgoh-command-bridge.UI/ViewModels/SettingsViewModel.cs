@@ -3,14 +3,16 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Mail;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
 using swgoh_command_bridge.Core.Models;
 using swgoh_command_bridge.Core.Services;
+using swgoh_command_bridge.UI;
 
 namespace swgoh_command_bridge.UI.ViewModels;
 
-public class SettingsViewModel : ViewModelBase
+public class SettingsViewModel : StateViewModelBase<bool>
 {
     private readonly ISettingsService _settingsService;
     private readonly Action<string> _applyComlinkUrl;
@@ -21,11 +23,13 @@ public class SettingsViewModel : ViewModelBase
     private readonly Func<string, Task>? _restoreCache;
     private readonly Func<Task>? _refreshAfterImport;
     private readonly DiagnosticEventLog _eventLog;
+    private readonly Action<string> _applyTheme;
     private readonly SettingsTransferService _transferService = new();
     private string _comlinkBaseUrl;
     private string _defaultAllyCode;
     private string _theme;
     private bool _enableLocalRecommendationScraping;
+    private string _recommendationContactEmail;
     private string _backupStatusText = "No cache backup created in this session.";
     private string _restoreBackupPath = string.Empty;
     private string _restoreStatusText = "No cache restore performed in this session.";
@@ -33,7 +37,9 @@ public class SettingsViewModel : ViewModelBase
     private string _settingsTransferStatusText = "No settings transfer performed in this session.";
     private bool _confirmCacheReset;
     private bool _confirmCacheRestore;
-    private OperationState<bool> _state = OperationState<bool>.ToEmpty();
+
+    public IReadOnlyList<string> ThemeOptions { get; } =
+        new[] { ThemePreference.Dark, ThemePreference.Light, ThemePreference.System };
 
     public SettingsViewModel(
         ISettingsService settingsService,
@@ -44,7 +50,8 @@ public class SettingsViewModel : ViewModelBase
         Func<Task<string>>? backupCache = null,
         Func<string, Task>? restoreCache = null,
         Func<Task>? refreshAfterImport = null,
-        DiagnosticEventLog? eventLog = null)
+        DiagnosticEventLog? eventLog = null,
+        Action<string>? applyTheme = null)
     {
         ArgumentNullException.ThrowIfNull(settingsService);
         ArgumentNullException.ThrowIfNull(applyComlinkUrl);
@@ -60,10 +67,12 @@ public class SettingsViewModel : ViewModelBase
         _restoreCache = restoreCache;
         _refreshAfterImport = refreshAfterImport;
         _eventLog = eventLog ?? new DiagnosticEventLog();
+        _applyTheme = applyTheme ?? ThemeManager.Apply;
         _comlinkBaseUrl = settingsService.CurrentSettings.ComlinkBaseUrl;
         _defaultAllyCode = settingsService.CurrentSettings.DefaultAllyCode ?? string.Empty;
-        _theme = settingsService.CurrentSettings.Theme;
+        _theme = ThemePreference.Normalize(settingsService.CurrentSettings.Theme);
         _enableLocalRecommendationScraping = settingsService.CurrentSettings.EnableLocalRecommendationScraping;
+        _recommendationContactEmail = settingsService.CurrentSettings.RecommendationContactEmail ?? string.Empty;
         SaveCommand = new AsyncRelayCommand(SaveAsync);
         TestConnectionCommand = new AsyncRelayCommand(TestConnectionAsync);
         BackupCacheCommand = new AsyncRelayCommand(BackupCacheAsync);
@@ -97,6 +106,12 @@ public class SettingsViewModel : ViewModelBase
     {
         get => _enableLocalRecommendationScraping;
         set => SetField(ref _enableLocalRecommendationScraping, value);
+    }
+
+    public string RecommendationContactEmail
+    {
+        get => _recommendationContactEmail;
+        set => SetField(ref _recommendationContactEmail, value);
     }
 
     public bool ConfirmCacheReset
@@ -141,22 +156,8 @@ public class SettingsViewModel : ViewModelBase
         private set => SetField(ref _settingsTransferStatusText, value);
     }
 
-    public OperationState<bool> State
-    {
-        get => _state;
-        private set
-        {
-            _state = value;
-            OnPropertyChanged(nameof(State));
-            OnPropertyChanged(nameof(IsBusy));
-            OnPropertyChanged(nameof(HasError));
-            OnPropertyChanged(nameof(StatusText));
-        }
-    }
-
-    public bool IsBusy => State.Status == OperationStatus.Loading;
-
-    public bool HasError => State.Status == OperationStatus.Error;
+    protected override void OnStateChanged() =>
+        OnPropertyChanged(nameof(StatusText));
 
     public string StatusText => State.Status switch
     {
@@ -188,6 +189,13 @@ public class SettingsViewModel : ViewModelBase
             return;
         }
 
+        if (!TryGetValidContactEmail(out var validatedContactEmail))
+        {
+            State = OperationState<bool>.ToError(
+                "Recommendation contact must be a single valid email address.");
+            return;
+        }
+
         State = OperationState<bool>.ToLoading();
         try
         {
@@ -197,9 +205,12 @@ public class SettingsViewModel : ViewModelBase
             {
                 ComlinkBaseUrl = validatedUrl,
                 DefaultAllyCode = string.IsNullOrWhiteSpace(DefaultAllyCode) ? null : DefaultAllyCode.Trim(),
-                Theme = Theme.Trim(),
-                EnableLocalRecommendationScraping = EnableLocalRecommendationScraping
+                Theme = ThemePreference.Normalize(Theme),
+                EnableLocalRecommendationScraping = EnableLocalRecommendationScraping,
+                RecommendationContactEmail = validatedContactEmail
             });
+            Theme = ThemePreference.Normalize(Theme);
+            _applyTheme(Theme);
             State = OperationState<bool>.ToSuccess(true);
             _eventLog.Info("settings", "Application settings saved.");
         }
@@ -374,10 +385,12 @@ public class SettingsViewModel : ViewModelBase
 
             ComlinkBaseUrl = imported.ComlinkBaseUrl;
             DefaultAllyCode = imported.DefaultAllyCode ?? string.Empty;
-            Theme = imported.Theme;
+            Theme = ThemePreference.Normalize(imported.Theme);
             EnableLocalRecommendationScraping = imported.EnableLocalRecommendationScraping;
+            RecommendationContactEmail = imported.RecommendationContactEmail ?? string.Empty;
             _applyComlinkUrl(imported.ComlinkBaseUrl);
             _applyAllyCode(DefaultAllyCode);
+            _applyTheme(Theme);
             if (_refreshAfterImport != null)
             {
                 await _refreshAfterImport();
@@ -427,6 +440,28 @@ public class SettingsViewModel : ViewModelBase
         return Uri.TryCreate(url, UriKind.Absolute, out var parsed)
             && (parsed.Scheme == Uri.UriSchemeHttp || parsed.Scheme == Uri.UriSchemeHttps)
             && string.IsNullOrWhiteSpace(parsed.UserInfo);
+    }
+
+    private bool TryGetValidContactEmail(out string? email)
+    {
+        email = string.IsNullOrWhiteSpace(RecommendationContactEmail)
+            ? null
+            : RecommendationContactEmail.Trim();
+        if (email == null)
+        {
+            return true;
+        }
+
+        try
+        {
+            var parsed = new MailAddress(email);
+            return email.Length <= 254 &&
+                string.Equals(parsed.Address, email, StringComparison.OrdinalIgnoreCase);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
     }
 
     private void SetField<T>(ref T field, T value, [System.Runtime.CompilerServices.CallerMemberName] string? name = null)

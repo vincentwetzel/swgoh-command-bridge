@@ -76,7 +76,10 @@ namespace swgoh_command_bridge.Tests
             var scraper = new SwgohGgScraperService(clientFactory, _context, NullLogger<SwgohGgScraperService>.Instance);
 
             // Act
-            var success = await scraper.ScrapeCharacterRecommendationsAsync("DARTHTRAYA", CancellationToken.None);
+            var success = await scraper.ScrapeCharacterRecommendationsAsync(
+                "DARTHTRAYA",
+                CancellationToken.None,
+                "123456789");
 
             // Assert
             Assert.True(success);
@@ -91,6 +94,7 @@ namespace swgoh_command_bridge.Tests
             Assert.Contains("Critical Damage", persisted.PrimaryStatsJson);
             Assert.Equal("swgoh.gg", persisted.Source);
             Assert.Equal(1, persisted.RecommendationSchemaVersion);
+            Assert.Equal("123456789", persisted.PlayerAllyCode);
             Assert.Contains("/characters/darthtraya/best-mods/", persisted.SourceUrl);
 
             var snapshot = RecommendationSnapshot.FromEntity(persisted);
@@ -133,6 +137,44 @@ namespace swgoh_command_bridge.Tests
 
             // Assert
             Assert.True(exists);
+        }
+
+        [Fact]
+        public async Task HasRecommendationAsync_IsolatedByAllyCode()
+        {
+            _context.SwgohGgRecommendations.AddRange(
+                new SwgohGgRecommendationEntity
+                {
+                    CharacterId = "SCOPED_CHARACTER",
+                    PlayerAllyCode = "123456789",
+                    LastUpdatedUtc = DateTime.UtcNow
+                },
+                new SwgohGgRecommendationEntity
+                {
+                    CharacterId = "SCOPED_CHARACTER",
+                    PlayerAllyCode = "987654321",
+                    LastUpdatedUtc = DateTime.UtcNow
+                });
+            await _context.SaveChangesAsync();
+
+            var scraper = new SwgohGgScraperService(
+                new FakeHttpClientFactory(new HttpClient(new FakeHttpMessageHandler(_ =>
+                    Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound))))),
+                _context,
+                NullLogger<SwgohGgScraperService>.Instance);
+
+            Assert.True(await scraper.HasRecommendationAsync(
+                "SCOPED_CHARACTER",
+                CancellationToken.None,
+                "123456789"));
+            Assert.True(await scraper.HasRecommendationAsync(
+                "SCOPED_CHARACTER",
+                CancellationToken.None,
+                "987654321"));
+            Assert.False(await scraper.HasRecommendationAsync(
+                "SCOPED_CHARACTER",
+                CancellationToken.None,
+                "111222333"));
         }
 
         [Fact]
@@ -186,6 +228,42 @@ namespace swgoh_command_bridge.Tests
         }
 
         [Fact]
+        public async Task ScrapeCharacterRecommendationsAsync_RetriesTransientResponsesUsingConfiguredPolicy()
+        {
+            var attempts = 0;
+            var handler = new FakeHttpMessageHandler(_ =>
+            {
+                attempts++;
+                if (attempts == 1)
+                {
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+                }
+
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(
+                        "<div class=\"mod-set-image\" alt=\"Speed\"></div><div class=\"mod-set-percent\">60%</div>")
+                });
+            });
+            var scraper = new SwgohGgScraperService(
+                new FakeHttpClientFactory(new HttpClient(handler)),
+                _context,
+                NullLogger<SwgohGgScraperService>.Instance,
+                retryPolicy: new ScrapeRetryPolicy(
+                    maxAttempts: 2,
+                    initialBackoff: TimeSpan.Zero,
+                    maximumBackoff: TimeSpan.Zero,
+                    interRequestDelay: TimeSpan.Zero));
+
+            var result = await scraper.ScrapeCharacterRecommendationsWithResultAsync(
+                "RETRY_CHECK",
+                CancellationToken.None);
+
+            Assert.True(result.Success);
+            Assert.Equal(2, attempts);
+        }
+
+        [Fact]
         public async Task ScrapeCharacterRecommendationsWithResultAsync_ReportsEndpointFailure()
         {
             var handler = new FakeHttpMessageHandler(req =>
@@ -233,6 +311,58 @@ namespace swgoh_command_bridge.Tests
             Assert.NotNull(observedRequest);
             Assert.Contains("SWGOHCommandBridge", observedRequest!.Headers.UserAgent.ToString());
             Assert.Contains("text/html", string.Join(",", observedRequest.Headers.Accept));
+        }
+
+        [Fact]
+        public async Task ScrapeCharacterRecommendationsAsync_SendsConfiguredContactMetadata()
+        {
+            HttpRequestMessage? observedRequest = null;
+            var handler = new FakeHttpMessageHandler(req =>
+            {
+                observedRequest = req;
+                var response = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(
+                        "<div class=\"mod-set-image\" alt=\"Speed\"></div><div class=\"mod-set-percent\">60%</div>")
+                };
+                return Task.FromResult(response);
+            });
+            var scraper = new SwgohGgScraperService(
+                new FakeHttpClientFactory(new HttpClient(handler)),
+                _context,
+                NullLogger<SwgohGgScraperService>.Instance,
+                () => "operator@example.com");
+
+            Assert.True(await scraper.ScrapeCharacterRecommendationsAsync(
+                "CONTACT_CHECK",
+                CancellationToken.None));
+
+            Assert.NotNull(observedRequest);
+            Assert.Equal("operator@example.com", observedRequest!.Headers.From?.Address);
+        }
+
+        [Fact]
+        public async Task ScrapeCharacterRecommendationsAsync_RejectsOversizedResponse()
+        {
+            var handler = new FakeHttpMessageHandler(_ =>
+            {
+                var response = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(new string('x', 2 * 1024 * 1024 + 1))
+                };
+                return Task.FromResult(response);
+            });
+            var scraper = new SwgohGgScraperService(
+                new FakeHttpClientFactory(new HttpClient(handler)),
+                _context,
+                NullLogger<SwgohGgScraperService>.Instance);
+
+            var result = await scraper.ScrapeCharacterRecommendationsWithResultAsync(
+                "OVERSIZED_CHECK",
+                CancellationToken.None);
+
+            Assert.False(result.Success);
+            Assert.Contains("size limit", result.ErrorMessage);
         }
 
         [Fact]
@@ -294,6 +424,10 @@ namespace swgoh_command_bridge.Tests
             Assert.Equal(1, update.Current);
             Assert.Equal(1, update.Total);
             Assert.True(update.Success);
+
+            var persisted = await _context.SwgohGgRecommendations
+                .SingleAsync(recommendation => recommendation.CharacterId == "DARTHTRAYA");
+            Assert.Equal("123456789", persisted.PlayerAllyCode);
         }
 
         public void Dispose()

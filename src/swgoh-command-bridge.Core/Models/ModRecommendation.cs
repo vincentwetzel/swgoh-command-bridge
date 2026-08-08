@@ -41,5 +41,16 @@ namespace swgoh_command_bridge.Core.Models
         ModRecommendationAction Action,
         string Reason,
         double Score
-    );
+    )
+    {
+        /// <summary>Estimated current efficiency from persisted secondary roll counts.</summary>
+        public double CurrentEfficiency { get; init; }
+
+        /// <summary>Estimated efficiency if remaining level/tier rolls improve the mod.</summary>
+        public double ProjectedEfficiency { get; init; }
+
+        /// <summary>Explains the estimate without implying guaranteed game-stat gains.</summary>
+        public string EfficiencySummary =>
+            $"Estimated secondary-roll efficiency: {CurrentEfficiency:F0}% current; {ProjectedEfficiency:F0}% projected maximum.";
+    }
 }

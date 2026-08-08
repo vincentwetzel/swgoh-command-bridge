@@ -99,7 +99,16 @@ public sealed class SwgohGgRecommendationParser
             }
 
             var searchStart = tag.Index + tag.Length;
-            var searchEnd = Math.Min(htmlContent.Length, searchStart + SectionSearchLimit);
+            var nextSetStart = openingTags
+                .Where(candidate => candidate.Index > tag.Index)
+                .Where(candidate => HasClass(
+                    GetAttribute(candidate.Groups["attributes"].Value, "class"),
+                    "mod-set-image"))
+                .Select(candidate => candidate.Index)
+                .FirstOrDefault();
+            var searchEnd = nextSetStart > searchStart
+                ? Math.Min(nextSetStart, searchStart + SectionSearchLimit)
+                : Math.Min(htmlContent.Length, searchStart + SectionSearchLimit);
             var percentage = ParsePercentage(
                 elements.FirstOrDefault(element =>
                     element.Index >= searchStart &&
@@ -131,8 +140,12 @@ public sealed class SwgohGgRecommendationParser
     {
         var stats = new Dictionary<string, List<RecommendedPrimary>>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (Match slotMatch in SlotRegex.Matches(htmlContent))
+        var slotMatches = SlotRegex.Matches(htmlContent)
+            .Cast<Match>()
+            .ToList();
+        for (var slotIndex = 0; slotIndex < slotMatches.Count; slotIndex++)
         {
+            var slotMatch = slotMatches[slotIndex];
             var slotNumber = slotMatch.Groups["slot"].Success
                 ? slotMatch.Groups["slot"].Value
                 : slotMatch.Groups["slotAttribute"].Value;
@@ -142,7 +155,12 @@ public sealed class SwgohGgRecommendationParser
                 continue;
             }
 
-            var sectionEnd = Math.Min(htmlContent.Length, slotMatch.Index + SectionSearchLimit);
+            var nextSlotStart = slotIndex + 1 < slotMatches.Count
+                ? slotMatches[slotIndex + 1].Index
+                : htmlContent.Length;
+            var sectionEnd = Math.Min(htmlContent.Length, Math.Min(
+                nextSlotStart,
+                slotMatch.Index + SectionSearchLimit));
             var statElement = elements.FirstOrDefault(element =>
                 element.Index >= slotMatch.Index &&
                 element.Index < sectionEnd &&

@@ -15,7 +15,7 @@ using swgoh_command_bridge.Core.Services;
 
 namespace swgoh_command_bridge.UI.ViewModels;
 
-public class ModsViewModel : ViewModelBase
+public class ModsViewModel : StateViewModelBase<IReadOnlyList<GameModEntity>>
 {
     private readonly AppDbContext _context;
     private readonly IModAdvisorService _advisorService;
@@ -37,9 +37,8 @@ public class ModsViewModel : ViewModelBase
     private string _minimumLevelFilter = string.Empty;
     private string _tierFilter = string.Empty;
     private string _sortOption = "Rarity";
-    private OperationState<IReadOnlyList<GameModEntity>> _state =
-        OperationState<IReadOnlyList<GameModEntity>>.ToEmpty();
     private int _currentPage = 1;
+    private int _recommendationVersion;
     private const int PageSize = 100;
 
     public ModsViewModel(AppDbContext context, IModAdvisorService advisorService)
@@ -61,25 +60,9 @@ public class ModsViewModel : ViewModelBase
         _thresholdProvider = thresholdProvider ?? (() => null);
         _activeAllyCodeProvider = activeAllyCodeProvider;
         RefreshCommand = new AsyncRelayCommand(LoadModsAsync);
+        ClearFiltersCommand = new RelayCommand(ClearFilters);
         PreviousPageCommand = new RelayCommand(PreviousPage);
         NextPageCommand = new RelayCommand(NextPage);
-    }
-
-    public OperationState<IReadOnlyList<GameModEntity>> State
-    {
-        get => _state;
-        private set
-        {
-            _state = value;
-            OnPropertyChanged(nameof(State));
-            OnPropertyChanged(nameof(IsLoading));
-            OnPropertyChanged(nameof(IsEmpty));
-            OnPropertyChanged(nameof(HasMods));
-            OnPropertyChanged(nameof(HasFilteredMods));
-            OnPropertyChanged(nameof(HasNoMatchingMods));
-            OnPropertyChanged(nameof(HasError));
-            OnPropertyChanged(nameof(ErrorMessage));
-        }
     }
 
     public ObservableCollection<GameModEntity> FilteredMods { get; } = new();
@@ -162,6 +145,20 @@ public class ModsViewModel : ViewModelBase
 
             _selectedMod = value;
             OnPropertyChanged(nameof(SelectedMod));
+            OnPropertyChanged(nameof(SelectedModSetText));
+            OnPropertyChanged(nameof(SelectedModSlotText));
+            OnPropertyChanged(nameof(SelectedModSummaryText));
+            SelectedSecondarySummaries.Clear();
+            if (value != null)
+            {
+                foreach (var summary in ParseSecondarySummaries(value.SecondaryStatsJson))
+                {
+                    SelectedSecondarySummaries.Add(summary);
+                }
+            }
+
+            OnPropertyChanged(nameof(HasSelectedSecondaryStats));
+            OnPropertyChanged(nameof(HasNoSelectedSecondaryStats));
             _ = UpdateRecommendationAsync();
         }
     }
@@ -302,6 +299,17 @@ public class ModsViewModel : ViewModelBase
 
     public bool HasSecondaryFilterError => !string.IsNullOrWhiteSpace(SecondaryFilterError);
 
+    public bool HasActiveFilters =>
+        !string.IsNullOrWhiteSpace(SearchText) ||
+        !string.IsNullOrWhiteSpace(SecondaryFilter) ||
+        RarityFilter > 0 ||
+        SlotFilter > 0 ||
+        SetFilter > 0 ||
+        EquippedFilter > 0 ||
+        !string.Equals(PrimaryFilter, "All primaries", StringComparison.OrdinalIgnoreCase) ||
+        !string.IsNullOrWhiteSpace(MinimumLevelFilter) ||
+        !string.IsNullOrWhiteSpace(TierFilter);
+
     public string MinimumLevelFilter
     {
         get => _minimumLevelFilter;
@@ -334,24 +342,51 @@ public class ModsViewModel : ViewModelBase
         }
     }
 
-    public bool IsLoading => State.Status == OperationStatus.Loading;
-
-    public bool IsEmpty => State.Status == OperationStatus.Empty;
-
     public bool HasMods => State.Status == OperationStatus.Success && _allMods.Count > 0;
 
     public bool HasFilteredMods => HasMods && FilteredMods.Count > 0;
 
     public bool HasNoMatchingMods => HasMods && FilteredMods.Count == 0;
 
-    public bool HasError => State.Status == OperationStatus.Error;
 
-    public string ErrorMessage => State.ErrorMessage ?? string.Empty;
+    protected override void OnStateChanged()
+    {
+        OnPropertyChanged(nameof(HasMods));
+        OnPropertyChanged(nameof(HasFilteredMods));
+        OnPropertyChanged(nameof(HasNoMatchingMods));
+        OnPropertyChanged(nameof(FilterSummaryText));
+    }
 
     public string ActiveThresholdText =>
         $"Advisor threshold: {_thresholdProvider()?.Name ?? "Standard Settings"}";
 
+    public string FilterSummaryText => HasMods
+        ? HasActiveFilters
+            ? $"Showing {_filteredModResults.Count} of {_allMods.Count} cached mod(s)."
+            : $"Showing all {_allMods.Count} cached mod(s)."
+        : "No cached mods loaded.";
+
+    public string SelectedModSetText => SelectedMod == null
+        ? string.Empty
+        : $"Set: {FormatSet(SelectedMod.Set)}";
+
+    public string SelectedModSlotText => SelectedMod == null
+        ? string.Empty
+        : $"Slot: {FormatSlot(SelectedMod.Slot)}";
+
+    public string SelectedModSummaryText => SelectedMod == null
+        ? string.Empty
+        : $"{SelectedMod.Rarity}-dot {FormatSet(SelectedMod.Set)} mod, level {SelectedMod.Level}, tier {SelectedMod.Tier}";
+
+    public ObservableCollection<string> SelectedSecondarySummaries { get; } = new();
+
+    public bool HasSelectedSecondaryStats => SelectedSecondarySummaries.Count > 0;
+
+    public bool HasNoSelectedSecondaryStats => !HasSelectedSecondaryStats;
+
     public IAsyncRelayCommand RefreshCommand { get; }
+
+    public IRelayCommand ClearFiltersCommand { get; }
 
     public IRelayCommand PreviousPageCommand { get; }
 
@@ -419,6 +454,7 @@ public class ModsViewModel : ViewModelBase
 
             _allMods.Clear();
             _allMods.AddRange(mods);
+            SelectedMod = null;
             var charactersQuery = _context.Characters.AsNoTracking();
             if (_activeAllyCodeProvider != null && string.IsNullOrWhiteSpace(activeAllyCode))
             {
@@ -453,7 +489,9 @@ public class ModsViewModel : ViewModelBase
             foreach (var character in characters)
             {
                 equippedModsByCharacter.TryGetValue(character.Id, out var equippedMods);
-                _characters.Add(ToCharacter(character, equippedMods ?? new List<GameModEntity>()));
+                _characters.Add(PersistedModelMapper.ToCharacter(
+                    character,
+                    equippedMods ?? new List<GameModEntity>()));
             }
 
             ApplyFiltersAndSort();
@@ -543,6 +581,36 @@ public class ModsViewModel : ViewModelBase
         _filteredModResults.AddRange(query);
         CurrentPage = 1;
         RenderCurrentPage();
+        OnPropertyChanged(nameof(HasActiveFilters));
+        OnPropertyChanged(nameof(FilterSummaryText));
+    }
+
+    private void ClearFilters()
+    {
+        _searchText = string.Empty;
+        _secondaryFilter = string.Empty;
+        _minimumLevelFilter = string.Empty;
+        _tierFilter = string.Empty;
+        _rarityFilter = 0;
+        _slotFilter = 0;
+        _setFilter = 0;
+        _equippedFilter = 0;
+        _primaryFilter = "All primaries";
+        _sortOption = "Rarity";
+
+        OnPropertyChanged(nameof(SearchText));
+        OnPropertyChanged(nameof(SecondaryFilter));
+        OnPropertyChanged(nameof(MinimumLevelFilter));
+        OnPropertyChanged(nameof(TierFilter));
+        OnPropertyChanged(nameof(RarityFilter));
+        OnPropertyChanged(nameof(SlotFilter));
+        OnPropertyChanged(nameof(SetFilter));
+        OnPropertyChanged(nameof(EquippedFilter));
+        OnPropertyChanged(nameof(PrimaryFilter));
+        OnPropertyChanged(nameof(SortOption));
+        OnPropertyChanged(nameof(SecondaryFilterError));
+        OnPropertyChanged(nameof(HasSecondaryFilterError));
+        ApplyFiltersAndSort();
     }
 
     private void PreviousPage()
@@ -585,15 +653,19 @@ public class ModsViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanNextPage));
         OnPropertyChanged(nameof(HasFilteredMods));
         OnPropertyChanged(nameof(HasNoMatchingMods));
+        OnPropertyChanged(nameof(FilterSummaryText));
     }
 
     private async Task UpdateRecommendationAsync()
     {
+        var version = ++_recommendationVersion;
         if (SelectedMod == null)
         {
             SelectedModRecommendation = null;
             return;
         }
+
+        var selectedMod = SelectedMod;
 
         var threshold = _thresholdProvider() ?? new ModUpgradeThreshold(
                 "default",
@@ -602,78 +674,48 @@ public class ModsViewModel : ViewModelBase
                 MinimumTier: 4,
                 MinimumSpeed: 10,
                 UpgradeOnlyWithSpeed: true,
-                MinimumEfficiency: 60.0);
+                MinimumEfficiency: 0.0);
 
-        SelectedModRecommendation = await _advisorService.AnalyzeModAsync(
-            ToGameMod(SelectedMod),
+        var recommendation = await _advisorService.AnalyzeModAsync(
+            PersistedModelMapper.ToGameMod(selectedMod),
             threshold,
             _characters);
-    }
-
-    private static Character ToCharacter(
-        CharacterEntity character,
-        IReadOnlyList<GameModEntity> equippedMods)
-    {
-        var equipped = new Dictionary<ModSlot, GameMod>();
-        foreach (var mod in equippedMods)
+        if (version == _recommendationVersion && ReferenceEquals(SelectedMod, selectedMod))
         {
-            if (!Enum.IsDefined(typeof(ModSlot), mod.Slot))
-            {
-                continue;
-            }
-
-            equipped[(ModSlot)mod.Slot] = ToGameMod(mod);
+            SelectedModRecommendation = recommendation;
         }
-
-        return new Character(
-            character.Id,
-            character.Name,
-            character.Level,
-            character.GearLevel,
-            0,
-            (int)Math.Clamp(character.GalacticPower, 0L, int.MaxValue),
-            character.Priority,
-            equipped)
-        {
-            Stars = character.Stars
-        };
     }
 
-    private static GameMod ToGameMod(GameModEntity mod)
+    private static IReadOnlyList<string> ParseSecondarySummaries(string? json)
     {
-        var primaryType = Enum.TryParse<StatType>(mod.PrimaryStatType, true, out var parsedType)
-            ? parsedType
-            : StatType.None;
-        var secondaries = new List<ModStat>();
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return Array.Empty<string>();
+        }
 
         try
         {
-            var snapshots = JsonSerializer.Deserialize<List<ModStatSnapshot>>(mod.SecondaryStatsJson);
-            if (snapshots != null)
-            {
-                foreach (var snapshot in snapshots)
+            var snapshots = JsonSerializer.Deserialize<List<ModStatSnapshot>>(json) ?? new List<ModStatSnapshot>();
+            return snapshots
+                .Where(snapshot => Enum.TryParse<StatType>(snapshot.Type, true, out _))
+                .Select(snapshot =>
                 {
-                    if (Enum.TryParse<StatType>(snapshot.Type, true, out var secondaryType))
-                    {
-                        secondaries.Add(new ModStat(secondaryType, snapshot.Value, snapshot.RollCount));
-                    }
-                }
-            }
+                    Enum.TryParse<StatType>(snapshot.Type, true, out var type);
+                    return new ModStat(type, snapshot.Value, snapshot.RollCount).ToString();
+                })
+                .ToList()
+                .AsReadOnly();
         }
         catch (JsonException)
         {
-            // A malformed cached stat payload should not prevent inventory browsing.
+            return Array.Empty<string>();
         }
-
-        return new GameMod(
-            mod.Id,
-            mod.Level,
-            mod.Rarity,
-            mod.Tier,
-            (ModSlot)mod.Slot,
-            (ModSet)mod.Set,
-            new ModStat(primaryType, mod.PrimaryStatValue),
-            secondaries,
-            string.IsNullOrWhiteSpace(mod.CharacterId) ? null : mod.CharacterId);
     }
+
+    private static string FormatSet(int set) =>
+        Enum.IsDefined(typeof(ModSet), set) ? ((ModSet)set).ToString() : $"Set {set}";
+
+    private static string FormatSlot(int slot) =>
+        Enum.IsDefined(typeof(ModSlot), slot) ? ((ModSlot)slot).ToString() : $"Slot {slot}";
+
 }

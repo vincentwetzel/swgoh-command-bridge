@@ -19,6 +19,7 @@ namespace swgoh_command_bridge.Core.Services
     {
         private readonly IComlinkService _comlinkService;
         private readonly IPlayerRepository _playerRepository;
+        private readonly ISyncHistoryRepository? _syncHistoryRepository;
         private readonly ILogger<PlayerService> _logger;
         private readonly PlayerProfileParser _profileParser = new();
         private readonly CharacterMetadataParser _metadataParser = new();
@@ -26,7 +27,11 @@ namespace swgoh_command_bridge.Core.Services
         /// <summary>
         /// Initializes a new instance of the <see cref="PlayerService"/> class.
         /// </summary>
-        public PlayerService(IComlinkService comlinkService, IPlayerRepository playerRepository, ILogger<PlayerService> logger)
+        public PlayerService(
+            IComlinkService comlinkService,
+            IPlayerRepository playerRepository,
+            ILogger<PlayerService> logger,
+            ISyncHistoryRepository? syncHistoryRepository = null)
         {
             ArgumentNullException.ThrowIfNull(comlinkService);
             ArgumentNullException.ThrowIfNull(playerRepository);
@@ -35,6 +40,7 @@ namespace swgoh_command_bridge.Core.Services
             _comlinkService = comlinkService;
             _playerRepository = playerRepository;
             _logger = logger;
+            _syncHistoryRepository = syncHistoryRepository;
         }
 
         /// <inheritdoc />
@@ -73,38 +79,121 @@ namespace swgoh_command_bridge.Core.Services
             allyCode = AllyCodeValidator.NormalizeOrThrow(allyCode);
 
             _logger.LogInformation("Starting live account sync for ally code {AllyCode}", allyCode);
+            var historyId = await TryStartHistoryAsync(allyCode).ConfigureAwait(false);
             progress?.Report(new PlayerSyncProgress(
                 "connecting",
                 "Connecting to Comlink...",
                 0,
                 4));
 
-            // Fetch fresh profile from Comlink API
-            var profile = await GetPlayerProfileForSyncAsync(allyCode, cancellationToken).ConfigureAwait(false);
-            progress?.Report(new PlayerSyncProgress(
-                "mapping",
-                $"Mapped {profile.Characters.Count} characters and {profile.Mods.Count} mods.",
-                1,
-                4));
+            try
+            {
+                // Fetch fresh profile from Comlink API
+                var profile = await GetPlayerProfileForSyncAsync(allyCode, cancellationToken).ConfigureAwait(false);
+                progress?.Report(new PlayerSyncProgress(
+                    "mapping",
+                    $"Mapped {profile.Characters.Count} characters and {profile.Mods.Count} mods.",
+                    1,
+                    4));
 
-            // Map domain models into database-ready representation entities
-            var entity = MapToEntity(profile);
-            progress?.Report(new PlayerSyncProgress(
-                "persisting",
-                "Saving the refreshed account cache...",
-                2,
-                4));
+                // Map domain models into database-ready representation entities
+                var entity = MapToEntity(profile);
+                progress?.Report(new PlayerSyncProgress(
+                    "persisting",
+                    "Saving the refreshed account cache...",
+                    2,
+                    4));
 
-            // Persist full configuration update atomically to local SQLite storage
-            await _playerRepository.SavePlayerAsync(entity, cancellationToken).ConfigureAwait(false);
+                // Persist full configuration update atomically to local SQLite storage
+                await _playerRepository.SavePlayerAsync(entity, cancellationToken).ConfigureAwait(false);
+                await TryCompleteHistoryAsync(historyId, profile).ConfigureAwait(false);
 
-            progress?.Report(new PlayerSyncProgress(
-                "complete",
-                "Account cache saved successfully.",
-                4,
-                4));
-            _logger.LogInformation("Successfully completed account sync and cached profile updates in SQLite for {AllyCode}", allyCode);
-            return profile;
+                progress?.Report(new PlayerSyncProgress(
+                    "complete",
+                    "Account cache saved successfully.",
+                    4,
+                    4));
+                _logger.LogInformation("Successfully completed account sync and cached profile updates in SQLite for {AllyCode}", allyCode);
+                return profile;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                await TryFinishHistoryAsync(historyId, "cancelled", "Account sync was cancelled.").ConfigureAwait(false);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                await TryFinishHistoryAsync(
+                    historyId,
+                    "failed",
+                    ComlinkErrorFormatter.Describe(ex, "Account sync")).ConfigureAwait(false);
+                throw;
+            }
+        }
+
+        private async Task<long?> TryStartHistoryAsync(string allyCode)
+        {
+            if (_syncHistoryRepository == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                return await _syncHistoryRepository
+                    .StartAsync(allyCode, DateTime.UtcNow, CancellationToken.None)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not record the start of account sync history.");
+                return null;
+            }
+        }
+
+        private async Task TryCompleteHistoryAsync(long? historyId, PlayerProfile profile)
+        {
+            if (historyId is not long id || _syncHistoryRepository == null)
+            {
+                return;
+            }
+
+            try
+            {
+                await _syncHistoryRepository.CompleteAsync(
+                    id,
+                    DateTime.UtcNow,
+                    profile.Characters.Count,
+                    profile.Mods.Count,
+                    profile.Diagnostics.Warnings.Count,
+                    CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not record the successful account sync outcome.");
+            }
+        }
+
+        private async Task TryFinishHistoryAsync(long? historyId, string status, string summary)
+        {
+            if (historyId is not long id || _syncHistoryRepository == null)
+            {
+                return;
+            }
+
+            try
+            {
+                await _syncHistoryRepository.FinishAsync(
+                    id,
+                    DateTime.UtcNow,
+                    status,
+                    summary,
+                    CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not record the account sync outcome.");
+            }
         }
 
         private async Task<PlayerProfile> GetPlayerProfileForSyncAsync(
@@ -156,7 +245,8 @@ namespace swgoh_command_bridge.Core.Services
                 AllyCode = profile.AllyCode,
                 Name = profile.Name,
                 Level = profile.Level,
-                GalacticPower = profile.GalacticPower
+                GalacticPower = profile.GalacticPower,
+                LastSyncedUtc = DateTime.UtcNow
             };
 
             foreach (var character in profile.Characters)

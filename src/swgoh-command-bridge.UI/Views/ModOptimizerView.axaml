@@ -7,6 +7,7 @@
     <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="12" Margin="0,0,0,16">
       <TextBlock Text="{Binding HeaderText}" FontSize="26" FontWeight="Bold"/>
       <Button Content="Plan priority roster" Command="{Binding CalculateRosterCommand}" VerticalAlignment="Center"/>
+      <Button Content="Optimize roster" Command="{Binding OptimizeRosterCommand}" VerticalAlignment="Center"/>
     </StackPanel>
 
     <Grid Grid.Row="1" ColumnDefinitions="260, *" ColumnSpacing="16">
@@ -57,6 +58,17 @@
               </ListBox.ItemTemplate>
             </ListBox>
             <ItemsControl ItemsSource="{Binding LoadoutExplanations}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding}" TextWrapping="Wrap" Foreground="Gray" Margin="6,0,0,0"/>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="{Binding LoadoutScoreText}" TextWrapping="Wrap" Foreground="Gray"/>
+            <TextBlock Text="Projected mod-stat impact" FontSize="16" FontWeight="SemiBold"/>
+            <TextBlock Text="{Binding ProjectedStatSummaryText}" TextWrapping="Wrap" Foreground="Gray"/>
+            <ItemsControl ItemsSource="{Binding ProjectedStatImpactSummaries}"
+                          IsVisible="{Binding HasProjectedStatImpacts}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
                   <TextBlock Text="{Binding}" TextWrapping="Wrap" Foreground="Gray" Margin="6,0,0,0"/>

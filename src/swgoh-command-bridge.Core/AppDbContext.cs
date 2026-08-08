@@ -26,6 +26,8 @@ namespace swgoh_command_bridge.Core.Database
 
         public DbSet<SwgohGgRecommendationEntity> SwgohGgRecommendations => Set<SwgohGgRecommendationEntity>();
 
+        public DbSet<SyncHistoryEntity> SyncHistory => Set<SyncHistoryEntity>();
+
         /// <summary>
         /// Gets the absolute path of the file-backed SQLite cache, when available.
         /// </summary>
@@ -299,7 +301,12 @@ namespace swgoh_command_bridge.Core.Database
 
             modelBuilder.Entity<SwgohGgRecommendationEntity>(entity =>
             {
-                entity.HasKey(e => e.CharacterId);
+                entity.HasKey(e => new { e.CharacterId, e.PlayerAllyCode });
+            });
+
+            modelBuilder.Entity<SyncHistoryEntity>(entity =>
+            {
+                entity.HasKey(e => e.Id);
             });
         }
     }

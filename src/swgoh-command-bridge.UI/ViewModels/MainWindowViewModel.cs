@@ -28,11 +28,15 @@ public partial class MainWindowViewModel : ViewModelBase
     private PlayerEntity? _selectedCachedAccount;
     private string _syncStatusOverride = string.Empty;
     private string _syncProgressText = string.Empty;
+    private string _syncSummaryText = string.Empty;
     private string _accountManagementStatusText = string.Empty;
     private string _activeAccountSummaryText = "No active account cache is selected.";
+    private string _activeCacheFreshnessText = "Sync freshness is unavailable for the active cache.";
+    private string _activeSyncOutcomeText = "No sync attempt is recorded for the active account.";
     private string _nextStepText = "Enter a nine-digit ally code or choose a cached account to begin.";
     private int _activeCharacterCount;
     private int _activeModCount;
+    private bool _isActiveCacheStale;
     private bool _confirmAccountRemoval;
     private OperationState<bool> _startupState = OperationState<bool>.ToSuccess(true);
     private OperationState<PlayerProfile> _syncState = OperationState<PlayerProfile>.ToEmpty();
@@ -114,7 +118,8 @@ public partial class MainWindowViewModel : ViewModelBase
             BackupCacheAsync,
             RestoreCacheAsync,
             RefreshAfterSettingsImportAsync,
-            composition.EventLog);
+            composition.EventLog,
+            ThemeManager.Apply);
         _currentView = this;
     }
 
@@ -184,6 +189,51 @@ public partial class MainWindowViewModel : ViewModelBase
 
             _nextStepText = value;
             OnPropertyChanged(nameof(NextStepText));
+        }
+    }
+
+    public string ActiveCacheFreshnessText
+    {
+        get => _activeCacheFreshnessText;
+        private set
+        {
+            if (_activeCacheFreshnessText == value)
+            {
+                return;
+            }
+
+            _activeCacheFreshnessText = value;
+            OnPropertyChanged(nameof(ActiveCacheFreshnessText));
+        }
+    }
+
+    public string ActiveSyncOutcomeText
+    {
+        get => _activeSyncOutcomeText;
+        private set
+        {
+            if (_activeSyncOutcomeText == value)
+            {
+                return;
+            }
+
+            _activeSyncOutcomeText = value;
+            OnPropertyChanged(nameof(ActiveSyncOutcomeText));
+        }
+    }
+
+    public bool IsActiveCacheStale
+    {
+        get => _isActiveCacheStale;
+        private set
+        {
+            if (_isActiveCacheStale == value)
+            {
+                return;
+            }
+
+            _isActiveCacheStale = value;
+            OnPropertyChanged(nameof(IsActiveCacheStale));
         }
     }
 
@@ -305,6 +355,7 @@ public partial class MainWindowViewModel : ViewModelBase
             OnPropertyChanged(nameof(SyncStatusText));
             OnPropertyChanged(nameof(SyncDiagnosticsText));
             OnPropertyChanged(nameof(HasSyncDiagnostics));
+            OnPropertyChanged(nameof(HasSyncSummary));
             SyncCommand.NotifyCanExecuteChanged();
             RetrySyncCommand.NotifyCanExecuteChanged();
             UseCachedAccountCommand?.NotifyCanExecuteChanged();
@@ -324,6 +375,24 @@ public partial class MainWindowViewModel : ViewModelBase
     public string SyncDiagnosticsText => SyncState.Data?.Diagnostics.Summary ?? string.Empty;
 
     public bool HasSyncDiagnostics => SyncState.Data?.Diagnostics.HasWarnings == true;
+
+    public string SyncSummaryText
+    {
+        get => _syncSummaryText;
+        private set
+        {
+            if (_syncSummaryText == value)
+            {
+                return;
+            }
+
+            _syncSummaryText = value;
+            OnPropertyChanged(nameof(SyncSummaryText));
+            OnPropertyChanged(nameof(HasSyncSummary));
+        }
+    }
+
+    public bool HasSyncSummary => !string.IsNullOrWhiteSpace(SyncSummaryText);
 
     public string SyncProgressText
     {
@@ -386,6 +455,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _lastSyncAllyCode = allyCode;
         _composition.EventLog.Info("account-sync", "Account sync started.");
         _syncStatusOverride = string.Empty;
+        SyncSummaryText = string.Empty;
         SyncProgressText = "Connecting to Comlink...";
         OnPropertyChanged(nameof(SyncStatusText));
         _syncCancellation?.Dispose();
@@ -409,6 +479,9 @@ public partial class MainWindowViewModel : ViewModelBase
             await DiagnosticsViewModel.RefreshAsync();
             SyncState = OperationState<PlayerProfile>.ToSuccess(profile);
             SyncProgressText = "Account cache saved successfully.";
+            SyncSummaryText =
+                $"Completed sync for {allyCode}: {profile.Characters.Count} characters, " +
+                $"{profile.Mods.Count} mods, {profile.Diagnostics.Warnings.Count} parser warnings.";
             _composition.EventLog.Info(
                 "account-sync",
                 $"Account sync completed with {profile.Characters.Count} characters and {profile.Mods.Count} mods.");
@@ -417,6 +490,7 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             _composition.EventLog.Warning("account-sync", "Account sync was cancelled.");
             SyncProgressText = "Account sync cancelled.";
+            SyncSummaryText = $"Cancelled sync for {allyCode}; existing cached data was preserved.";
             SyncState = OperationState<PlayerProfile>.ToError("Account sync cancelled.");
         }
         catch (Exception ex)
@@ -425,6 +499,9 @@ public partial class MainWindowViewModel : ViewModelBase
             SyncState = OperationState<PlayerProfile>.ToError(
                 $"{ComlinkErrorFormatter.Describe(ex, "Account sync")}. Existing cached data was preserved.");
             SyncProgressText = "Account sync failed; existing cached data was preserved.";
+            SyncSummaryText =
+                $"Sync failed for {allyCode}; existing cached data was preserved. " +
+                ComlinkErrorFormatter.Describe(ex, "Account sync");
         }
         finally
         {
@@ -469,6 +546,9 @@ public partial class MainWindowViewModel : ViewModelBase
             ActiveCharacterCount = 0;
             ActiveModCount = 0;
             ActiveAccountSummaryText = "No active account cache is selected.";
+            ActiveCacheFreshnessText = "Sync freshness is unavailable for the active cache.";
+            ActiveSyncOutcomeText = "No sync attempt is recorded for the active account.";
+            IsActiveCacheStale = false;
             NextStepText = HasCachedAccounts
                 ? "Choose a cached account to work offline, or enter a nine-digit ally code to sync."
                 : "Enter a nine-digit ally code, then choose Sync account to create the local cache.";
@@ -489,9 +569,63 @@ public partial class MainWindowViewModel : ViewModelBase
         var accountName = string.IsNullOrWhiteSpace(account?.Name) ? "Active account" : account.Name;
         ActiveAccountSummaryText =
             $"{accountName} ({activeAllyCode}) — {ActiveCharacterCount} character(s), {ActiveModCount} mod(s) cached locally.";
-        NextStepText = HasActiveCache
-            ? "Choose a screen below to inspect the cached account, or sync again to refresh it from Comlink."
+        IsActiveCacheStale = account?.LastSyncedUtc is not DateTime lastSynced ||
+            lastSynced < DateTime.UtcNow.Subtract(TimeSpan.FromHours(24));
+        ActiveCacheFreshnessText = account?.LastSyncedUtc is DateTime synced
+            ? $"Last synced {FormatAge(DateTime.UtcNow - synced)} ago ({synced.ToLocalTime():yyyy-MM-dd HH:mm})." +
+              (IsActiveCacheStale ? " This cache is over 24 hours old." : string.Empty)
+            : "Last sync time is unavailable for this legacy cache.";
+        var latestSync = await _context.SyncHistory
+            .AsNoTracking()
+            .Where(entry => entry.AllyCode == activeAllyCode)
+            .OrderByDescending(entry => entry.StartedUtc)
+            .ThenByDescending(entry => entry.Id)
+            .FirstOrDefaultAsync()
+            .ConfigureAwait(true);
+        ActiveSyncOutcomeText = latestSync == null
+            ? "No sync attempt is recorded for the active account."
+            : FormatSyncOutcome(latestSync);
+        NextStepText = HasActiveCache && IsActiveCacheStale
+            ? "The cache is over 24 hours old. Sync again when Comlink is available, or continue inspecting the cached data offline."
+            : HasActiveCache
+                ? "Choose a screen below to inspect the cached account, or sync again to refresh it from Comlink."
             : "This ally code has no cached roster yet. Choose Sync account to fetch it from Comlink.";
+    }
+
+    private static string FormatAge(TimeSpan age)
+    {
+        if (age.TotalMinutes < 1)
+        {
+            return "less than a minute";
+        }
+
+        if (age.TotalHours < 1)
+        {
+            return $"{Math.Max(1, (int)age.TotalMinutes)} minute(s)";
+        }
+
+        if (age.TotalDays < 1)
+        {
+            return $"{Math.Max(1, (int)age.TotalHours)} hour(s)";
+        }
+
+        return $"{Math.Max(1, (int)age.TotalDays)} day(s)";
+    }
+
+    private static string FormatSyncOutcome(SyncHistoryEntity history)
+    {
+        var timestamp = (history.CompletedUtc ?? history.StartedUtc).ToLocalTime();
+        var state = history.Status switch
+        {
+            "completed" => $"completed with {history.CharacterCount} character(s), {history.ModCount} mod(s)",
+            "cancelled" => "cancelled",
+            "failed" => $"failed: {history.ErrorSummary ?? "unknown error"}",
+            _ => "still in progress or interrupted"
+        };
+        var warnings = history.WarningCount > 0
+            ? $" {history.WarningCount} parser warning(s) were recorded."
+            : string.Empty;
+        return $"Last sync {state} at {timestamp:yyyy-MM-dd HH:mm} local.{warnings}";
     }
 
     private async Task LoadCachedAccountsAsync()
@@ -529,6 +663,7 @@ public partial class MainWindowViewModel : ViewModelBase
             _lastSyncAllyCode = AllyCode;
             await _settingsService.SaveSettingsAsync(
                 _settingsService.CurrentSettings with { DefaultAllyCode = AllyCode });
+            SyncSummaryText = string.Empty;
             SyncState = OperationState<PlayerProfile>.ToEmpty();
             _syncStatusOverride =
                 $"Using cached account {SelectedCachedAccount.Name} ({SelectedCachedAccount.AllyCode}).";
@@ -586,6 +721,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 _lastSyncAllyCode = string.Empty;
                 AllyCode = string.Empty;
                 _syncStatusOverride = string.Empty;
+                SyncSummaryText = string.Empty;
                 SyncState = OperationState<PlayerProfile>.ToEmpty();
             }
 
@@ -632,7 +768,13 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void CancelSync()
     {
-        _syncCancellation?.Cancel();
+        if (_syncCancellation == null)
+        {
+            return;
+        }
+
+        SyncProgressText = "Cancellation requested...";
+        _syncCancellation.Cancel();
     }
 
     public bool CanCancelSync => IsSyncing;
@@ -658,6 +800,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         await _context.ResetDatabaseAsync();
         _composition.EventLog.Warning("cache-reset", "Local cache was reset by the user.");
+        SyncSummaryText = string.Empty;
         SyncState = OperationState<PlayerProfile>.ToEmpty();
         await LoadCachedAccountsAsync();
         await LoadFeatureDataAsync();
@@ -674,6 +817,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         await _context.RestoreDatabaseAsync(backupPath);
         _composition.EventLog.Info("cache-restore", "Local cache was restored from a verified backup.");
+        SyncSummaryText = string.Empty;
         SyncState = OperationState<PlayerProfile>.ToEmpty();
         await LoadCachedAccountsAsync();
         await LoadFeatureDataAsync();

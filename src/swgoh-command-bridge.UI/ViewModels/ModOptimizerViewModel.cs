@@ -18,7 +18,7 @@ namespace swgoh_command_bridge.UI.ViewModels
     /// <summary>
     /// ViewModel representing the mod optimization and recommendation interface.
     /// </summary>
-    public class ModOptimizerViewModel : ViewModelBase
+    public class ModOptimizerViewModel : StateViewModelBase<IReadOnlyList<GameModEntity>>
     {
         private readonly AppDbContext _context;
         private readonly IModAssignmentService _assignmentService;
@@ -28,8 +28,6 @@ namespace swgoh_command_bridge.UI.ViewModels
         private CancellationTokenSource? _scrapeCancellation;
         private string _headerText = "Mod Assignment Optimizer";
         private CharacterEntity? _selectedCharacter;
-        private OperationState<IReadOnlyList<GameModEntity>> _state =
-            OperationState<IReadOnlyList<GameModEntity>>.ToEmpty();
         private string _popularityText = "No community recommendation data available.";
         private string _lastUpdatedText = string.Empty;
         private string _recommendationSourceUrlText = string.Empty;
@@ -38,6 +36,8 @@ namespace swgoh_command_bridge.UI.ViewModels
         private string _scrapeStatusText = "Community recommendations have not been refreshed.";
         private string _lastScrapeSummaryText = "No completed recommendation refresh has been recorded.";
         private string _rosterPlanStatusText = "No priority roster plan has been calculated.";
+        private string _loadoutScoreText = "No assignment score has been calculated.";
+        private string _projectedStatSummaryText = "Projected stat comparison is unavailable until current equipped mods are cached.";
         private bool _isRecommendationStale;
         private bool _isScraping;
 
@@ -78,9 +78,16 @@ namespace swgoh_command_bridge.UI.ViewModels
         /// </summary>
         public ObservableCollection<string> SwapRecommendationSummaries { get; } = new();
 
+        /// <summary>
+        /// Gets projected persisted mod-stat changes between current equipped mods and the proposed loadout.
+        /// </summary>
+        public ObservableCollection<string> ProjectedStatImpactSummaries { get; } = new();
+
         public bool HasAlternatives => AlternativeSummaries.Count > 0;
 
         public bool HasSwapRecommendations => SwapRecommendationSummaries.Count > 0;
+
+        public bool HasProjectedStatImpacts => ProjectedStatImpactSummaries.Count > 0;
 
         /// <summary>
         /// Gets the concise priority-roster assignment summaries.
@@ -93,22 +100,6 @@ namespace swgoh_command_bridge.UI.ViewModels
         public ObservableCollection<string> RosterSwapSummaries { get; } = new();
 
         public bool HasRosterSwapRecommendations => RosterSwapSummaries.Count > 0;
-
-        public OperationState<IReadOnlyList<GameModEntity>> State
-        {
-            get => _state;
-            private set
-            {
-                _state = value;
-                OnPropertyChanged(nameof(State));
-                OnPropertyChanged(nameof(IsBusy));
-                OnPropertyChanged(nameof(IsLoading));
-                OnPropertyChanged(nameof(IsEmpty));
-                OnPropertyChanged(nameof(HasLoadout));
-                OnPropertyChanged(nameof(HasError));
-                OnPropertyChanged(nameof(ErrorMessage));
-            }
-        }
 
         /// <summary>
         /// Gets or sets the page header text.
@@ -179,18 +170,16 @@ namespace swgoh_command_bridge.UI.ViewModels
         /// <summary>
         /// Gets or sets a value indicating whether the optimizer is currently calculating.
         /// </summary>
-        public bool IsBusy => State.Status == OperationStatus.Loading || IsScraping;
+        public override bool IsBusy => State.Status == OperationStatus.Loading || IsScraping;
 
-        public bool IsLoading => State.Status == OperationStatus.Loading;
-
-        public bool IsEmpty => State.Status == OperationStatus.Empty ||
+        public override bool IsEmpty => State.Status == OperationStatus.Empty ||
             (State.Status == OperationStatus.Success && SelectedCharacter == null);
 
         public bool HasLoadout => State.Status == OperationStatus.Success && RecommendedLoadout.Count > 0;
 
-        public bool HasError => State.Status == OperationStatus.Error;
 
-        public string ErrorMessage => State.ErrorMessage ?? string.Empty;
+        protected override void OnStateChanged() =>
+            OnPropertyChanged(nameof(HasLoadout));
 
         public bool IsScraping
         {
@@ -313,6 +302,36 @@ namespace swgoh_command_bridge.UI.ViewModels
             }
         }
 
+        public string LoadoutScoreText
+        {
+            get => _loadoutScoreText;
+            private set
+            {
+                if (_loadoutScoreText == value)
+                {
+                    return;
+                }
+
+                _loadoutScoreText = value;
+                OnPropertyChanged(nameof(LoadoutScoreText));
+            }
+        }
+
+        public string ProjectedStatSummaryText
+        {
+            get => _projectedStatSummaryText;
+            private set
+            {
+                if (_projectedStatSummaryText == value)
+                {
+                    return;
+                }
+
+                _projectedStatSummaryText = value;
+                OnPropertyChanged(nameof(ProjectedStatSummaryText));
+            }
+        }
+
         public IAsyncRelayCommand ScrapeCommand { get; }
 
         public IAsyncRelayCommand RefreshCommand { get; }
@@ -320,6 +339,8 @@ namespace swgoh_command_bridge.UI.ViewModels
         public IAsyncRelayCommand ScrapeAllCommand { get; }
 
         public IAsyncRelayCommand CalculateRosterCommand { get; }
+
+        public IAsyncRelayCommand OptimizeRosterCommand { get; }
 
         public IRelayCommand CancelScrapeCommand { get; }
 
@@ -360,15 +381,22 @@ namespace swgoh_command_bridge.UI.ViewModels
             ScrapeCommand = new AsyncRelayCommand(ScrapeSelectedAsync);
             ScrapeAllCommand = new AsyncRelayCommand(ScrapeAllAsync);
             CalculateRosterCommand = new AsyncRelayCommand(CalculateRosterAsync);
+            OptimizeRosterCommand = new AsyncRelayCommand(CalculateOptimizedRosterAsync);
             CancelScrapeCommand = new RelayCommand(CancelScrape);
         }
 
-        public async Task CalculateRosterAsync()
+        public Task CalculateRosterAsync() => CalculateRosterPlanAsync(globalOptimization: false);
+
+        private Task CalculateOptimizedRosterAsync() => CalculateRosterPlanAsync(globalOptimization: true);
+
+        private async Task CalculateRosterPlanAsync(bool globalOptimization)
         {
             RosterPlanSummaries.Clear();
             RosterSwapSummaries.Clear();
             OnPropertyChanged(nameof(HasRosterSwapRecommendations));
-            RosterPlanStatusText = "Calculating a priority-first roster plan...";
+            RosterPlanStatusText = globalOptimization
+                ? "Calculating a bounded global roster plan..."
+                : "Calculating a priority-first roster plan...";
             try
             {
                 var activeAllyCode = _activeAllyCodeProvider?.Invoke()?.Trim();
@@ -387,9 +415,13 @@ namespace swgoh_command_bridge.UI.ViewModels
 
                 var characters = await charactersQuery.ToListAsync().ConfigureAwait(true);
                 var inventory = await modsQuery.ToListAsync().ConfigureAwait(true);
-                var plan = await _assignmentService.CalculateRosterLoadoutsAsync(
-                    characters,
-                    inventory).ConfigureAwait(true);
+                var plan = globalOptimization
+                    ? await _assignmentService.CalculateGloballyOptimizedRosterLoadoutsAsync(
+                        characters,
+                        inventory).ConfigureAwait(true)
+                    : await _assignmentService.CalculateRosterLoadoutsAsync(
+                        characters,
+                        inventory).ConfigureAwait(true);
 
                 foreach (var characterPlan in plan.Plans)
                 {
@@ -448,7 +480,8 @@ namespace swgoh_command_bridge.UI.ViewModels
             {
                 var scrapeResult = await _scraperService.ScrapeCharacterRecommendationsWithResultAsync(
                     SelectedCharacter.Id,
-                    _scrapeCancellation.Token);
+                    _scrapeCancellation.Token,
+                    _activeAllyCodeProvider?.Invoke()?.Trim());
                 scrapeSucceeded = scrapeResult.Success;
                 scrapeFailed = !scrapeSucceeded;
                 ScrapeStatusText = scrapeSucceeded
@@ -650,8 +683,11 @@ namespace swgoh_command_bridge.UI.ViewModels
                 LoadoutExplanations.Clear();
                 AlternativeSummaries.Clear();
                 SwapRecommendationSummaries.Clear();
+                ProjectedStatImpactSummaries.Clear();
                 OnPropertyChanged(nameof(HasAlternatives));
                 OnPropertyChanged(nameof(HasSwapRecommendations));
+                OnPropertyChanged(nameof(HasProjectedStatImpacts));
+                ProjectedStatSummaryText = "Projected stat comparison is unavailable until current equipped mods are cached.";
                 PopularityText = "No community recommendation data available.";
                 LastUpdatedText = string.Empty;
                 RecommendationSourceUrlText = string.Empty;
@@ -668,9 +704,11 @@ namespace swgoh_command_bridge.UI.ViewModels
             try
             {
                 // Fetch scraped community insights from SQLite cache
+                var activeAllyCode = _activeAllyCodeProvider?.Invoke()?.Trim() ?? string.Empty;
                 var recommendation = await _context.SwgohGgRecommendations
                     .AsNoTracking()
-                    .FirstOrDefaultAsync(r => r.CharacterId == characterId)
+                    .FirstOrDefaultAsync(
+                        r => r.CharacterId == characterId && r.PlayerAllyCode == activeAllyCode)
                     .ConfigureAwait(true);
 
                 TargetSets.Clear();
@@ -678,8 +716,11 @@ namespace swgoh_command_bridge.UI.ViewModels
                 LoadoutExplanations.Clear();
                 AlternativeSummaries.Clear();
                 SwapRecommendationSummaries.Clear();
+                ProjectedStatImpactSummaries.Clear();
                 OnPropertyChanged(nameof(HasAlternatives));
                 OnPropertyChanged(nameof(HasSwapRecommendations));
+                OnPropertyChanged(nameof(HasProjectedStatImpacts));
+                ProjectedStatSummaryText = "Projected stat comparison is unavailable until current equipped mods are cached.";
                 PopularityText = "No community recommendation data available.";
                 LastUpdatedText = string.Empty;
                 RecommendationSourceUrlText = string.Empty;
@@ -775,16 +816,32 @@ namespace swgoh_command_bridge.UI.ViewModels
                 {
                     LoadoutExplanations.Add($"Slot {explanation.Slot} - {explanation.ModId}: {explanation.Reason}");
                 }
+                LoadoutScoreText = loadoutResult.Explanations.Count == 0
+                    ? "No assignment score is available for this loadout."
+                    : $"Combined assignment score: {loadoutResult.Explanations.Sum(explanation => explanation.Score):F1}. " +
+                      "Score compares persisted mod quality with recommended sets, primaries, and secondary-stat quality; it is not a guaranteed in-game stat gain.";
                 foreach (var alternative in loadoutResult.Alternatives)
                 {
                     AlternativeSummaries.Add(
-                        $"Slot {alternative.Slot} - {alternative.ModId}: {alternative.Reason}");
+                        $"Slot {alternative.Slot} - {alternative.ModId}: score {alternative.Score:F1} " +
+                        $"({alternative.ScoreDelta:+0.0;-0.0;0.0} vs selected) - {alternative.BenefitSummary} {alternative.Reason}");
                 }
                 foreach (var swap in loadoutResult.SwapRecommendations)
                 {
                     SwapRecommendationSummaries.Add(
-                        $"Replace {swap.CurrentModId} with {swap.CandidateModId} in slot {swap.Slot} (+{swap.ScoreGain:F1}): {swap.Reason}");
+                        $"Replace {swap.CurrentModId} with {swap.CandidateModId} in slot {swap.Slot}: " +
+                      $"{swap.BenefitSummary} {swap.Reason}");
                 }
+                foreach (var impact in loadoutResult.Projection.StatImpacts)
+                {
+                    ProjectedStatImpactSummaries.Add(impact.Summary);
+                }
+                ProjectedStatSummaryText = loadoutResult.Projection.HasCurrentEquippedMods
+                    ? loadoutResult.Projection.HasChanges
+                        ? loadoutResult.Projection.Disclaimer
+                        : "The proposed loadout does not change the persisted mod-stat totals from the current equipped set."
+                    : "Projected stat comparison is unavailable because no current equipped mods were found for this account.";
+                OnPropertyChanged(nameof(HasProjectedStatImpacts));
                 OnPropertyChanged(nameof(HasAlternatives));
                 OnPropertyChanged(nameof(HasSwapRecommendations));
                 LoadoutStatusText = loadoutResult.Status;

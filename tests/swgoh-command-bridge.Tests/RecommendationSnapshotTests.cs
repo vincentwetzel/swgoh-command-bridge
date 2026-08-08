@@ -15,6 +15,7 @@ public sealed class RecommendationSnapshotTests
         var entity = new SwgohGgRecommendationEntity
         {
             CharacterId = "DARTHTRAYA",
+            PlayerAllyCode = "123456789",
             Source = "community-cache",
             RecommendationSchemaVersion = 4,
             SourceUrl = "https://example.test/recommendations/darthtraya",
@@ -26,6 +27,8 @@ public sealed class RecommendationSnapshotTests
 
         var snapshot = RecommendationSnapshot.FromEntity(entity);
 
+        Assert.Equal(entity.CharacterId, snapshot.CharacterId);
+        Assert.Equal(entity.PlayerAllyCode, snapshot.PlayerAllyCode);
         Assert.Equal("community-cache", snapshot.Source);
         Assert.Equal(4, snapshot.SchemaVersion);
         Assert.Equal(entity.SourceUrl, snapshot.SourceUrl);
@@ -51,6 +54,8 @@ public sealed class RecommendationSnapshotTests
         var snapshot = RecommendationSnapshot.FromEntity(entity);
 
         Assert.Equal("swgoh.gg", snapshot.Source);
+        Assert.Equal(string.Empty, snapshot.CharacterId);
+        Assert.Equal(string.Empty, snapshot.PlayerAllyCode);
         Assert.Equal(1, snapshot.SchemaVersion);
         Assert.Equal(string.Empty, snapshot.SourceUrl);
         Assert.Empty(snapshot.Sets);

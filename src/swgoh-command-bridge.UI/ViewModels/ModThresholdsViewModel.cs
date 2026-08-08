@@ -12,7 +12,7 @@ using swgoh_command_bridge.Core.Services;
 
 namespace swgoh_command_bridge.UI.ViewModels;
 
-public class ModThresholdsViewModel : ViewModelBase
+public class ModThresholdsViewModel : StateViewModelBase<IReadOnlyList<ModUpgradeThreshold>>
 {
     private readonly ISettingsService _settingsService;
     private readonly ModThresholdTransferService _transferService = new();
@@ -27,8 +27,6 @@ public class ModThresholdsViewModel : ViewModelBase
     private string _validationError = string.Empty;
     private string _transferPath = string.Empty;
     private string _transferStatusText = string.Empty;
-    private OperationState<IReadOnlyList<ModUpgradeThreshold>> _state =
-        OperationState<IReadOnlyList<ModUpgradeThreshold>>.ToEmpty();
 
     public ModThresholdsViewModel(ISettingsService settingsService)
     {
@@ -59,21 +57,6 @@ public class ModThresholdsViewModel : ViewModelBase
 
             _headerText = value;
             OnPropertyChanged(nameof(HeaderText));
-        }
-    }
-
-    public OperationState<IReadOnlyList<ModUpgradeThreshold>> State
-    {
-        get => _state;
-        private set
-        {
-            _state = value;
-            OnPropertyChanged(nameof(State));
-            OnPropertyChanged(nameof(IsLoading));
-            OnPropertyChanged(nameof(IsEmpty));
-            OnPropertyChanged(nameof(HasThresholds));
-            OnPropertyChanged(nameof(HasError));
-            OnPropertyChanged(nameof(ErrorMessage));
         }
     }
 
@@ -156,15 +139,10 @@ public class ModThresholdsViewModel : ViewModelBase
         private set => SetField(ref _transferStatusText, value);
     }
 
-    public bool IsLoading => State.Status == OperationStatus.Loading;
-
-    public bool IsEmpty => State.Status == OperationStatus.Empty;
-
     public bool HasThresholds => State.Status == OperationStatus.Success;
 
-    public bool HasError => State.Status == OperationStatus.Error;
-
-    public string ErrorMessage => State.ErrorMessage ?? string.Empty;
+    protected override void OnStateChanged() =>
+        OnPropertyChanged(nameof(HasThresholds));
 
     public IAsyncRelayCommand RefreshCommand { get; }
 
@@ -259,6 +237,8 @@ public class ModThresholdsViewModel : ViewModelBase
             return;
         }
 
+        var previousThresholds = Thresholds.ToList();
+        var previousSelectedThreshold = SelectedThreshold;
         var updated = new ModUpgradeThreshold(
             SelectedThreshold?.Id ?? Guid.NewGuid().ToString("N"),
             Name.Trim(),
@@ -288,6 +268,13 @@ public class ModThresholdsViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
+            Thresholds.Clear();
+            foreach (var threshold in previousThresholds)
+            {
+                Thresholds.Add(threshold);
+            }
+
+            SelectedThreshold = previousSelectedThreshold;
             State = OperationState<IReadOnlyList<ModUpgradeThreshold>>.ToError(
                 $"Failed to save threshold: {ex.Message}");
         }
@@ -500,7 +487,9 @@ public class ModThresholdsViewModel : ViewModelBase
             return "A speed minimum is required when Require speed is enabled.";
         }
 
-        if (MinimumEfficiency is < 0 or > 100)
+        if (double.IsNaN(MinimumEfficiency) ||
+            double.IsInfinity(MinimumEfficiency) ||
+            MinimumEfficiency is < 0 or > 100)
         {
             return "Minimum efficiency must be between 0 and 100.";
         }

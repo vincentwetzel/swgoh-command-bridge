@@ -36,5 +36,13 @@ namespace swgoh_command_bridge.Core.Services
             IEnumerable<CharacterEntity> characters,
             IEnumerable<GameModEntity> availableInventory,
             CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Calculates a bounded joint roster plan that compares competing character assignments.
+        /// </summary>
+        Task<RosterLoadoutResult> CalculateGloballyOptimizedRosterLoadoutsAsync(
+            IEnumerable<CharacterEntity> characters,
+            IEnumerable<GameModEntity> availableInventory,
+            CancellationToken cancellationToken = default);
     }
 }

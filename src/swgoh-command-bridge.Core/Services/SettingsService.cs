@@ -14,6 +14,10 @@ namespace swgoh_command_bridge.Core.Services
     /// </summary>
     public class SettingsService : ISettingsService
     {
+        public const int CurrentSchemaVersion = 1;
+
+        private sealed record PersistedSettingsDocument(int SchemaVersion, AppSettings Settings);
+
         private readonly ILogger<SettingsService> _logger;
         private readonly string _settingsDirectory;
         private readonly string _settingsFilePath;
@@ -63,9 +67,29 @@ namespace swgoh_command_bridge.Core.Services
 
             try
             {
-                using var stream = File.OpenRead(_settingsFilePath);
-                var settings = await JsonSerializer.DeserializeAsync<AppSettings>(stream, SerializerOptions).ConfigureAwait(false);
-                _currentSettings = settings ?? new AppSettings();
+                var json = await File.ReadAllTextAsync(_settingsFilePath).ConfigureAwait(false);
+                var document = JsonSerializer.Deserialize<PersistedSettingsDocument>(json, SerializerOptions);
+                if (document?.Settings != null)
+                {
+                    if (document.SchemaVersion > CurrentSchemaVersion)
+                    {
+                        throw new InvalidDataException(
+                            $"The settings schema version {document.SchemaVersion} is newer than supported version {CurrentSchemaVersion}.");
+                    }
+
+                    _currentSettings = SettingsMigrationService.MigrateLegacyThresholdStorage(document.Settings);
+                    if (document.SchemaVersion != CurrentSchemaVersion)
+                    {
+                        await SaveSettingsAsync(_currentSettings).ConfigureAwait(false);
+                    }
+
+                    return;
+                }
+
+                var legacySettings = JsonSerializer.Deserialize<AppSettings>(json, SerializerOptions);
+                _currentSettings = SettingsMigrationService.MigrateLegacyThresholdStorage(
+                    legacySettings ?? new AppSettings());
+                await SaveSettingsAsync(_currentSettings).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -92,7 +116,10 @@ namespace swgoh_command_bridge.Core.Services
                 // Rule 26: 1. Serialize configuration output to a temporary staging file
                 using (var stream = File.Create(_tempFilePath))
                 {
-                    await JsonSerializer.SerializeAsync(stream, settings, SerializerOptions).ConfigureAwait(false);
+                    await JsonSerializer.SerializeAsync(
+                        stream,
+                        new PersistedSettingsDocument(CurrentSchemaVersion, settings),
+                        SerializerOptions).ConfigureAwait(false);
                 }
 
                 // Rule 26: 3. Atomically overwrite the active settings file using File.Move with overwrite

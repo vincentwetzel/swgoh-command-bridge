@@ -48,9 +48,10 @@ Trimming stays disabled until a release-specific test confirms that Avalonia XAM
 1. Before upgrading, use Settings to create a timestamped cache backup.
 2. Keep the existing `SWGOHCommandBridge` application-data directory. Settings, cache, diagnostics, and backups share this case-stable platform-local directory and are not part of the published output.
 3. On first launch after an upgrade, startup applies the transactional compatibility pass and records the resulting schema version.
-4. If startup cannot initialize the cache, use the visible retry action, restore a verified backup, or reset the cache. Reset preserves JSON settings.
-5. A backup created by a newer unsupported schema is rejected before it can replace the active cache.
-6. Do not delete the previous release or its application-data directory until the upgraded build passes the smoke checklist.
+4. Confirm existing player sync timestamps, bounded sync history, recommendation provenance, and settings values survive the compatibility pass.
+5. If startup cannot initialize the cache, use the visible retry action, restore a verified backup, or reset the cache. Reset preserves JSON settings.
+6. A backup created by a newer unsupported schema is rejected before it can replace the active cache.
+7. Do not delete the previous release or its application-data directory until the upgraded build passes the smoke checklist.
 
 There is no automatic in-place rollback. The release operator owns artifact retention and should preserve the previous installer/publish directory until upgrade verification is complete.
 

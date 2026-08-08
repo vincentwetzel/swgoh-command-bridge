@@ -15,6 +15,8 @@ Run `dotnet build swgoh-command-bridge.sln` and `dotnet test swgoh-command-bridg
 
 - [ ] With an empty cache, verify Characters, Priorities, Mods, and Optimizer show intentional empty states.
 - [ ] Sync a test account and confirm the result summary reports useful counts.
+- [ ] Confirm the latest sync result and warning count appear on Home and in Diagnostics.
+- [ ] Confirm Diagnostics lists recent redacted sync attempts without full ally codes or account payloads.
 - [ ] Confirm characters, priorities, mods, equipped owners, and optimizer data refresh without restarting.
 - [ ] Close and reopen the app with Comlink unavailable; confirm cached data remains viewable offline.
 - [ ] Select a different cached account from Home and confirm Characters, Mods, Priorities, and Optimizer remain scoped to that account without a Comlink request.
@@ -25,6 +27,7 @@ Run `dotnet build swgoh-command-bridge.sln` and `dotnet test swgoh-command-bridg
 - [ ] Use an unreachable Comlink URL and confirm Test Connection and Sync show actionable errors.
 - [ ] Exercise cancellation during a sync and confirm the UI returns to an idle/retryable state.
 - [ ] Enter an invalid URL and confirm Settings rejects it without changing the active client URL.
+- [ ] Change the theme to Dark, Light, and System, then restart and confirm the selected theme is applied.
 - [ ] Load malformed or partial fixture data and confirm the app reports the affected operation instead of crashing.
 
 ## Cache recovery
@@ -41,4 +44,5 @@ Run `dotnet build swgoh-command-bridge.sln` and `dotnet test swgoh-command-bridg
 - [ ] Confirm ally codes, access keys, and account payloads are not written to logs or diagnostics output.
 - [ ] Confirm a recommendation refresh can be cancelled and leaves the previous valid cache intact.
 - [ ] Confirm stale or missing `swgoh.gg` data is labeled and does not silently appear as current.
+- [ ] Exercise a transient recommendation failure or rate limit and confirm bounded retry/backoff behavior and a useful refresh summary.
 - [ ] Disable local recommendation scraping in Settings, confirm cached recommendations remain readable, and confirm refresh actions explain that new scraping is disabled.

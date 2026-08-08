@@ -15,6 +15,11 @@ namespace swgoh_command_bridge.Core.Database.Entities
         public string CharacterId { get; set; } = string.Empty;
 
         /// <summary>
+        /// Gets or sets the cached account scope. Empty means legacy unscoped data.
+        /// </summary>
+        public string PlayerAllyCode { get; set; } = string.Empty;
+
+        /// <summary>
         /// Gets or sets the recommendation source identifier.
         /// </summary>
         public string Source { get; set; } = "swgoh.gg";

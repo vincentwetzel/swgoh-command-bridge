@@ -12,6 +12,10 @@
         <StackPanel Spacing="10">
           <TextBlock Text="Current cache" FontSize="20" FontWeight="SemiBold"/>
           <TextBlock Text="{Binding ActiveAccountSummaryText}" TextWrapping="Wrap"/>
+          <TextBlock Text="{Binding ActiveCacheFreshnessText}" TextWrapping="Wrap" Foreground="Gray"/>
+          <TextBlock Text="{Binding ActiveSyncOutcomeText}" TextWrapping="Wrap" Foreground="Gray"/>
+          <TextBlock Text="Refresh is recommended before relying on this cache for current recommendations."
+                     IsVisible="{Binding IsActiveCacheStale}" TextWrapping="Wrap" Foreground="#FFCC80"/>
           <TextBlock Text="{Binding NextStepText}" TextWrapping="Wrap" Foreground="Gray"/>
           <Grid ColumnDefinitions="Auto, Auto, Auto, *" ColumnSpacing="8" IsVisible="{Binding HasActiveCache}">
             <Button Grid.Column="0" Content="Inspect characters" Command="{Binding GoToCharactersCommand}" Padding="12,7"/>
@@ -64,6 +68,7 @@
                      TextWrapping="Wrap"
                      Foreground="#FFCC80"/>
           <TextBlock Text="{Binding SyncStatusText}" TextWrapping="Wrap"/>
+          <TextBlock Text="{Binding SyncSummaryText}" IsVisible="{Binding HasSyncSummary}" TextWrapping="Wrap" Foreground="Gray"/>
           <TextBlock Text="{Binding SyncProgressText}" IsVisible="{Binding HasSyncProgress}" TextWrapping="Wrap" Foreground="Gray"/>
           <TextBlock Text="{Binding SyncDiagnosticsText}" IsVisible="{Binding HasSyncDiagnostics}" TextWrapping="Wrap" Foreground="#FFCC80"/>
         </StackPanel>

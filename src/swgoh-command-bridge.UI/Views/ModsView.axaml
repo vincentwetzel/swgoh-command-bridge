@@ -53,6 +53,10 @@
       <ComboBox Width="110" ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SortOption}"/>
       </WrapPanel>
       <TextBlock Grid.Row="1" Text="{Binding SecondaryFilterError}" IsVisible="{Binding HasSecondaryFilterError}" Foreground="#FF8A80"/>
+      <Grid Grid.Row="2" ColumnDefinitions="*, Auto" ColumnSpacing="8">
+        <TextBlock Text="{Binding FilterSummaryText}" Foreground="Gray" VerticalAlignment="Center"/>
+        <Button Grid.Column="1" Content="Clear filters" Command="{Binding ClearFiltersCommand}" IsVisible="{Binding HasActiveFilters}"/>
+      </Grid>
       </Grid>
       <Grid Grid.Row="2" ColumnDefinitions="*, Auto, Auto, Auto" ColumnSpacing="8" Margin="0,8,0,0">
         <TextBlock Text="{Binding ActiveThresholdText}" Foreground="Gray" VerticalAlignment="Center"/>
@@ -73,6 +77,11 @@
         <TextBlock Text="No mods match the current filters." IsVisible="{Binding HasNoMatchingMods}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" Foreground="Gray"/>
 
         <ListBox ItemsSource="{Binding FilteredMods}" SelectedItem="{Binding SelectedMod}" IsVisible="{Binding HasFilteredMods}">
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate>
+              <VirtualizingStackPanel />
+            </ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
           <ListBox.ItemTemplate>
             <DataTemplate>
               <Grid ColumnDefinitions="Auto, *, Auto, Auto, Auto" ColumnSpacing="12" Padding="8">
@@ -93,14 +102,18 @@
           <TextBlock Text="Select a cached mod to analyze." IsVisible="{Binding SelectedMod, Converter={x:Static ObjectConverters.IsNull}}" Foreground="Gray" TextWrapping="Wrap"/>
           <StackPanel IsVisible="{Binding SelectedMod, Converter={x:Static ObjectConverters.IsNotNull}}" Spacing="8">
             <TextBlock Text="{Binding SelectedMod.Id}" FontWeight="SemiBold"/>
+            <TextBlock Text="{Binding SelectedModSummaryText}" Foreground="Gray"/>
             <TextBlock Text="{Binding SelectedMod.PrimaryStatType, StringFormat='Primary: {0}'}"/>
             <TextBlock Text="{Binding SelectedMod.PrimaryStatValue, StringFormat='Primary value: {0:F2}'}"/>
-            <TextBlock Text="{Binding SelectedMod.Set, StringFormat='Set: {0}'}"/>
-            <TextBlock Text="{Binding SelectedMod.Slot, StringFormat='Slot: {0}'}"/>
-            <TextBlock Text="{Binding SelectedMod.SecondaryStatsJson, StringFormat='Secondaries: {0}'}" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding SelectedModSetText}"/>
+            <TextBlock Text="{Binding SelectedModSlotText}"/>
+            <TextBlock Text="Secondary stats" FontWeight="SemiBold" IsVisible="{Binding HasSelectedSecondaryStats}"/>
+            <ItemsControl ItemsSource="{Binding SelectedSecondarySummaries}" IsVisible="{Binding HasSelectedSecondaryStats}"/>
+            <TextBlock Text="No readable secondary stats were cached." IsVisible="{Binding HasNoSelectedSecondaryStats}" Foreground="Gray"/>
             <TextBlock Text="{Binding SelectedMod.OwnerDisplayName, StringFormat='Equipped owner: {0}'}"/>
             <TextBlock Text="{Binding SelectedModRecommendation.Action, StringFormat='Recommendation: {0}'}" FontWeight="Bold"/>
             <TextBlock Text="{Binding SelectedModRecommendation.Score, StringFormat='Recommendation score: {0:F0}'}"/>
+            <TextBlock Text="{Binding SelectedModRecommendation.EfficiencySummary}" Foreground="Gray" TextWrapping="Wrap"/>
             <TextBlock Text="{Binding SelectedModRecommendation.Reason}" TextWrapping="Wrap" Foreground="Gray"/>
           </StackPanel>
         </StackPanel>

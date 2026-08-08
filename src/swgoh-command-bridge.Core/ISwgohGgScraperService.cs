@@ -15,14 +15,18 @@ namespace swgoh_command_bridge.Core.Services
         /// <summary>
         /// Scrapes swgoh.gg best mods setup for a single character and persists it to the database cache.
         /// </summary>
-        Task<bool> ScrapeCharacterRecommendationsAsync(string characterId, CancellationToken cancellationToken = default);
+        Task<bool> ScrapeCharacterRecommendationsAsync(
+            string characterId,
+            CancellationToken cancellationToken = default,
+            string? allyCode = null);
 
         /// <summary>
         /// Scrapes one character and returns a privacy-safe reason when the refresh cannot produce data.
         /// </summary>
         Task<ScrapeCharacterResult> ScrapeCharacterRecommendationsWithResultAsync(
             string characterId,
-            CancellationToken cancellationToken = default);
+            CancellationToken cancellationToken = default,
+            string? allyCode = null);
 
         /// <summary>
         /// Scrapes recommendations sequentially for all characters with a polite delay to respect rate limit policies.
@@ -35,6 +39,9 @@ namespace swgoh_command_bridge.Core.Services
         /// <summary>
         /// Checks whether a fresh recommendation exists in the database for the given character.
         /// </summary>
-        Task<bool> HasRecommendationAsync(string characterId, CancellationToken cancellationToken = default);
+        Task<bool> HasRecommendationAsync(
+            string characterId,
+            CancellationToken cancellationToken = default,
+            string? allyCode = null);
     }
 }

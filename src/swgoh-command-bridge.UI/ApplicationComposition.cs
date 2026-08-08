@@ -68,7 +68,8 @@ public sealed class ApplicationComposition : IDisposable
     /// </summary>
     public static ApplicationComposition CreateDefault(
         AppDbContext? database = null,
-        ISettingsService? settingsService = null)
+        ISettingsService? settingsService = null,
+        IPlayerService? playerServiceOverride = null)
     {
         var resolvedDatabase = database ?? new AppDbContext();
         var eventLog = new DiagnosticEventLog();
@@ -88,10 +89,12 @@ public sealed class ApplicationComposition : IDisposable
         var playerRepository = new PlayerRepository(
             resolvedDatabase,
             new DiagnosticLogger<PlayerRepository>(eventLog));
-        var playerService = new PlayerService(
+        var syncHistoryRepository = new SyncHistoryRepository(resolvedDatabase);
+        var playerService = playerServiceOverride ?? new PlayerService(
             comlinkService,
             playerRepository,
-            new DiagnosticLogger<PlayerService>(eventLog));
+            new DiagnosticLogger<PlayerService>(eventLog),
+            syncHistoryRepository);
         var advisorService = new ModAdvisorService(
             new DiagnosticLogger<ModAdvisorService>(eventLog),
             new ModMechanicsService());
@@ -101,7 +104,8 @@ public sealed class ApplicationComposition : IDisposable
         var scraperService = new SwgohGgScraperService(
             new PerCallHttpClientFactory(),
             resolvedDatabase,
-            new DiagnosticLogger<SwgohGgScraperService>(eventLog));
+            new DiagnosticLogger<SwgohGgScraperService>(eventLog),
+            () => settings.CurrentSettings.RecommendationContactEmail);
 
         return new ApplicationComposition(
             resolvedDatabase,

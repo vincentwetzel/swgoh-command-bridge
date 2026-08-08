@@ -39,6 +39,38 @@ public sealed class SettingsViewModelTests
     }
 
     [Fact]
+    public async Task SaveCommandPersistsRecommendationContactEmail()
+    {
+        var settings = new FakeSettingsService();
+        var viewModel = CreateViewModel(settings);
+        viewModel.RecommendationContactEmail = "operator@example.com";
+
+        await viewModel.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal("operator@example.com", settings.CurrentSettings.RecommendationContactEmail);
+    }
+
+    [Fact]
+    public async Task SaveCommandNormalizesAndAppliesTheme()
+    {
+        var settings = new FakeSettingsService();
+        var appliedTheme = string.Empty;
+        var viewModel = new SettingsViewModel(
+            settings,
+            _ => { },
+            _ => { },
+            () => Task.CompletedTask,
+            applyTheme: theme => appliedTheme = theme);
+        viewModel.Theme = "light";
+
+        await viewModel.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal("Light", settings.CurrentSettings.Theme);
+        Assert.Equal("Light", appliedTheme);
+        Assert.Equal("Light", viewModel.Theme);
+    }
+
+    [Fact]
     public async Task ExportCommand_WritesSecretSafePortableSettings()
     {
         var settings = new FakeSettingsService
@@ -101,6 +133,39 @@ public sealed class SettingsViewModelTests
             Assert.Equal(1, refreshCount);
             Assert.Equal("987654321", settings.CurrentSettings.DefaultAllyCode);
             Assert.Contains("refreshed", viewModel.SettingsTransferStatusText);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ImportCommandNormalizesUnsupportedThemeToDarkAndAppliesIt()
+    {
+        var settings = new FakeSettingsService();
+        var appliedTheme = string.Empty;
+        var viewModel = new SettingsViewModel(
+            settings,
+            _ => { },
+            _ => { },
+            () => Task.CompletedTask,
+            applyTheme: theme => appliedTheme = theme);
+        var directory = CreateTempDirectory();
+        var path = Path.Combine(directory, "theme.json");
+
+        try
+        {
+            await File.WriteAllTextAsync(
+                path,
+                "{\"schemaVersion\":1,\"settings\":{\"comlinkBaseUrl\":\"http://localhost:4000\",\"theme\":\"Solarized\"}}");
+            viewModel.SettingsTransferPath = path;
+
+            await viewModel.ImportSettingsCommand.ExecuteAsync(null);
+
+            Assert.Equal("Dark", settings.CurrentSettings.Theme);
+            Assert.Equal("Dark", appliedTheme);
+            Assert.Equal("Dark", viewModel.Theme);
         }
         finally
         {

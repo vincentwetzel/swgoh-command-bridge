@@ -1,6 +1,7 @@
 #nullable enable
 
 using swgoh_command_bridge.Core.Services;
+using swgoh_command_bridge.Tests.Fixtures;
 using Xunit;
 
 namespace swgoh_command_bridge.Tests;
@@ -41,6 +42,30 @@ public sealed class SwgohGgRecommendationParserTests
         Assert.True(result.HasRecommendations);
         Assert.Contains("Triangle", result.PrimaryStats.Keys);
         Assert.Empty(result.Sets);
+    }
+
+    [Fact]
+    public void Parse_UsesSectionBoundariesForAdjacentSetsAndSlots()
+    {
+        var result = new SwgohGgRecommendationParser().Parse(
+            RecommendationPageFixtures.MultipleSetsAndSlots);
+
+        Assert.Equal(2, result.Sets.Count);
+        Assert.Contains(result.Sets, set => set.Name == "Speed" && set.Percentage == 88);
+        Assert.Contains(result.Sets, set => set.Name == "Health" && set.Percentage == 55);
+        Assert.Equal(90, Assert.Single(result.PrimaryStats["Arrow"]).Percentage);
+        Assert.Equal(76, Assert.Single(result.PrimaryStats["Triangle"]).Percentage);
+    }
+
+    [Fact]
+    public void Parse_HandlesNestedLocalizedSetAndPrimarySections()
+    {
+        var result = new SwgohGgRecommendationParser().Parse(
+            RecommendationPageFixtures.NestedLocalizedSections);
+
+        Assert.Contains(result.Sets, set => set.Name == "Potency" && set.Percentage == 71.5);
+        Assert.Equal("Primaria", Assert.Single(result.PrimaryStats["Circle"]).StatName);
+        Assert.Equal(64.25, Assert.Single(result.PrimaryStats["Circle"]).Percentage);
     }
 
     [Fact]

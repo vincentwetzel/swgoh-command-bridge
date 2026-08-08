@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -48,6 +49,35 @@ public sealed class PlayerRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task SavePlayerAsync_WhenReplacementFails_RollsBackExistingAccountRows()
+    {
+        var repository = new PlayerRepository(
+            _context,
+            NullLogger<PlayerRepository>.Instance);
+
+        await repository.SavePlayerAsync(CreatePlayer("Original", 80));
+        using (var command = _connection.CreateCommand())
+        {
+            command.CommandText =
+                "CREATE TRIGGER FailReplacementMod BEFORE INSERT ON Mods " +
+                "WHEN NEW.Id = 'FAIL' BEGIN SELECT RAISE(ABORT, 'synthetic replacement failure'); END;";
+            command.ExecuteNonQuery();
+        }
+
+        var replacement = CreatePlayer("Replacement", 0);
+        replacement.Mods.Single().Id = "FAIL";
+
+        await Assert.ThrowsAsync<DbUpdateException>(
+            () => repository.SavePlayerAsync(replacement));
+
+        var cached = await repository.GetPlayerAsync("123456789");
+        Assert.NotNull(cached);
+        Assert.Equal("Original", cached!.Name);
+        Assert.Equal(80, Assert.Single(cached.Characters).Priority);
+        Assert.Equal("MOD", Assert.Single(cached.Mods).Id);
+    }
+
+    [Fact]
     public async Task DeletePlayerAsync_RemovesPlayerAndAccountOwnedRows()
     {
         var repository = new PlayerRepository(
@@ -55,6 +85,14 @@ public sealed class PlayerRepositoryTests : IDisposable
             NullLogger<PlayerRepository>.Instance);
 
         await repository.SavePlayerAsync(CreatePlayer("To Remove", 60));
+        _context.SyncHistory.Add(new SyncHistoryEntity
+        {
+            AllyCode = "123456789",
+            StartedUtc = DateTime.UtcNow,
+            CompletedUtc = DateTime.UtcNow,
+            Status = "completed"
+        });
+        await _context.SaveChangesAsync();
 
         var removed = await repository.DeletePlayerAsync("123456789");
 
@@ -62,6 +100,7 @@ public sealed class PlayerRepositoryTests : IDisposable
         Assert.Empty(await _context.Players.ToListAsync());
         Assert.Empty(await _context.Characters.ToListAsync());
         Assert.Empty(await _context.Mods.ToListAsync());
+        Assert.Empty(await _context.SyncHistory.ToListAsync());
         Assert.False(await repository.DeletePlayerAsync("123456789"));
     }
 
@@ -88,7 +127,7 @@ public sealed class PlayerRepositoryTests : IDisposable
         using var command = _connection.CreateCommand();
         command.CommandText = "SELECT \"Version\" FROM \"__CacheSchema\" WHERE \"Id\" = 1;";
 
-        Assert.Equal(3L, command.ExecuteScalar());
+        Assert.Equal(6L, command.ExecuteScalar());
     }
 
     [Fact]
@@ -98,15 +137,18 @@ public sealed class PlayerRepositoryTests : IDisposable
 
         Assert.NotNull(_context.LastSchemaMigration);
         Assert.Equal(0, _context.LastSchemaMigration!.PreviousVersion);
-        Assert.Equal(3, _context.LastSchemaMigration.CurrentVersion);
+        Assert.Equal(6, _context.LastSchemaMigration.CurrentVersion);
         Assert.True(_context.LastSchemaMigration.Changed);
         Assert.Contains("2: mod stat snapshots", _context.LastSchemaMigration.AppliedMigrations);
         Assert.Contains("3: recommendation provenance", _context.LastSchemaMigration.AppliedMigrations);
+        Assert.Contains("4: player sync timestamps", _context.LastSchemaMigration.AppliedMigrations);
+        Assert.Contains("5: sync outcome history", _context.LastSchemaMigration.AppliedMigrations);
+        Assert.Contains("6: account-scoped recommendations", _context.LastSchemaMigration.AppliedMigrations);
 
         _context.InitializeDatabase();
 
         Assert.NotNull(_context.LastSchemaMigration);
-        Assert.Equal(3, _context.LastSchemaMigration!.PreviousVersion);
+        Assert.Equal(6, _context.LastSchemaMigration!.PreviousVersion);
         Assert.False(_context.LastSchemaMigration.Changed);
     }
 
@@ -129,12 +171,44 @@ public sealed class PlayerRepositoryTests : IDisposable
         Assert.Equal(1, result.PreviousVersion);
         Assert.Equal(CacheSchemaMigrator.CurrentVersion, result.CurrentVersion);
         Assert.Contains("3: recommendation provenance", result.AppliedMigrations);
+        Assert.Contains("4: player sync timestamps", result.AppliedMigrations);
+        Assert.Contains("5: sync outcome history", result.AppliedMigrations);
+        Assert.Contains("6: account-scoped recommendations", result.AppliedMigrations);
 
         using var tableCommand = connection.CreateCommand();
         tableCommand.CommandText =
             "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' " +
-            "AND name IN ('Players', 'Characters', 'Mods', 'SwgohGgRecommendations');";
-        Assert.Equal(4L, tableCommand.ExecuteScalar());
+            "AND name IN ('Players', 'Characters', 'Mods', 'SwgohGgRecommendations', 'SyncHistory');";
+        Assert.Equal(5L, tableCommand.ExecuteScalar());
+    }
+
+    [Fact]
+    public void CacheSchemaMigrator_ScopesLegacyRecommendationsToEmptyAllyCode()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText =
+                "CREATE TABLE \"__CacheSchema\" (\"Id\" INTEGER NOT NULL PRIMARY KEY, \"Version\" INTEGER NOT NULL);" +
+                "INSERT INTO \"__CacheSchema\" (\"Id\", \"Version\") VALUES (1, 5);" +
+                "CREATE TABLE \"SwgohGgRecommendations\" (" +
+                "\"CharacterId\" TEXT NOT NULL PRIMARY KEY, \"Source\" TEXT NOT NULL, " +
+                "\"RecommendationSchemaVersion\" INTEGER NOT NULL, \"SourceUrl\" TEXT NOT NULL, " +
+                "\"PrimaryStatsJson\" TEXT NOT NULL, \"SetRecommendationsJson\" TEXT NOT NULL, " +
+                "\"PopularityPercentage\" REAL NOT NULL, \"LastUpdatedUtc\" TEXT NOT NULL);" +
+                "INSERT INTO \"SwgohGgRecommendations\" VALUES " +
+                "('CHARACTER', 'legacy', 1, 'fixture', '{}', '[]', 0, '2026-01-01T00:00:00Z');";
+            command.ExecuteNonQuery();
+        }
+
+        var result = new CacheSchemaMigrator().Migrate(connection);
+
+        Assert.Equal(6, result.CurrentVersion);
+        using var scopeCommand = connection.CreateCommand();
+        scopeCommand.CommandText =
+            "SELECT \"PlayerAllyCode\" FROM \"SwgohGgRecommendations\" WHERE \"CharacterId\" = 'CHARACTER';";
+        Assert.Equal(string.Empty, scopeCommand.ExecuteScalar());
     }
 
     [Fact]
@@ -165,6 +239,17 @@ public sealed class PlayerRepositoryTests : IDisposable
         Assert.Contains("PrimaryStatType", columns);
         Assert.Contains("PrimaryStatValue", columns);
         Assert.Contains("SecondaryStatsJson", columns);
+
+        using var playerColumnCommand = connection.CreateCommand();
+        playerColumnCommand.CommandText = "PRAGMA table_info('Players');";
+        using var playerReader = playerColumnCommand.ExecuteReader();
+        var playerColumns = new List<string>();
+        while (playerReader.Read())
+        {
+            playerColumns.Add(playerReader.GetString(1));
+        }
+
+        Assert.Contains("LastSyncedUtc", playerColumns);
     }
 
     [Fact]

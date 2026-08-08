@@ -16,33 +16,12 @@ namespace swgoh_command_bridge.UI.ViewModels
     /// <summary>
     /// ViewModel representing the character collection and priority scoring page.
     /// </summary>
-    public class CharactersViewModel : ViewModelBase
+    public class CharactersViewModel : StateViewModelBase<IReadOnlyList<CharacterEntity>>
     {
         private readonly AppDbContext _context;
         private readonly Func<string?>? _activeAllyCodeProvider;
         private string _headerText = "Characters List";
         private string _searchText = string.Empty;
-        private OperationState<IReadOnlyList<CharacterEntity>> _state = OperationState<IReadOnlyList<CharacterEntity>>.ToEmpty();
-
-        /// <summary>
-        /// Gets or sets the explicit empty, loading, success, and error state.
-        /// </summary>
-        public OperationState<IReadOnlyList<CharacterEntity>> State
-        {
-            get => _state;
-            set
-            {
-                _state = value;
-                OnPropertyChanged(nameof(State));
-                OnPropertyChanged(nameof(IsBusy));
-                OnPropertyChanged(nameof(IsLoading));
-                OnPropertyChanged(nameof(IsEmpty));
-                OnPropertyChanged(nameof(HasCharacters));
-                OnPropertyChanged(nameof(HasError));
-                OnPropertyChanged(nameof(ErrorMessage));
-            }
-        }
-
         /// <summary>
         /// Gets the collection of characters loaded from the database.
         /// </summary>
@@ -84,17 +63,10 @@ namespace swgoh_command_bridge.UI.ViewModels
         /// <summary>
         /// Gets a value indicating whether data is currently being retrieved.
         /// </summary>
-        public bool IsBusy => State.Status == OperationStatus.Loading;
-
-        public bool IsLoading => State.Status == OperationStatus.Loading;
-
-        public bool IsEmpty => State.Status == OperationStatus.Empty;
-
         public bool HasCharacters => State.Status == OperationStatus.Success;
 
-        public bool HasError => State.Status == OperationStatus.Error;
-
-        public string ErrorMessage => State.ErrorMessage ?? string.Empty;
+        protected override void OnStateChanged() =>
+            OnPropertyChanged(nameof(HasCharacters));
 
         public IAsyncRelayCommand RefreshCommand { get; }
 

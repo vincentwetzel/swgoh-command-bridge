@@ -19,6 +19,7 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var composition = ApplicationComposition.CreateDefault();
+            ThemeManager.Apply(composition.Settings.CurrentSettings.Theme);
             var viewModel = new MainWindowViewModel(composition);
             var window = new MainWindow
             {

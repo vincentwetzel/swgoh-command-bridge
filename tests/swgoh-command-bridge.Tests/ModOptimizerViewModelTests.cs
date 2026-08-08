@@ -49,6 +49,7 @@ public sealed class ModOptimizerViewModelTests : IDisposable
         Assert.Contains("Speed", viewModel.TargetSets[0]);
         Assert.Contains("fixture-source", viewModel.RecommendationSourceUrlText);
         Assert.NotEmpty(viewModel.LoadoutExplanations);
+        Assert.Contains("Combined assignment score", viewModel.LoadoutScoreText);
         Assert.Contains(viewModel.AlternativeSummaries, summary => summary.Contains("optimizer-alt"));
     }
 
@@ -86,6 +87,18 @@ public sealed class ModOptimizerViewModelTests : IDisposable
         Assert.NotEmpty(viewModel.RosterPlanSummaries);
         Assert.Contains("FIRST", string.Join(Environment.NewLine, viewModel.RosterPlanSummaries));
         Assert.Contains("priority-first", viewModel.RosterPlanStatusText);
+    }
+
+    [Fact]
+    public async Task OptimizeRosterCommand_ReportsBoundedGlobalPlan()
+    {
+        await SeedOptimizerDataAsync(DateTime.UtcNow);
+        var viewModel = CreateViewModel();
+
+        await viewModel.OptimizeRosterCommand.ExecuteAsync(null);
+
+        Assert.NotEmpty(viewModel.RosterPlanSummaries);
+        Assert.Contains("global roster optimization", viewModel.RosterPlanStatusText, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -161,6 +174,7 @@ public sealed class ModOptimizerViewModelTests : IDisposable
         _context.SwgohGgRecommendations.Add(new SwgohGgRecommendationEntity
         {
             CharacterId = "FIRST",
+            PlayerAllyCode = "123456789",
             Source = "fixture-source",
             SourceUrl = "https://fixture.test/first",
             LastUpdatedUtc = recommendationTime,

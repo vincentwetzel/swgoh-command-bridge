@@ -5,7 +5,7 @@ This section describes any automated agents, background services, or long-runnin
 
 *There are currently no scheduled long-running in-app agents defined for this project.*
 
-`SwgohGgScraperService` is a Core service that can run a user-triggered, incremental, sequential scrape of cached roster characters. It reports `ScrapeProgress`, supports cooperative cancellation, skips fresh cached recommendations, and records per-character failures. It is not hosted as a scheduled background worker; this file should be updated if a background sync, periodic cache refresh, or automation host is introduced.
+`SwgohGgScraperService` is a Core service that can run a user-triggered, incremental, sequential scrape of cached roster characters. It reports `ScrapeProgress`, supports cooperative cancellation, skips fresh cached recommendations, records per-character failures, and uses an explicit `ScrapeRetryPolicy` for bounded attempts, exponential backoff, server retry timing, and inter-request pacing. It is not hosted as a scheduled background worker; this file should be updated if a background sync, periodic cache refresh, or automation host is introduced.
 
 The desktop composition root owns the long-lived database and HTTP client. Do not introduce a hosted worker or automatic account sync without updating the read-only scope, privacy documentation, and smoke-test checklist.
 

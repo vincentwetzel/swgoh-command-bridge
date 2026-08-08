@@ -65,6 +65,28 @@ namespace swgoh_command_bridge.Tests
         }
 
         [Fact]
+        public void CalculateSecondaryEfficiency_UsesPersistedRollCounts()
+        {
+            var mod = new GameMod(
+                "efficiency",
+                level: 15,
+                pips: 5,
+                tier: 5,
+                ModSlot.Square,
+                ModSet.Health,
+                new ModStat(StatType.Offense, 0.5),
+                new List<ModStat>
+                {
+                    new(StatType.Speed, 20, 3),
+                    new(StatType.Potency, 5, 1)
+                },
+                null);
+
+            Assert.Equal(40, _mechanicsService.CalculateSecondaryEfficiency(mod));
+            Assert.Equal(40, _mechanicsService.CalculatePotentialSecondaryEfficiency(mod));
+        }
+
+        [Fact]
         public async Task AnalyzeModAsync_WhenUnderleveledModCannotReachThreshold_ReturnsSell()
         {
             // Arrange
@@ -246,6 +268,36 @@ namespace swgoh_command_bridge.Tests
 
             Assert.Equal(ModRecommendationAction.Sell, recommendation.Action);
             Assert.Contains("Speed +0/10", recommendation.Reason);
+        }
+
+        [Fact]
+        public async Task AnalyzeModAsync_WhenEfficiencyIsBelowThreshold_SellsAndReportsProjection()
+        {
+            var mod = new GameMod(
+                "low-efficiency",
+                level: 15,
+                pips: 5,
+                tier: 5,
+                ModSlot.Square,
+                ModSet.Health,
+                new ModStat(StatType.Offense, 0.5),
+                new List<ModStat>
+                {
+                    new(StatType.Speed, 20, 1),
+                    new(StatType.Potency, 5, 1)
+                },
+                null);
+
+            var recommendation = await _advisorService.AnalyzeModAsync(
+                mod,
+                new ModUpgradeThreshold("efficiency", "Efficiency", 5, 5, 15, true, 50),
+                Array.Empty<Character>());
+
+            Assert.Equal(ModRecommendationAction.Sell, recommendation.Action);
+            Assert.Equal(20, recommendation.CurrentEfficiency);
+            Assert.Equal(20, recommendation.ProjectedEfficiency);
+            Assert.Contains("efficiency 20", recommendation.Reason);
+            Assert.Contains("projected maximum", recommendation.EfficiencySummary);
         }
 
         [Fact]

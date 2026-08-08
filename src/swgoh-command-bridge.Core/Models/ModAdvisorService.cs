@@ -39,13 +39,18 @@ namespace swgoh_command_bridge.Core.Services
             var characterList = characters.ToList();
             mod.HasSecondary(StatType.Speed, out var speedStat);
             var speed = speedStat?.Value ?? 0;
+            var currentEfficiency = _mechanicsService.CalculateSecondaryEfficiency(mod);
+            var projectedEfficiency = _mechanicsService.CalculatePotentialSecondaryEfficiency(mod);
+            var efficiencyRequired = threshold.MinimumEfficiency > 0;
 
             // Rarity is a hard floor. A low-pip mod is never upgraded or sliced just
             // because its current speed happens to be high.
             if (mod.Pips < threshold.MinimumRarity)
             {
                 return Result(mod, ModRecommendationAction.Sell, 10,
-                    $"Sell: rarity {mod.Pips} is below the required minimum of {threshold.MinimumRarity}.");
+                    $"Sell: rarity {mod.Pips} is below the required minimum of {threshold.MinimumRarity}.",
+                    currentEfficiency,
+                    projectedEfficiency);
             }
 
             if (mod.Level < 15)
@@ -54,56 +59,88 @@ namespace swgoh_command_bridge.Core.Services
                 if (threshold.UpgradeOnlyWithSpeed && potentialSpeed < threshold.MinimumSpeed)
                 {
                     return Result(mod, ModRecommendationAction.Sell, 10,
-                        $"Sell: this level {mod.Level} mod can reach at most {potentialSpeed:0.#} Speed, below the required {threshold.MinimumSpeed}.");
+                        $"Sell: this level {mod.Level} mod can reach at most {potentialSpeed:0.#} Speed, below the required {threshold.MinimumSpeed}.",
+                        currentEfficiency,
+                        projectedEfficiency);
+                }
+
+                if (efficiencyRequired && projectedEfficiency < threshold.MinimumEfficiency)
+                {
+                    return Result(mod, ModRecommendationAction.Sell, 10,
+                        $"Sell: projected efficiency {projectedEfficiency:0.#}% cannot reach the required {threshold.MinimumEfficiency:0.#}%.",
+                        currentEfficiency,
+                        projectedEfficiency);
                 }
 
                 return Result(mod, ModRecommendationAction.LevelUp, 50,
-                    $"Level up: the mod is level {mod.Level}/15 and has viable potential up to {potentialSpeed:0.#} Speed.");
+                    $"Level up: the mod is level {mod.Level}/15 and has viable potential up to {potentialSpeed:0.#} Speed.",
+                    currentEfficiency,
+                    projectedEfficiency);
             }
 
             var meetsSpeed = !threshold.UpgradeOnlyWithSpeed || speed >= threshold.MinimumSpeed;
             var meetsTier = mod.Tier >= threshold.MinimumTier;
-            if (meetsSpeed && !meetsTier && mod.Tier < 5)
+            var meetsEfficiency = !efficiencyRequired || currentEfficiency >= threshold.MinimumEfficiency;
+            var canReachEfficiency = !efficiencyRequired || projectedEfficiency >= threshold.MinimumEfficiency;
+            if (meetsSpeed && !meetsTier && mod.Tier < 5 && canReachEfficiency)
             {
                 return Result(mod, ModRecommendationAction.Slice, 75,
-                    $"Slice: current Speed +{speed:0.#} meets the threshold, but tier {mod.Tier} is below the required tier {threshold.MinimumTier}.");
+                    $"Slice: current Speed +{speed:0.#} meets the threshold, but tier {mod.Tier} is below the required tier {threshold.MinimumTier}.",
+                    currentEfficiency,
+                    projectedEfficiency);
             }
 
-            if (meetsSpeed && meetsTier)
+            if (meetsSpeed && meetsTier && meetsEfficiency)
             {
                 if (mod.Pips == 5 && mod.Tier == 5)
                 {
                     return Result(mod, ModRecommendationAction.Slice, 90,
-                        "Slice: a level 15, 5-dot gold mod that meets the threshold can be advanced to 6-dot.");
+                        "Slice: a level 15, 5-dot gold mod that meets the threshold can be advanced to 6-dot.",
+                        currentEfficiency,
+                        projectedEfficiency);
                 }
 
                 return Result(mod, ModRecommendationAction.Keep, 100,
-                    $"Keep: Speed +{speed:0.#}, tier {mod.Tier}, and rarity {mod.Pips} meet the active threshold.");
+                    $"Keep: Speed +{speed:0.#}, tier {mod.Tier}, rarity {mod.Pips}, and efficiency {currentEfficiency:0.#}% meet the active threshold.",
+                    currentEfficiency,
+                    projectedEfficiency);
             }
 
             var slicePotential = _mechanicsService.CalculatePotentialMaxSpeed(mod);
-            if (mod.Tier < 5 && slicePotential >= threshold.MinimumSpeed && threshold.UpgradeOnlyWithSpeed)
+            if (mod.Tier < 5 && slicePotential >= threshold.MinimumSpeed && threshold.UpgradeOnlyWithSpeed && canReachEfficiency)
             {
                 return Result(mod, ModRecommendationAction.Slice, 80,
-                    $"Slice: current Speed +{speed:0.#} is below {threshold.MinimumSpeed}, but slicing can reach up to +{slicePotential:0.#}.");
+                    $"Slice: current Speed +{speed:0.#} is below {threshold.MinimumSpeed}, but slicing can reach up to +{slicePotential:0.#}.",
+                    currentEfficiency,
+                    projectedEfficiency);
             }
 
             var swap = FindBestSwap(mod, characterList, speed);
             if (swap != null)
             {
                 return Result(mod, ModRecommendationAction.Swap, 80,
-                    $"Swap: +{speed:0.#} Speed beats {swap.Value.EquippedSpeed:0.#} on {swap.Value.Character.Name} ({swap.Value.Character.Id}), the highest-priority compatible target.");
+                    $"Swap: +{speed:0.#} Speed beats {swap.Value.EquippedSpeed:0.#} on {swap.Value.Character.Name} ({swap.Value.Character.Id}), the highest-priority compatible target.",
+                    currentEfficiency,
+                    projectedEfficiency);
             }
 
             return Result(mod, ModRecommendationAction.Sell, 10,
-                $"Sell: Speed +{speed:0.#}/{threshold.MinimumSpeed} and no compatible higher-priority replacement target was found.");
+                $"Sell: Speed +{speed:0.#}/{threshold.MinimumSpeed}, efficiency {currentEfficiency:0.#}%, and no compatible higher-priority replacement target was found.",
+                currentEfficiency,
+                projectedEfficiency);
         }
 
         private static ModRecommendation Result(
             GameMod mod,
             ModRecommendationAction action,
             double score,
-            string reason) => new(mod.Id, action, reason, score);
+            string reason,
+            double currentEfficiency,
+            double projectedEfficiency) => new(mod.Id, action, reason, score)
+            {
+                CurrentEfficiency = currentEfficiency,
+                ProjectedEfficiency = projectedEfficiency
+            };
 
         private static (Character Character, double EquippedSpeed)? FindBestSwap(
             GameMod mod,

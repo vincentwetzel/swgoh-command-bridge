@@ -11,7 +11,7 @@ The current release target is read-only. Any feature that changes the game accou
 -   **Read-Only Account Sync:** The application interfaces with a local `swgoh-comlink` instance to perform a **read-only** sync of the user's game account.
 -   **Full Roster Sync:** It fetches, parses, persists, and displays the usable character and mod inventory records returned by Comlink, preserving warnings for tolerated malformed records.
 -   **Local Caching:** It uses a local SQLite database to cache player data, minimizing redundant API calls and enabling offline viewing.
--   **Configurable Local Services:** It stores the local `swgoh-comlink` base URL, default ally code, scraping policy, and user-defined mod thresholds in cross-platform application settings.
+-   **Configurable Local Services:** It stores the local `swgoh-comlink` base URL, default ally code, normalized Dark/Light/System theme choice, scraping policy, and user-defined mod thresholds in cross-platform application settings.
 
 ### 2.2. Mod Viewing & Filtering
 -   **Inventory View:** Display the entire mod inventory in a sortable, filterable grid.
@@ -27,10 +27,11 @@ The current release target is read-only. Any feature that changes the game accou
     -   **Prioritize Roster Coverage:** Ensure that the recommendation engine prioritizes equipping *some* mod on all active characters over leaving them unmodded, even if the available mods are of lower quality (e.g., poor stats, unupgraded). A sub-optimal mod that matches the character's desired set or primary stat is considered better than no mod at all. This ensures maximum roster coverage.
 -   **Mod Swap Suggestions:** Generate a list of recommended mod swaps (e.g., move mod X from Character A to Character B) to optimize a character or squad.
 -   **Upgrade Planning:** Identify and suggest which mods are the best candidates for upgrading or slicing to achieve better stats.
--   **Assignment Explanations:** Explain each recommended assignment using set match, primary match, Speed value, source character, and expected benefit.
+-   **Assignment Explanations:** Explain each recommended assignment using set match, primary match, Speed value, source character, and expected benefit. When current equipped mods are available, show persisted mod-stat deltas separately from the score estimate; do not present them as final in-game stats.
+-   **Roster Planning:** Provide a deterministic priority-first plan and a bounded joint plan for multiple characters. Each plan reserves an inventory mod at most once and reports missing slots, conflicts, reservation context, and consolidated swap candidates.
 
 ### 2.3.1. Mod Upgrade & Replacement Advisor
--   **User-Defined Thresholds:** Users can define rules for when a mod is considered "worth upgrading." The active advisor rules use the mod's pips, tier, and Speed; the settings format also preserves an optional efficiency value for future rule expansion. For a detailed explanation of the mod upgrading process, see [`MOD_MECHANICS.md`](./MOD_MECHANICS.md).
+-   **User-Defined Thresholds:** Users can define rules for when a mod is considered "worth upgrading." The active advisor rules use the mod's pips, tier, Speed, compatible ownership, and optional secondary-roll efficiency estimate; the advisor exposes current and projected efficiency with an explicit analysis-only disclaimer. For a detailed explanation of the mod upgrading process, see [`MOD_MECHANICS.md`](./MOD_MECHANICS.md).
 -   **Upgrade/Swap/Sell Logic:** Based on these thresholds, the system provides recommendations for each mod. It evaluates upgrade and slice potential first, then considers a faster compatible swap against prioritized equipped characters, and finally returns sell when no actionable recommendation applies. These are recommendations only; no game action is performed.
 
 ### 2.4. User Experience
@@ -40,6 +41,7 @@ The current release target is read-only. Any feature that changes the game accou
 ### 2.5. Recovery and support
 -   **Cache recovery:** Users can create verified SQLite backups, restore a selected backup, or reset cached feature data while retaining JSON settings.
 -   **Diagnostics:** Users can inspect safe cache/configuration metadata and export a privacy-redacted support report.
+-   **Sync history:** The cache retains bounded, privacy-safe outcomes for completed, failed, cancelled, and interrupted account sync attempts.
 -   **Failure states:** Screens must expose loading, empty, success, and error states with retry or recovery actions where applicable.
 
 ## 3. Stretch Goals (Future Scope)

@@ -11,6 +11,8 @@ namespace swgoh_command_bridge.Core.Models;
 /// Canonical community recommendation data shared by scraping, assignment, and UI layers.
 /// </summary>
 public sealed record RecommendationSnapshot(
+    string CharacterId,
+    string PlayerAllyCode,
     string Source,
     int SchemaVersion,
     string SourceUrl,
@@ -43,6 +45,8 @@ public sealed record RecommendationSnapshot(
         }
 
         return new RecommendationSnapshot(
+            entity.CharacterId ?? string.Empty,
+            entity.PlayerAllyCode ?? string.Empty,
             string.IsNullOrWhiteSpace(entity.Source) ? "swgoh.gg" : entity.Source,
             entity.RecommendationSchemaVersion <= 0 ? 1 : entity.RecommendationSchemaVersion,
             entity.SourceUrl ?? string.Empty,

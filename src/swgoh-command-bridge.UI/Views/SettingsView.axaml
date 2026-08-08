@@ -12,13 +12,20 @@
         <TextBlock Text="Default ally code"/>
         <TextBox Text="{Binding DefaultAllyCode}" Watermark="123456789"/>
         <TextBlock Text="Theme"/>
-        <TextBox Text="{Binding Theme}"/>
+        <ComboBox ItemsSource="{Binding ThemeOptions}" SelectedItem="{Binding Theme}"/>
         <CheckBox Content="Allow local swgoh.gg recommendation scraping" IsChecked="{Binding EnableLocalRecommendationScraping}"/>
         <TextBlock Text="When disabled, cached recommendations remain available but the app will not make new local scraping requests. A future central recommendation service can replace this path." TextWrapping="Wrap" Foreground="Gray"/>
+        <TextBlock Text="Recommendation contact email (optional)"/>
+        <TextBox Text="{Binding RecommendationContactEmail}" Watermark="you@example.com"/>
+        <TextBlock Text="If supplied, this is sent as the HTTP From header so swgoh.gg operators can identify the client. It is included in settings transfers." TextWrapping="Wrap" Foreground="Gray"/>
         <StackPanel Orientation="Horizontal" Spacing="10">
           <Button Content="Test connection" Command="{Binding TestConnectionCommand}"/>
           <Button Content="Save settings" Command="{Binding SaveCommand}"/>
         </StackPanel>
+        <TextBlock Text="Working..." IsVisible="{Binding IsLoading}" Foreground="Gray"/>
+        <Border IsVisible="{Binding HasError}" Background="#4A1F1F" BorderBrush="#FF8A80" BorderThickness="1" CornerRadius="4" Padding="8">
+          <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" Foreground="#FF8A80"/>
+        </Border>
         <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" Foreground="Gray"/>
         <Separator/>
         <TextBlock Text="Portable settings" FontSize="18" FontWeight="SemiBold"/>

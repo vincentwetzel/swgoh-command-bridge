@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 This unreleased work is not a packaged release. The product remains read-only and requires local Comlink configuration for live account sync.
 
 ### Added
+- Added bounded per-account sync history for completed, failed, cancelled, and interrupted attempts, including privacy-safe status, counts, warning totals, and failure summaries in Diagnostics and Home.
+- Added explicit Dark/Light/System theme handling that is normalized and applied at startup, save, and settings import.
+- Added bounded joint roster assignment planning with one-time mod reservations, conflict reporting, consolidated swap candidates, and conservative persisted mod-stat projections.
+- Added configurable scraper retry/backoff/pacing policy with `Retry-After` support, response-size limits, cancellation propagation, optional contact metadata, and an explicit local scraping policy.
 - Added ally-code validation, offline cached-account switching/removal, phased sync progress, tolerant parser diagnostics, optional Comlink metadata name enrichment, privacy-safe Comlink failure messages, and account-scoped cache refresh behavior.
 - Added cache recovery and support tooling: transactional schema repair, integrity-checked backup/restore, guarded cache reset, bounded diagnostic events, privacy-redacted diagnostic export, and versioned credential-safe settings transfer.
 - Added priority-roster assignment alternatives and consolidated swap candidates with explicit inventory, reservation, and conflict context.

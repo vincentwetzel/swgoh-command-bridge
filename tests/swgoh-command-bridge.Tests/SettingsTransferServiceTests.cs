@@ -26,7 +26,8 @@ public sealed class SettingsTransferServiceTests
                 new(5, 4, "Speed", 18, "Competitive", true, 65, "competitive")
             },
             DefaultUpgradeThresholdId: "competitive",
-            EnableLocalRecommendationScraping: false);
+            EnableLocalRecommendationScraping: false,
+            RecommendationContactEmail: "operator@example.com");
 
         var json = _service.Serialize(settings);
         var restored = _service.DeserializeAndValidate(json);
@@ -38,6 +39,7 @@ public sealed class SettingsTransferServiceTests
         Assert.Equal(settings.UpgradeThresholds, restored.UpgradeThresholds);
         Assert.Equal(settings.DefaultUpgradeThresholdId, restored.DefaultUpgradeThresholdId);
         Assert.False(restored.EnableLocalRecommendationScraping);
+        Assert.Equal("operator@example.com", restored.RecommendationContactEmail);
     }
 
     [Fact]
@@ -49,6 +51,19 @@ public sealed class SettingsTransferServiceTests
 
         Assert.Equal("123456789", restored.DefaultAllyCode);
         Assert.Equal("Light", restored.Theme);
+    }
+
+    [Fact]
+    public void DeserializeAndValidate_MigratesLegacyThresholdIdentity()
+    {
+        var json = "{\"comlinkBaseUrl\":\"http://localhost:3000\",\"upgradeThresholds\":[" +
+                   "{\"minPips\":5,\"minTier\":4,\"statName\":\"Speed\",\"minValue\":10,\"name\":\"Legacy\"}]}";
+
+        var restored = _service.DeserializeAndValidate(json);
+
+        var threshold = Assert.Single(restored.UpgradeThresholds!);
+        Assert.Equal("threshold-0", threshold.Id);
+        Assert.Equal("threshold-0", restored.DefaultUpgradeThresholdId);
     }
 
     [Fact]
@@ -94,5 +109,16 @@ public sealed class SettingsTransferServiceTests
             () => _service.DeserializeAndValidate(json));
 
         Assert.Contains("invalid minimum pips", exception.Message);
+    }
+
+    [Fact]
+    public void DeserializeAndValidate_RejectsInvalidRecommendationContact()
+    {
+        var json = "{\"schemaVersion\":1,\"settings\":{\"comlinkBaseUrl\":\"http://localhost:3000\",\"recommendationContactEmail\":\"not-an-email\"}}";
+
+        var exception = Assert.Throws<InvalidDataException>(
+            () => _service.DeserializeAndValidate(json));
+
+        Assert.Contains("contact", exception.Message);
     }
 }

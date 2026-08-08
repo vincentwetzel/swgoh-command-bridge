@@ -53,10 +53,13 @@ The root-level C# files are legacy drafts retained for reference; the active imp
 |   |   |   |   |-- CharacterEntity.cs
 |   |   |   |   |-- GameModEntity.cs
 |   |   |   |   |-- PlayerEntity.cs
+|   |   |   |   |-- SyncHistoryEntity.cs
 |   |   |   |   `-- SwgohGgRecommendationEntity.cs
 |   |   |   `-- Repositories
 |   |   |       |-- IPlayerRepository.cs
-|   |   |       `-- PlayerRepository.cs
+|   |   |       |-- ISyncHistoryRepository.cs
+|   |   |       |-- PlayerRepository.cs
+|   |   |       `-- SyncHistoryRepository.cs
 |   |   |-- Models
 |   |       |-- AllyCodeValidator.cs
 |   |       |-- AppDataPaths.cs
@@ -70,6 +73,7 @@ The root-level C# files are legacy drafts retained for reference; the active imp
 |   |       |-- ModAssignmentAlternative.cs
 |   |       |-- ModEnums.cs
 |   |       |-- ModLoadoutResult.cs
+|   |       |-- ModLoadoutProjection.cs
 |   |       |-- ModRecommendation.cs
 |   |       |-- ModStat.cs
 |   |       |-- ModThresholdTransferDocument.cs
@@ -83,6 +87,8 @@ The root-level C# files are legacy drafts retained for reference; the active imp
 |   |       |-- RosterLoadoutPlan.cs
 |   |       |-- ScrapeCharacterResult.cs
 |   |       |-- ScrapeProgress.cs
+|   |       |-- ScrapeRetryPolicy.cs
+|   |       |-- ThemePreference.cs
 |   |       `-- SettingsTransferDocument.cs
 |   |   `-- Services
 |   |       |-- CharacterMetadataParser.cs
@@ -97,9 +103,11 @@ The root-level C# files are legacy drafts retained for reference; the active imp
 |   |       |-- ModFilterService.cs
 |   |       |-- ModMechanicsService.cs
 |   |       |-- ModThresholdTransferService.cs
+|   |       |-- PersistedModelMapper.cs
 |   |       |-- PlayerProfileParser.cs
 |   |       |-- SecondaryStatFilterService.cs
 |   |       |-- SettingsService.cs
+|   |       |-- SettingsMigrationService.cs
 |   |       |-- SettingsTransferService.cs
 |   |       `-- SwgohGgRecommendationParser.cs
 |   `-- swgoh-command-bridge.UI
@@ -110,6 +118,7 @@ The root-level C# files are legacy drafts retained for reference; the active imp
 |       |-- ViewLocator.cs
 |       |-- app.manifest
 |       |-- swgoh-command-bridge.UI.csproj
+|       |-- ThemeManager.cs
 |       |-- ViewModels
 |       |   |-- CharacterPrioritiesViewModel.cs
 |       |   |-- CharactersViewModel.cs
@@ -119,6 +128,7 @@ The root-level C# files are legacy drafts retained for reference; the active imp
 |       |   |-- ModThresholdsViewModel.cs
 |       |   |-- SettingsViewModel.cs
 |       |   |-- ModsViewModel.cs
+|       |   |-- StateViewModelBase.cs
 |       |   `-- ViewModelBase.cs
 |       `-- Views
 |           |-- CharacterPrioritiesView.axaml
@@ -146,21 +156,25 @@ The root-level C# files are legacy drafts retained for reference; the active imp
         |-- ModAdvisorServiceTests.cs
         |-- ModAdvisorDecisionMatrixTests.cs
         |-- ModAssignmentServiceTests.cs
+        |-- ModThresholdsViewModelTests.cs
+        |-- ModsViewModelTests.cs
         |-- ComlinkErrorFormatterTests.cs
         |-- ComlinkServiceTests.cs
         |-- DiagnosticEventLogTests.cs
         |-- DiagnosticLoggerTests.cs
+        |-- DiagnosticsViewModelTests.cs
         |-- ModFilterServiceTests.cs
         |-- OperationStateTests.cs
         |-- PlayerRepositoryTests.cs
         |-- PlayerServiceTests.cs
+        |-- PersistedModelMapperTests.cs
         |-- SecondaryStatFilterServiceTests.cs
         |-- SettingsServiceTests.cs
         |-- SettingsTransferServiceTests.cs
         |-- SettingsViewModelTests.cs
+        |-- StateViewModelBaseTests.cs
         |-- CharacterViewModelTests.cs
         |-- CharacterMetadataParserTests.cs
-        |-- ModsViewModelTests.cs
         |-- ModOptimizerViewModelTests.cs
         |-- MainWindowViewModelTests.cs
         |-- ViewModelErrorStateTests.cs
@@ -168,5 +182,9 @@ The root-level C# files are legacy drafts retained for reference; the active imp
         |-- RecommendationSnapshotTests.cs
         |-- SwgohGgRecommendationParserTests.cs
         |-- SwgohGgScraperServiceTests.cs
+        |-- SyncHistoryRepositoryTests.cs
+        |-- Fixtures
+        |   |-- ComlinkPayloadFixtures.cs
+        |   `-- RecommendationPageFixtures.cs
         `-- swgoh-command-bridge.Tests.csproj
 ```

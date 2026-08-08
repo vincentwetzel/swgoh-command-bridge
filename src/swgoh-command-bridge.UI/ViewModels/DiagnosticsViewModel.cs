@@ -1,12 +1,15 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.EntityFrameworkCore;
 using swgoh_command_bridge.Core.Database;
+using swgoh_command_bridge.Core.Database.Entities;
 using swgoh_command_bridge.Core.Models;
 using swgoh_command_bridge.Core.Services;
 
@@ -15,14 +18,12 @@ namespace swgoh_command_bridge.UI.ViewModels;
 /// <summary>
 /// Provides read-only cache and configuration diagnostics for troubleshooting.
 /// </summary>
-public sealed class DiagnosticsViewModel : ViewModelBase
+public sealed class DiagnosticsViewModel : StateViewModelBase<bool>
 {
     private readonly AppDbContext _context;
     private readonly ISettingsService _settingsService;
     private readonly Func<string?> _activeAllyCodeProvider;
     private readonly DiagnosticEventLog _eventLog;
-    private OperationState<bool> _state = OperationState<bool>.ToEmpty();
-    private string _statusText = "Refresh diagnostics to inspect the local cache.";
     private string _exportStatusText = string.Empty;
     private string _comlinkEndpoint = "Not loaded";
     private string _redactedAllyCode = "Not configured";
@@ -30,6 +31,9 @@ public sealed class DiagnosticsViewModel : ViewModelBase
     private string _cachePath = "Unavailable";
     private string _backupDirectory = "Unavailable";
     private string _lastScrapeSummary = "No completed recommendation refresh has been recorded.";
+    private string _lastAccountSyncText = "No account sync timestamp is available.";
+    private string _lastSyncOutcomeText = "No sync attempt is recorded.";
+    private string _recentSyncHistoryText = "No sync attempts are recorded.";
     private string _recentEventsText = "No application events recorded in this session.";
     private int _playerCount;
     private int _characterCount;
@@ -56,28 +60,16 @@ public sealed class DiagnosticsViewModel : ViewModelBase
 
     public string HeaderText => "Diagnostics";
 
-    public OperationState<bool> State
+    protected override void OnStateChanged() =>
+        OnPropertyChanged(nameof(StatusText));
+
+    public string StatusText => State.Status switch
     {
-        get => _state;
-        private set
-        {
-            _state = value;
-            OnPropertyChanged(nameof(State));
-            OnPropertyChanged(nameof(IsLoading));
-            OnPropertyChanged(nameof(HasError));
-            OnPropertyChanged(nameof(StatusText));
-        }
-    }
-
-    public bool IsLoading => State.Status == OperationStatus.Loading;
-
-    public bool HasError => State.Status == OperationStatus.Error;
-
-    public string StatusText
-    {
-        get => _statusText;
-        private set => SetField(ref _statusText, value);
-    }
+        OperationStatus.Loading => "Refreshing diagnostics...",
+        OperationStatus.Success => "Diagnostics are current.",
+        OperationStatus.Error => State.ErrorMessage ?? "Diagnostics refresh failed.",
+        _ => "Refresh diagnostics to inspect the local cache."
+    };
 
     public string ExportStatusText
     {
@@ -119,6 +111,24 @@ public sealed class DiagnosticsViewModel : ViewModelBase
     {
         get => _lastScrapeSummary;
         private set => SetField(ref _lastScrapeSummary, value);
+    }
+
+    public string LastAccountSyncText
+    {
+        get => _lastAccountSyncText;
+        private set => SetField(ref _lastAccountSyncText, value);
+    }
+
+    public string LastSyncOutcomeText
+    {
+        get => _lastSyncOutcomeText;
+        private set => SetField(ref _lastSyncOutcomeText, value);
+    }
+
+    public string RecentSyncHistoryText
+    {
+        get => _recentSyncHistoryText;
+        private set => SetField(ref _recentSyncHistoryText, value);
     }
 
     public string RecentEventsText
@@ -164,7 +174,7 @@ public sealed class DiagnosticsViewModel : ViewModelBase
         SettingsPath = _settingsService.SettingsPath;
         CachePath = _context.CachePath ?? "Unavailable or in-memory database";
         BackupDirectory = _context.CacheBackupDirectory ?? "Unavailable";
-        LastScrapeSummary = FormatScrapeSummary(settings.LastRecommendationScrape);
+            LastScrapeSummary = FormatScrapeSummary(settings.LastRecommendationScrape);
         RecentEventsText = _eventLog.FormatRecent();
 
         try
@@ -177,6 +187,33 @@ public sealed class DiagnosticsViewModel : ViewModelBase
             }
 
             PlayerCount = await _context.Players.AsNoTracking().CountAsync().ConfigureAwait(true);
+            var latestAccountSync = await _context.Players
+                .AsNoTracking()
+                .Where(player => player.LastSyncedUtc.HasValue)
+                .OrderByDescending(player => player.LastSyncedUtc)
+                .Select(player => player.LastSyncedUtc)
+                .FirstOrDefaultAsync()
+                .ConfigureAwait(true);
+            LastAccountSyncText = latestAccountSync is DateTime synced
+                ? $"{synced.ToLocalTime():yyyy-MM-dd HH:mm} local"
+                : "No account sync timestamp is available (legacy cache or empty cache).";
+            var latestSync = await _context.SyncHistory
+                .AsNoTracking()
+                .OrderByDescending(entry => entry.StartedUtc)
+                .ThenByDescending(entry => entry.Id)
+                .FirstOrDefaultAsync()
+                .ConfigureAwait(true);
+            LastSyncOutcomeText = latestSync == null
+                ? "No sync attempt is recorded."
+                : FormatSyncOutcome(latestSync);
+            var recentSyncHistory = await _context.SyncHistory
+                .AsNoTracking()
+                .OrderByDescending(entry => entry.StartedUtc)
+                .ThenByDescending(entry => entry.Id)
+                .Take(10)
+                .ToListAsync()
+                .ConfigureAwait(true);
+            RecentSyncHistoryText = FormatRecentSyncHistory(recentSyncHistory);
             CharacterCount = await _context.Characters.AsNoTracking().CountAsync().ConfigureAwait(true);
             ModCount = await _context.Mods.AsNoTracking().CountAsync().ConfigureAwait(true);
             RecommendationCount = await _context.SwgohGgRecommendations
@@ -217,6 +254,11 @@ public sealed class DiagnosticsViewModel : ViewModelBase
                 .AppendLine($"Characters: {CharacterCount}")
                 .AppendLine($"Mods: {ModCount}")
                 .AppendLine($"Recommendations: {RecommendationCount}")
+                .AppendLine($"Latest account sync: {LastAccountSyncText}")
+                .AppendLine($"Latest sync outcome: {LastSyncOutcomeText}")
+                .AppendLine()
+                .AppendLine("Recent sync attempts:")
+                .AppendLine(RecentSyncHistoryText)
                 .AppendLine($"Last recommendation refresh: {LastScrapeSummary}")
                 .AppendLine()
                 .AppendLine("Recent application events:")
@@ -239,6 +281,9 @@ public sealed class DiagnosticsViewModel : ViewModelBase
         CharacterCount = 0;
         ModCount = 0;
         RecommendationCount = 0;
+        LastAccountSyncText = "Unavailable because the local cache could not be read.";
+        LastSyncOutcomeText = "Unavailable because the local cache could not be read.";
+        RecentSyncHistoryText = "Unavailable because the local cache could not be read.";
     }
 
     private static string FormatComlinkEndpoint(string configuredUrl)
@@ -277,6 +322,48 @@ public sealed class DiagnosticsViewModel : ViewModelBase
         var state = summary.Cancelled ? "cancelled" : "completed";
         return $"{state} {summary.CompletedAtUtc.ToLocalTime():yyyy-MM-dd HH:mm}: " +
             $"{summary.Processed} processed, {summary.Succeeded} succeeded, {summary.Failed} failed.";
+    }
+
+    private static string FormatSyncOutcome(SyncHistoryEntity history)
+    {
+        var timestamp = (history.CompletedUtc ?? history.StartedUtc).ToLocalTime();
+        var state = history.Status switch
+        {
+            "completed" => $"completed ({history.CharacterCount} characters, {history.ModCount} mods)",
+            "cancelled" => "cancelled",
+            "failed" => $"failed: {history.ErrorSummary ?? "unknown error"}",
+            _ => "still in progress or interrupted"
+        };
+        var warnings = history.WarningCount > 0
+            ? $" {history.WarningCount} parser warning(s)."
+            : string.Empty;
+        return $"{state} at {timestamp:yyyy-MM-dd HH:mm} local.{warnings}";
+    }
+
+    private static string FormatRecentSyncHistory(IReadOnlyList<SyncHistoryEntity> history)
+    {
+        if (history.Count == 0)
+        {
+            return "No sync attempts are recorded.";
+        }
+
+        return string.Join(
+            Environment.NewLine,
+            history.Select(entry =>
+            {
+                var timestamp = (entry.CompletedUtc ?? entry.StartedUtc).ToLocalTime();
+                var state = entry.Status switch
+                {
+                    "completed" => $"completed ({entry.CharacterCount} characters, {entry.ModCount} mods)",
+                    "cancelled" => "cancelled",
+                    "failed" => $"failed: {entry.ErrorSummary ?? "unknown error"}",
+                    _ => "still in progress or interrupted"
+                };
+                var warnings = entry.WarningCount > 0
+                    ? $", {entry.WarningCount} warning(s)"
+                    : string.Empty;
+                return $"{timestamp:yyyy-MM-dd HH:mm} local - {RedactAllyCode(entry.AllyCode)} - {state}{warnings}";
+            }));
     }
 
     private void SetField<T>(

@@ -11,6 +11,7 @@ using swgoh_command_bridge.Core.Database.Entities;
 using swgoh_command_bridge.Core.Database.Repositories;
 using swgoh_command_bridge.Core.Models;
 using swgoh_command_bridge.Core.Services;
+using swgoh_command_bridge.Tests.Fixtures;
 using Xunit;
 
 namespace swgoh_command_bridge.Tests
@@ -24,48 +25,7 @@ namespace swgoh_command_bridge.Tests
         public async Task GetPlayerProfileAsync_WithValidJsonPayload_ParsesRosterAndModsCorrectly()
         {
             // Arrange
-            var payload = @"
-            {
-                ""name"": ""Skywalker"",
-                ""level"": 85,
-                ""gp"": 4200000,
-                ""rosterUnit"": [
-                    {
-                        ""definitionId"": ""DARTHTRAYA:SEVEN_STAR"",
-                        ""currentLevel"": 85,
-                        ""currentGearLevel"": 12,
-                        ""relic"": {
-                            ""currentTier"": 5
-                        },
-                        ""gp"": 24500,
-                        ""equippedStatMod"": [
-                          {
-                            ""id"": ""mod_speed_test"",
-                            ""level"": 15,
-                            ""pips"": 6,
-                            ""tier"": 5,
-                            ""slot"": 2,
-                            ""set"": 1,
-                            ""primaryStat"": {
-                              ""stat"": {
-                                ""unitId"": 5,
-                                ""value"": 3000000000
-                              }
-                            },
-                            ""secondaryStat"": [
-                              {
-                                ""stat"": {
-                                  ""unitId"": 5,
-                                  ""value"": 1500000000
-                                },
-                                ""roll"": 2
-                              }
-                            ]
-                          }
-                        ]
-                    }
-                ]
-            }";
+            var payload = ComlinkPayloadFixtures.ValidRosterAndEquippedMod;
 
             var fakeComlink = new FakeComlinkService(payload);
             var fakeRepo = new FakePlayerRepository();
@@ -108,17 +68,16 @@ namespace swgoh_command_bridge.Tests
         public async Task SyncPlayerProfileAsync_WhenInvoked_SavesToRepositoryCorrectly()
         {
             // Arrange
-            var payload = @"
-            {
-                ""name"": ""Kenobi"",
-                ""level"": 85,
-                ""gp"": 5100000,
-                ""rosterUnit"": []
-            }";
+            var payload = ComlinkPayloadFixtures.EmptyRoster;
 
             var fakeComlink = new FakeComlinkService(payload);
             var fakeRepo = new FakePlayerRepository();
-            var service = new PlayerService(fakeComlink, fakeRepo, NullLogger<PlayerService>.Instance);
+            var fakeHistory = new FakeSyncHistoryRepository();
+            var service = new PlayerService(
+                fakeComlink,
+                fakeRepo,
+                NullLogger<PlayerService>.Instance,
+                fakeHistory);
 
             // Act
             var result = await service.SyncPlayerProfileAsync("987654321", CancellationToken.None);
@@ -129,8 +88,16 @@ namespace swgoh_command_bridge.Tests
             Assert.NotNull(fakeRepo.SavedPlayer);
             Assert.Equal("987654321", fakeRepo.SavedPlayer!.AllyCode);
             Assert.Equal("Kenobi", fakeRepo.SavedPlayer.Name);
+            Assert.Equal("completed", fakeHistory.Status);
+            Assert.Equal(0, fakeHistory.CharacterCount);
+            Assert.Equal(0, fakeHistory.ModCount);
             Assert.Equal(85, fakeRepo.SavedPlayer.Level);
             Assert.Equal(5100000, fakeRepo.SavedPlayer.GalacticPower);
+            Assert.NotNull(fakeRepo.SavedPlayer.LastSyncedUtc);
+            Assert.InRange(
+                fakeRepo.SavedPlayer.LastSyncedUtc!.Value,
+                DateTime.UtcNow.AddMinutes(-1),
+                DateTime.UtcNow.AddMinutes(1));
         }
 
         [Fact]
@@ -139,7 +106,7 @@ namespace swgoh_command_bridge.Tests
             var progressUpdates = new List<PlayerSyncProgress>();
             var fakeRepo = new FakePlayerRepository();
             var service = new PlayerService(
-                new FakeComlinkService("{\"name\":\"Progress\",\"rosterUnit\":[]}"),
+                new FakeComlinkService(ComlinkPayloadFixtures.EmptyRoster),
                 fakeRepo,
                 NullLogger<PlayerService>.Instance);
 
@@ -157,34 +124,7 @@ namespace swgoh_command_bridge.Tests
         [Fact]
         public async Task SyncPlayerProfileAsync_WithInventoryMods_PreservesStarsAndStatSnapshots()
         {
-            var payload = @"
-            {
-                ""name"": ""Ahsoka"",
-                ""level"": 85,
-                ""gp"": 3000000,
-                ""rosterUnit"": [
-                    {
-                        ""definitionId"": ""AHSOKATANO:SEVEN_STAR"",
-                        ""currentRarity"": 5,
-                        ""currentLevel"": 85,
-                        ""currentGearLevel"": 13
-                    }
-                ],
-                ""mods"": [
-                    {
-                        ""id"": ""inventory_mod_1"",
-                        ""level"": 15,
-                        ""pips"": 6,
-                        ""tier"": 5,
-                        ""slot"": 1,
-                        ""set"": 4,
-                        ""primaryStat"": { ""stat"": { ""unitId"": 1, ""value"": 100000000 } },
-                        ""secondaryStat"": [
-                            { ""stat"": { ""unitId"": 5, ""value"": 1500000000 }, ""roll"": 3 }
-                        ]
-                    }
-                ]
-            }";
+            var payload = ComlinkPayloadFixtures.InventoryMods;
 
             var fakeRepo = new FakePlayerRepository();
             var service = new PlayerService(
@@ -198,6 +138,14 @@ namespace swgoh_command_bridge.Tests
             Assert.Equal(5, fakeRepo.SavedPlayer!.Characters.Single().Stars);
             var savedMod = Assert.Single(fakeRepo.SavedPlayer.Mods);
             Assert.Equal("Health", savedMod.PrimaryStatType);
+            Assert.Equal("111222333", savedMod.PlayerAllyCode);
+            Assert.Equal(string.Empty, savedMod.CharacterId);
+            Assert.Equal(1, savedMod.Slot);
+            Assert.Equal(4, savedMod.Set);
+            Assert.Equal(15, savedMod.Level);
+            Assert.Equal(5, savedMod.Tier);
+            Assert.Equal(6, savedMod.Rarity);
+            Assert.Equal(1, savedMod.PrimaryStatValue);
             Assert.Contains("Speed", savedMod.SecondaryStatsJson);
             Assert.Contains("3", savedMod.SecondaryStatsJson);
         }
@@ -205,21 +153,11 @@ namespace swgoh_command_bridge.Tests
         [Fact]
         public async Task SyncPlayerProfileAsync_UsesComlinkMetadataNamesWithoutMakingMetadataMandatory()
         {
-            var payload = @"
-            {
-                ""rosterUnit"": [
-                    { ""definitionId"": ""REY:SEVEN_STAR"" }
-                ]
-            }";
-            var metadata = @"
-            {
-                ""unitDefinitions"": [
-                    { ""baseId"": ""REY"", ""localizedName"": ""Rey"" }
-                ]
-            }";
             var fakeRepo = new FakePlayerRepository();
             var service = new PlayerService(
-                new FakeComlinkService(payload, metadata),
+                new FakeComlinkService(
+                    ComlinkPayloadFixtures.RosterForMetadataEnrichment,
+                    ComlinkPayloadFixtures.MetadataCatalog),
                 fakeRepo,
                 NullLogger<PlayerService>.Instance);
 
@@ -232,40 +170,7 @@ namespace swgoh_command_bridge.Tests
         [Fact]
         public async Task GetPlayerProfileAsync_WithPartialMixedShapePayload_PreservesUsableRecords()
         {
-            var payload = @"
-            {
-                ""playerName"": ""Mixed Payload"",
-                ""level"": ""85"",
-                ""galacticPower"": ""1234567"",
-                ""roster"": [
-                    {
-                        ""definitionId"": ""LUKE_SKYWALKER:SEVEN_STAR"",
-                        ""name"": ""Luke Skywalker"",
-                        ""currentLevel"": ""85"",
-                        ""currentGearLevel"": ""bad"",
-                        ""stars"": 7,
-                        ""equippedMods"": [
-                            {
-                                ""id"": ""shared-mod"",
-                                ""slot"": ""2"",
-                                ""set"": 4,
-                                ""primary"": { ""unitId"": ""5"", ""value"": ""3000000000"" },
-                                ""secondaryStats"": [
-                                    { ""stat"": { ""unitId"": 5, ""value"": 1500000000 }, ""rollCount"": ""2"" },
-                                    { ""stat"": { ""unitId"": ""invalid"", ""value"": ""bad"" } }
-                                ]
-                            }
-                        ]
-                    },
-                    { ""currentLevel"": 85 }
-                ],
-                ""inventory"": {
-                    ""mods"": [
-                        { ""id"": ""shared-mod"", ""slot"": 2, ""set"": 4 },
-                        { ""id"": ""inventory-mod"", ""slot"": 1, ""set"": 1, ""pips"": ""6"" }
-                    ]
-                }
-            }";
+            var payload = ComlinkPayloadFixtures.MalformedAndDuplicateRecords;
 
             var service = new PlayerService(
                 new FakeComlinkService(payload),
@@ -292,21 +197,7 @@ namespace swgoh_command_bridge.Tests
         [Fact]
         public async Task GetPlayerProfileAsync_WithNestedCharacterMetadataAndMalformedEquippedMod_UsesMetadataAndReportsLoss()
         {
-            var payload = @"
-            {
-                ""units"": [
-                    {
-                        ""character"": {
-                            ""unitDefId"": ""REY:SEVEN_STAR"",
-                            ""displayName"": ""Rey""
-                        },
-                        ""equippedStatMod"": [
-                            { ""slot"": 1 },
-                            { ""id"": ""rey-mod"", ""slot"": 2, ""set"": 4 }
-                        ]
-                    }
-                ]
-            }";
+            var payload = ComlinkPayloadFixtures.NestedMetadataAndMalformedEquippedMod;
 
             var service = new PlayerService(
                 new FakeComlinkService(payload),
@@ -323,6 +214,43 @@ namespace swgoh_command_bridge.Tests
             Assert.Equal(1, result.Diagnostics.EquippedModRecordsSkipped);
             Assert.Contains(result.Diagnostics.Warnings, warning =>
                 warning.Contains("equipped mod", StringComparison.OrdinalIgnoreCase));
+        }
+
+        [Fact]
+        public async Task GetPlayerProfileAsync_WithNestedEnvelopeAndInventoryAliasesMapsCompleteSnapshot()
+        {
+            var service = new PlayerService(
+                new FakeComlinkService(ComlinkPayloadFixtures.NestedEnvelopeWithUnequippedInventory),
+                new FakePlayerRepository(),
+                NullLogger<PlayerService>.Instance);
+
+            var result = await service.GetPlayerProfileAsync("222333444");
+
+            Assert.Equal("Envelope Player", result.Name);
+            Assert.Equal(85, result.Level);
+            Assert.Equal(2345678, result.GalacticPower);
+            var character = Assert.Single(result.Characters);
+            Assert.Equal("PADME_AMIDALA", character.Id);
+            Assert.Equal("Padme Amidala", character.Name);
+            Assert.Equal(7, character.Stars);
+            Assert.Equal(13, character.GearLevel);
+            Assert.Equal(3, character.RelicTier);
+            Assert.Equal(2, result.Mods.Count);
+
+            var equipped = Assert.Single(result.Mods, mod => mod.Id == "envelope-equipped");
+            Assert.Equal(ModSlot.Arrow, equipped.Slot);
+            Assert.Equal(ModSet.Speed, equipped.Set);
+            Assert.Equal(StatType.Speed, equipped.Primary.Type);
+            Assert.Equal(30, equipped.Primary.Value);
+            Assert.Equal(2, equipped.Secondaries[0].RollCount);
+            Assert.Equal("PADME_AMIDALA", equipped.EquippedUnitId);
+
+            var inventory = Assert.Single(result.Mods, mod => mod.Id == "envelope-inventory");
+            Assert.Equal(ModSlot.Square, inventory.Slot);
+            Assert.Equal(ModSet.Health, inventory.Set);
+            Assert.Equal(StatType.OffensePercent, inventory.Primary.Type);
+            Assert.Null(inventory.EquippedUnitId);
+            Assert.False(result.Diagnostics.HasWarnings);
         }
 
         private class FakeComlinkService : IComlinkService
@@ -366,6 +294,50 @@ namespace swgoh_command_bridge.Tests
 
             public Task<bool> DeletePlayerAsync(string allyCode, CancellationToken cancellationToken = default) =>
                 Task.FromResult(false);
+        }
+
+        private sealed class FakeSyncHistoryRepository : ISyncHistoryRepository
+        {
+            public string? Status { get; private set; }
+            public int CharacterCount { get; private set; }
+            public int ModCount { get; private set; }
+
+            public Task<long> StartAsync(
+                string allyCode,
+                DateTime startedUtc,
+                CancellationToken cancellationToken = default) =>
+                Task.FromResult(1L);
+
+            public Task CompleteAsync(
+                long id,
+                DateTime completedUtc,
+                int characterCount,
+                int modCount,
+                int warningCount,
+                CancellationToken cancellationToken = default)
+            {
+                Status = "completed";
+                CharacterCount = characterCount;
+                ModCount = modCount;
+                return Task.CompletedTask;
+            }
+
+            public Task FinishAsync(
+                long id,
+                DateTime completedUtc,
+                string status,
+                string errorSummary,
+                CancellationToken cancellationToken = default)
+            {
+                Status = status;
+                return Task.CompletedTask;
+            }
+
+            public Task<IReadOnlyList<SyncHistoryEntity>> GetRecentAsync(
+                string allyCode,
+                int limit = 10,
+                CancellationToken cancellationToken = default) =>
+                Task.FromResult<IReadOnlyList<SyncHistoryEntity>>(Array.Empty<SyncHistoryEntity>());
         }
     }
 }

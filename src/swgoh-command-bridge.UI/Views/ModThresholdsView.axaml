@@ -13,6 +13,7 @@
 
     <Grid Grid.Row="1" ColumnDefinitions="*, 300" ColumnSpacing="16">
       <Grid>
+        <TextBlock Text="Loading thresholds..." IsVisible="{Binding IsLoading}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         <TextBlock Text="No saved thresholds. Create one with New." IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         <StackPanel IsVisible="{Binding HasError}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" MaxWidth="360">
           <TextBlock Text="{Binding ErrorMessage}" Foreground="#FF8A80" TextWrapping="Wrap"/>

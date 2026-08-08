@@ -20,7 +20,7 @@ public sealed record CacheSchemaMigrationResult(
 /// </summary>
 public sealed class CacheSchemaMigrator
 {
-    public const int CurrentVersion = 3;
+    public const int CurrentVersion = 6;
 
     public CacheSchemaMigrationResult Migrate(DbConnection connection)
     {
@@ -76,6 +76,30 @@ public sealed class CacheSchemaMigrator
                 applied.Add("3: recommendation provenance");
             }
 
+            if (previousVersion < 4)
+            {
+                EnsureColumns(
+                    connection,
+                    transaction,
+                    "Players",
+                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["LastSyncedUtc"] = "TEXT NULL"
+                    });
+                applied.Add("4: player sync timestamps");
+            }
+
+            if (previousVersion < 5)
+            {
+                applied.Add("5: sync outcome history");
+            }
+
+            if (previousVersion < 6)
+            {
+                MigrateRecommendationScope(connection, transaction);
+                applied.Add("6: account-scoped recommendations");
+            }
+
             if (previousVersion < CurrentVersion)
             {
                 Execute(
@@ -113,7 +137,8 @@ public sealed class CacheSchemaMigrator
         Execute(connection, transaction,
             "CREATE TABLE IF NOT EXISTS \"Players\" (" +
             "\"AllyCode\" TEXT NOT NULL CONSTRAINT \"PK_Players\" PRIMARY KEY, " +
-            "\"Name\" TEXT NOT NULL, \"Level\" INTEGER NOT NULL, \"GalacticPower\" INTEGER NOT NULL);");
+            "\"Name\" TEXT NOT NULL, \"Level\" INTEGER NOT NULL, \"GalacticPower\" INTEGER NOT NULL, " +
+            "\"LastSyncedUtc\" TEXT NULL);");
         Execute(connection, transaction,
             "CREATE TABLE IF NOT EXISTS \"Characters\" (" +
             "\"Id\" TEXT NOT NULL, \"PlayerAllyCode\" TEXT NOT NULL, \"Name\" TEXT NOT NULL, " +
@@ -134,11 +159,19 @@ public sealed class CacheSchemaMigrator
             "REFERENCES \"Players\" (\"AllyCode\") ON DELETE CASCADE);");
         Execute(connection, transaction,
             "CREATE TABLE IF NOT EXISTS \"SwgohGgRecommendations\" (" +
-            "\"CharacterId\" TEXT NOT NULL CONSTRAINT \"PK_SwgohGgRecommendations\" PRIMARY KEY, " +
+            "\"CharacterId\" TEXT NOT NULL, \"PlayerAllyCode\" TEXT NOT NULL DEFAULT '', " +
             "\"Source\" TEXT NOT NULL DEFAULT 'swgoh.gg', \"RecommendationSchemaVersion\" INTEGER NOT NULL DEFAULT 1, " +
             "\"SourceUrl\" TEXT NOT NULL DEFAULT '', \"PrimaryStatsJson\" TEXT NOT NULL DEFAULT '{}', " +
             "\"SetRecommendationsJson\" TEXT NOT NULL DEFAULT '[]', \"PopularityPercentage\" REAL NOT NULL, " +
-            "\"LastUpdatedUtc\" TEXT NOT NULL);");
+            "\"LastUpdatedUtc\" TEXT NOT NULL, " +
+            "CONSTRAINT \"PK_SwgohGgRecommendations\" PRIMARY KEY (\"CharacterId\", \"PlayerAllyCode\"));");
+        Execute(connection, transaction,
+            "CREATE TABLE IF NOT EXISTS \"SyncHistory\" (" +
+            "\"Id\" INTEGER NOT NULL CONSTRAINT \"PK_SyncHistory\" PRIMARY KEY AUTOINCREMENT, " +
+            "\"AllyCode\" TEXT NOT NULL, \"StartedUtc\" TEXT NOT NULL, \"CompletedUtc\" TEXT NULL, " +
+            "\"Status\" TEXT NOT NULL DEFAULT 'running', \"CharacterCount\" INTEGER NOT NULL DEFAULT 0, " +
+            "\"ModCount\" INTEGER NOT NULL DEFAULT 0, \"WarningCount\" INTEGER NOT NULL DEFAULT 0, " +
+            "\"ErrorSummary\" TEXT NULL);");
     }
 
     private static void EnsureColumns(
@@ -162,6 +195,35 @@ public sealed class CacheSchemaMigrator
                 transaction,
                 $"ALTER TABLE \"{tableName}\" ADD COLUMN \"{column.Key}\" {column.Value};");
         }
+    }
+
+    private static void MigrateRecommendationScope(
+        DbConnection connection,
+        DbTransaction transaction)
+    {
+        var hasAllyCode = new HashSet<string>(
+            ReadColumns(connection, transaction, "SwgohGgRecommendations"),
+            StringComparer.OrdinalIgnoreCase).Contains("PlayerAllyCode");
+        var allyCodeExpression = hasAllyCode ? "\"PlayerAllyCode\"" : "''";
+
+        Execute(connection, transaction,
+            "CREATE TABLE \"SwgohGgRecommendations_v6\" (" +
+            "\"CharacterId\" TEXT NOT NULL, \"PlayerAllyCode\" TEXT NOT NULL DEFAULT '', " +
+            "\"Source\" TEXT NOT NULL DEFAULT 'swgoh.gg', \"RecommendationSchemaVersion\" INTEGER NOT NULL DEFAULT 1, " +
+            "\"SourceUrl\" TEXT NOT NULL DEFAULT '', \"PrimaryStatsJson\" TEXT NOT NULL DEFAULT '{}', " +
+            "\"SetRecommendationsJson\" TEXT NOT NULL DEFAULT '[]', \"PopularityPercentage\" REAL NOT NULL, " +
+            "\"LastUpdatedUtc\" TEXT NOT NULL, " +
+            "CONSTRAINT \"PK_SwgohGgRecommendations_v6\" PRIMARY KEY (\"CharacterId\", \"PlayerAllyCode\"));");
+        Execute(connection, transaction,
+            "INSERT INTO \"SwgohGgRecommendations_v6\" " +
+            "(\"CharacterId\", \"PlayerAllyCode\", \"Source\", \"RecommendationSchemaVersion\", " +
+            "\"SourceUrl\", \"PrimaryStatsJson\", \"SetRecommendationsJson\", \"PopularityPercentage\", \"LastUpdatedUtc\") " +
+            "SELECT \"CharacterId\", " + allyCodeExpression + ", \"Source\", \"RecommendationSchemaVersion\", " +
+            "\"SourceUrl\", \"PrimaryStatsJson\", \"SetRecommendationsJson\", \"PopularityPercentage\", \"LastUpdatedUtc\" " +
+            "FROM \"SwgohGgRecommendations\";");
+        Execute(connection, transaction, "DROP TABLE \"SwgohGgRecommendations\";");
+        Execute(connection, transaction,
+            "ALTER TABLE \"SwgohGgRecommendations_v6\" RENAME TO \"SwgohGgRecommendations\";");
     }
 
     private static IEnumerable<string> ReadColumns(

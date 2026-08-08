@@ -87,6 +87,30 @@ namespace swgoh_command_bridge.Tests
             Assert.Equal("competitive-threshold", readerService.CurrentSettings.DefaultUpgradeThresholdId);
         }
 
+        [Fact]
+        public async Task LoadSettingsAsync_MigratesLegacyThresholdsToStableIdsAndVersionedEnvelope()
+        {
+            Directory.CreateDirectory(_settingsDirectory);
+            await File.WriteAllTextAsync(
+                _settingsFilePath,
+                "{\"comlinkBaseUrl\":\"http://localhost:3000\",\"upgradeThresholds\":[" +
+                "{\"minPips\":5,\"minTier\":4,\"statName\":\"Speed\",\"minValue\":10,\"name\":\"Legacy\"}]}");
+
+            var service = new SettingsService(
+                NullLogger<SettingsService>.Instance,
+                _settingsDirectory);
+
+            await service.LoadSettingsAsync();
+
+            var threshold = Assert.Single(service.CurrentSettings.UpgradeThresholds!);
+            Assert.Equal("threshold-0", threshold.Id);
+            Assert.Equal("threshold-0", service.CurrentSettings.DefaultUpgradeThresholdId);
+
+            var migratedJson = await File.ReadAllTextAsync(_settingsFilePath);
+            Assert.Contains("\"schemaVersion\": 1", migratedJson);
+            Assert.Contains("\"settings\"", migratedJson);
+        }
+
         public void Dispose()
         {
             if (Directory.Exists(_settingsDirectory))

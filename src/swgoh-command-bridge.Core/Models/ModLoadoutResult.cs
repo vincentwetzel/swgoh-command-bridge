@@ -30,4 +30,6 @@ public sealed record ModLoadoutResult(
 
     public IReadOnlyList<ModSwapPlan> SwapRecommendations { get; init; } =
         System.Array.Empty<ModSwapPlan>();
+
+    public ModLoadoutProjection Projection { get; init; } = ModLoadoutProjection.Empty;
 }

@@ -26,7 +26,7 @@ public sealed class PlayerProfileParser
         ArgumentNullException.ThrowIfNull(rawJson);
 
         using var document = JsonDocument.Parse(rawJson);
-        var root = document.RootElement;
+        var root = UnwrapPlayerPayload(document.RootElement);
         var characters = new List<Character>();
         var mods = new List<GameMod>();
         var seenModIds = new HashSet<string>(StringComparer.Ordinal);
@@ -149,6 +149,40 @@ public sealed class PlayerProfileParser
                 EquippedModRecordsSkipped = equippedModRecordsSkipped
             }
         };
+    }
+
+    private static JsonElement UnwrapPlayerPayload(JsonElement root)
+    {
+        var current = root;
+        for (var depth = 0; depth < 3; depth++)
+        {
+            if (current.ValueKind != JsonValueKind.Object)
+            {
+                break;
+            }
+
+            JsonElement nested = default;
+            var found = false;
+            foreach (var propertyName in new[] { "data", "player", "profile", "payload" })
+            {
+                if (TryGetProperty(current, propertyName, out var candidate) &&
+                    candidate.ValueKind == JsonValueKind.Object)
+                {
+                    nested = candidate;
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
+            {
+                break;
+            }
+
+            current = nested;
+        }
+
+        return current;
     }
 
     private static IEnumerable<JsonElement> EnumerateInventoryMods(JsonElement root)

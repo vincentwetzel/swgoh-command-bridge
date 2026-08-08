@@ -14,6 +14,13 @@
       </Grid>
 
       <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" Foreground="Gray"/>
+      <TextBlock Text="Loading diagnostics..." IsVisible="{Binding IsLoading}" Foreground="Gray"/>
+      <Border IsVisible="{Binding HasError}" Background="#4A1F1F" BorderBrush="#FF8A80" BorderThickness="1" CornerRadius="4" Padding="10">
+        <Grid ColumnDefinitions="*, Auto" ColumnSpacing="12">
+          <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" Foreground="#FF8A80" VerticalAlignment="Center"/>
+          <Button Grid.Column="1" Content="Retry" Command="{Binding RefreshCommand}"/>
+        </Grid>
+      </Border>
       <TextBlock Text="{Binding ExportStatusText}" TextWrapping="Wrap" Foreground="Gray"/>
 
       <Border BorderBrush="#555555" BorderThickness="1" CornerRadius="6" Padding="16">
@@ -27,6 +34,16 @@
 
       <Border BorderBrush="#555555" BorderThickness="1" CornerRadius="6" Padding="16">
         <StackPanel Spacing="8">
+          <TextBlock Text="Recent sync attempts" FontSize="18" FontWeight="SemiBold"/>
+          <TextBlock Text="{Binding RecentSyncHistoryText}"
+                     TextWrapping="Wrap"
+                     FontFamily="Consolas"
+                     Foreground="Gray"/>
+        </StackPanel>
+      </Border>
+
+      <Border BorderBrush="#555555" BorderThickness="1" CornerRadius="6" Padding="16">
+        <StackPanel Spacing="8">
           <TextBlock Text="Local cache" FontSize="18" FontWeight="SemiBold"/>
           <TextBlock Text="{Binding CachePath, StringFormat='Cache path: {0}'}" TextWrapping="Wrap"/>
           <TextBlock Text="{Binding BackupDirectory, StringFormat='Backup directory: {0}'}" TextWrapping="Wrap"/>
@@ -34,6 +51,8 @@
           <TextBlock Text="{Binding CharacterCount, StringFormat='Characters: {0}'}"/>
           <TextBlock Text="{Binding ModCount, StringFormat='Mods: {0}'}"/>
           <TextBlock Text="{Binding RecommendationCount, StringFormat='Recommendations: {0}'}"/>
+          <TextBlock Text="{Binding LastAccountSyncText, StringFormat='Latest account sync: {0}'}"/>
+          <TextBlock Text="{Binding LastSyncOutcomeText, StringFormat='Latest sync outcome: {0}'}" TextWrapping="Wrap"/>
           <TextBlock Text="{Binding LastScrapeSummary, StringFormat='Last recommendation refresh: {0}'}" TextWrapping="Wrap" Foreground="Gray"/>
         </StackPanel>
       </Border>

@@ -1,6 +1,7 @@
 #nullable enable
 
 using System;
+using System.Linq;
 using swgoh_command_bridge.Core.Models;
 
 namespace swgoh_command_bridge.Core.Services
@@ -10,6 +11,46 @@ namespace swgoh_command_bridge.Core.Services
     /// </summary>
     public class ModMechanicsService
     {
+        private const int MaxSecondaryRollsPerStat = 5;
+
+        /// <summary>
+        /// Calculates the percentage of captured secondary-stat rolls relative to the five-roll
+        /// capacity for each currently revealed stat. This is an analysis estimate, not an
+        /// in-game stat conversion calculation.
+        /// </summary>
+        public double CalculateSecondaryEfficiency(GameMod mod)
+        {
+            ArgumentNullException.ThrowIfNull(mod);
+            if (mod.Secondaries.Count == 0)
+            {
+                return 0;
+            }
+
+            var observedRolls = mod.Secondaries.Sum(stat => Math.Clamp(stat.RollCount, 0, MaxSecondaryRollsPerStat));
+            var possibleRolls = mod.Secondaries.Count * MaxSecondaryRollsPerStat;
+            return Math.Clamp(observedRolls * 100d / possibleRolls, 0, 100);
+        }
+
+        /// <summary>
+        /// Estimates the best secondary-roll efficiency reachable through remaining level and
+        /// tier upgrades. The estimate assumes every remaining roll improves a currently
+        /// revealed stat and is intentionally labeled as a projection by callers.
+        /// </summary>
+        public double CalculatePotentialSecondaryEfficiency(GameMod mod)
+        {
+            ArgumentNullException.ThrowIfNull(mod);
+            if (mod.Secondaries.Count == 0)
+            {
+                return 0;
+            }
+
+            var observedRolls = mod.Secondaries.Sum(stat => Math.Clamp(stat.RollCount, 0, MaxSecondaryRollsPerStat));
+            var remainingRolls = GetRemainingLevelUpRolls(mod.Level) + Math.Max(0, 5 - mod.Tier);
+            var projectedRolls = observedRolls + remainingRolls;
+            var possibleRolls = mod.Secondaries.Count * MaxSecondaryRollsPerStat;
+            return Math.Clamp(projectedRolls * 100d / possibleRolls, 0, 100);
+        }
+
         /// <summary>
         /// Calculates the potential maximum Speed secondary stat a mod can achieve after full level upgrades and slicing.
         /// </summary>

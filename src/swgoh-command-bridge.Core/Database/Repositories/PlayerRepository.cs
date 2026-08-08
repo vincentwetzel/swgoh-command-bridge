@@ -77,6 +77,7 @@ namespace swgoh_command_bridge.Core.Database.Repositories
                     existingPlayer.Name = player.Name;
                     existingPlayer.Level = player.Level;
                     existingPlayer.GalacticPower = player.GalacticPower;
+                    existingPlayer.LastSyncedUtc = player.LastSyncedUtc;
 
                     var oldCharacters = existingPlayer.Characters.ToList();
                     _context.Characters.RemoveRange(oldCharacters);
@@ -122,7 +123,10 @@ namespace swgoh_command_bridge.Core.Database.Repositories
             {
                 if (transaction != null)
                 {
-                    await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+                    // Rollback must not be blocked by the caller's cancelled operation.
+                    // Otherwise a failed replacement can mask the original exception and
+                    // leave recovery dependent on the provider's implicit behavior.
+                    await transaction.RollbackAsync(CancellationToken.None).ConfigureAwait(false);
                 }
 
                 throw;
@@ -169,19 +173,29 @@ namespace swgoh_command_bridge.Core.Database.Repositories
                         candidate => candidate.AllyCode == normalizedAllyCode,
                         cancellationToken)
                     .ConfigureAwait(false);
+                var syncHistory = await _context.SyncHistory
+                    .Where(entry => entry.AllyCode == normalizedAllyCode)
+                    .ToListAsync(cancellationToken)
+                    .ConfigureAwait(false);
 
                 if (player == null)
                 {
+                    if (syncHistory.Count > 0)
+                    {
+                        _context.SyncHistory.RemoveRange(syncHistory);
+                        await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                    }
                     if (transaction != null)
                     {
                         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
                     }
 
-                    return false;
+                    return syncHistory.Count > 0;
                 }
 
                 _context.Characters.RemoveRange(player.Characters);
                 _context.Mods.RemoveRange(player.Mods);
+                _context.SyncHistory.RemoveRange(syncHistory);
                 _context.Players.Remove(player);
                 await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
@@ -196,7 +210,7 @@ namespace swgoh_command_bridge.Core.Database.Repositories
             {
                 if (transaction != null)
                 {
-                    await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+                    await transaction.RollbackAsync(CancellationToken.None).ConfigureAwait(false);
                 }
 
                 throw;

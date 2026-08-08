@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Mail;
 using System.Text.Json;
 using swgoh_command_bridge.Core.Models;
 
@@ -76,7 +77,9 @@ public sealed class SettingsTransferService
             var legacySettings = JsonSerializer.Deserialize<AppSettings>(json, SerializerOptions);
             return legacySettings == null
                 ? throw new InvalidDataException("The settings file is invalid.")
-                : NormalizeAndValidate(legacySettings, allowMissingAllyCode: true);
+                : NormalizeAndValidate(
+                    SettingsMigrationService.MigrateLegacyThresholdStorage(legacySettings),
+                    allowMissingAllyCode: true);
         }
         catch (JsonException ex)
         {
@@ -107,21 +110,37 @@ public sealed class SettingsTransferService
             throw new InvalidDataException("Settings must contain a default ally code.");
         }
 
-        var theme = string.IsNullOrWhiteSpace(settings.Theme) ? "Dark" : settings.Theme.Trim();
-        if (theme.Length > 64)
-        {
-            throw new InvalidDataException("The settings theme name is too long.");
-        }
+        var theme = ThemePreference.Normalize(settings.Theme);
 
         var thresholds = settings.UpgradeThresholds ?? new List<ModUpgradeThresholdSetting>();
         ValidateThresholds(thresholds);
+
+        var contactEmail = settings.RecommendationContactEmail?.Trim();
+        if (!string.IsNullOrWhiteSpace(contactEmail))
+        {
+            try
+            {
+                var parsedContact = new MailAddress(contactEmail);
+                if (!string.Equals(parsedContact.Address, contactEmail, StringComparison.OrdinalIgnoreCase) ||
+                    contactEmail.Length > 254)
+                {
+                    throw new FormatException();
+                }
+            }
+            catch (FormatException)
+            {
+                throw new InvalidDataException(
+                    "Recommendation contact must be a single valid email address.");
+            }
+        }
 
         return settings with
         {
             ComlinkBaseUrl = url.ToString().TrimEnd('/') + "/",
             DefaultAllyCode = allyCode,
             Theme = theme,
-            UpgradeThresholds = thresholds
+            UpgradeThresholds = thresholds,
+            RecommendationContactEmail = string.IsNullOrWhiteSpace(contactEmail) ? null : contactEmail
         };
     }
 

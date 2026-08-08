@@ -77,6 +77,46 @@ public sealed class CharacterViewModelTests : IDisposable
         Assert.False(viewModel.HasValidationError);
     }
 
+    [Fact]
+    public async Task CharacterPrioritiesViewModel_CancelRestoresDirtyEditAndRefreshPreservesSelection()
+    {
+        await SeedPlayersAsync();
+        var viewModel = new CharacterPrioritiesViewModel(_context, () => "123456789");
+        await viewModel.LoadCharactersAsync();
+
+        var selected = Assert.Single(viewModel.Characters);
+        viewModel.SelectedCharacter = selected;
+        viewModel.SelectedCharacterPriority = 75;
+
+        Assert.True(viewModel.IsDirty);
+        viewModel.CancelEditCommand.Execute(null);
+
+        Assert.Equal(10, viewModel.SelectedCharacterPriority);
+        Assert.False(viewModel.IsDirty);
+
+        viewModel.SelectedCharacterPriority = 75;
+        await viewModel.SavePriorityCommand.ExecuteAsync(null);
+        await viewModel.RefreshCommand.ExecuteAsync(null);
+
+        Assert.Equal("ACTIVE", viewModel.SelectedCharacter!.Id);
+        Assert.Equal(75, viewModel.SelectedCharacterPriority);
+        Assert.Equal(OperationStatus.Success, viewModel.State.Status);
+    }
+
+    [Fact]
+    public async Task CharacterPrioritiesViewModel_EmptyActiveScopeReportsEmptyState()
+    {
+        await SeedPlayersAsync();
+        var viewModel = new CharacterPrioritiesViewModel(_context, () => string.Empty);
+
+        await viewModel.LoadCharactersAsync();
+
+        Assert.Empty(viewModel.Characters);
+        Assert.Equal(OperationStatus.Empty, viewModel.State.Status);
+        Assert.True(viewModel.IsEmpty);
+        Assert.False(viewModel.HasCharacters);
+    }
+
     private async Task SeedPlayersAsync()
     {
         _context.Players.Add(new PlayerEntity
