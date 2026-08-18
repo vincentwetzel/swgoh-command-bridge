@@ -16,11 +16,14 @@ Run `dotnet build swgoh-command-bridge.sln` and `dotnet test swgoh-command-bridg
 
 - [ ] With an empty cache, verify Characters, Priorities, Mods, and Optimizer show intentional empty states.
 - [ ] Sync a test account and confirm the result summary reports useful counts.
-- [ ] Confirm the latest sync result and warning count appear on Home and in Diagnostics.
+- [ ] Relaunch with the selected account cache older than 24 hours and confirm cached data appears immediately while a background refresh starts and reports progress in the account dropdown.
+- [ ] Relaunch with a fresh selected account cache and confirm startup does not issue another account sync.
+- [ ] Confirm the latest sync result and warning count appear in the account dropdown and Diagnostics.
 - [ ] Confirm Diagnostics lists recent redacted sync attempts without full ally codes or account payloads.
 - [ ] Confirm characters, priorities, mods, equipped owners, and optimizer data refresh without restarting.
 - [ ] Close and reopen the app with Comlink unavailable; confirm cached data remains viewable offline.
-- [ ] Select a different cached account from Home and confirm Characters, Mods, Priorities, and Optimizer remain scoped to that account without a Comlink request.
+- [ ] With a stale cache and Comlink unavailable, confirm the background refresh fails visibly while the previous cached roster and mods remain usable.
+- [ ] Select a different cached account from the account dropdown and confirm Characters, Mods, Priorities, and Optimizer remain scoped to that account without a Comlink request.
 - [ ] Remove a selected cached account only after confirmation and confirm its character/mod data is gone while other cached accounts remain.
 
 ## Comlink and input failures

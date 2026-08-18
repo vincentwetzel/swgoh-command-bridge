@@ -58,7 +58,7 @@ The current release target is read-only. Any feature that changes the game accou
 -   **Game API:** `swgoh-comlink` (via configured HTTP calls; Windows x64 can manage the default local runtime)
 -   **Community Data:** Public `swgoh.gg` pages via remote HTTP calls and HTML parsing
 
-The compiled implementation lives under `src/`; root-level C# files are retained historical drafts. The application is composed as a desktop process with no scheduled background worker: sync and recommendation refreshes begin only from explicit user actions. On supported Windows x64 startup, the composition root may own a downloaded Comlink child process for the lifetime of the desktop process.
+The compiled implementation lives under `src/`; root-level C# files are retained historical drafts. The application is composed as a desktop process with no scheduled background worker. On startup, after cached data is available, the selected account is refreshed once in the background when its cache is older than the freshness threshold; explicit sync and recommendation refreshes remain user-triggered. On supported Windows x64 startup, the composition root may own a downloaded Comlink child process for the lifetime of the desktop process.
 
 ## 5. Data and privacy boundary
 - Account payloads and recommendation cache data remain local unless the user separately operates the configured Comlink or public recommendation requests.

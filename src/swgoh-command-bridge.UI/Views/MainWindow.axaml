@@ -37,16 +37,167 @@
     </Window.DataTemplates>
 
     <DockPanel>
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="10">
-            <Button Content="Home" Command="{Binding GoToHomeCommand}"/>
-            <Button Content="Characters" Command="{Binding GoToCharactersCommand}"/>
-            <Button Content="Priorities" Command="{Binding GoToPrioritiesCommand}"/>
-            <Button Content="Mods" Command="{Binding GoToModsCommand}"/>
-            <Button Content="Optimizer" Command="{Binding GoToOptimizerCommand}"/>
-            <Button Content="Mod Thresholds" Command="{Binding GoToThresholdsCommand}"/>
-            <Button Content="Settings" Command="{Binding GoToSettingsCommand}"/>
-            <Button Content="Diagnostics" Command="{Binding GoToDiagnosticsCommand}"/>
-        </StackPanel>
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*, Auto" Margin="10">
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10">
+                <Button Content="Home" Command="{Binding GoToHomeCommand}"/>
+                <Button Content="Characters" Command="{Binding GoToCharactersCommand}"/>
+                <Button Content="Priorities" Command="{Binding GoToPrioritiesCommand}"/>
+                <Button Content="Mods" Command="{Binding GoToModsCommand}"/>
+                <Button Content="Optimizer" Command="{Binding GoToOptimizerCommand}"/>
+                <Button Content="Mod Thresholds" Command="{Binding GoToThresholdsCommand}"/>
+                <Button Content="Settings" Command="{Binding GoToSettingsCommand}"/>
+                <Button Content="Diagnostics" Command="{Binding GoToDiagnosticsCommand}"/>
+            </StackPanel>
+
+            <Button Grid.Column="1" Padding="12,6" HorizontalContentAlignment="Left">
+                <Button.Content>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="●" Foreground="#6FA8DC" VerticalAlignment="Center"/>
+                        <StackPanel>
+                            <TextBlock Text="{Binding ActiveAccountDisplayName}" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding ActiveAccountDisplayCode}" Foreground="Gray" FontSize="11"/>
+                        </StackPanel>
+                        <TextBlock Text="⌄" VerticalAlignment="Center" Foreground="Gray"/>
+                    </StackPanel>
+                </Button.Content>
+                <Button.Flyout>
+                    <Flyout Placement="BottomEdgeAlignedRight">
+                        <ScrollViewer MaxHeight="760" VerticalScrollBarVisibility="Auto">
+                        <Border Width="390" Padding="16" Background="#252525" BorderBrush="#555555" BorderThickness="1" CornerRadius="6">
+                            <StackPanel Spacing="12">
+                                <Grid ColumnDefinitions="*, Auto">
+                                    <StackPanel>
+                                        <TextBlock Text="Current account" Foreground="Gray" FontSize="12"/>
+                                        <TextBlock Text="{Binding ActiveAccountDisplayName}" FontSize="18" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding ActiveAccountDisplayCode}" Foreground="Gray"/>
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="1" Text="●" Foreground="#6FA8DC" FontSize="24"/>
+                                </Grid>
+
+                                <Border Height="1" Background="#444444"/>
+                                <StackPanel Spacing="5" IsVisible="{Binding ShowActiveAccountSummary}">
+                                    <TextBlock Text="{Binding ActiveAccountSummaryText}" TextWrapping="Wrap"/>
+                                    <TextBlock Text="{Binding ActiveCacheFreshnessText}" TextWrapping="Wrap" Foreground="Gray"/>
+                                    <TextBlock Text="{Binding ActiveSyncOutcomeText}" TextWrapping="Wrap" Foreground="Gray"/>
+                                    <TextBlock Text="Refresh is recommended before relying on this cache for current recommendations."
+                                               IsVisible="{Binding IsActiveCacheStale}" TextWrapping="Wrap" Foreground="#FFCC80"/>
+                                    <TextBlock Text="{Binding NextStepText}" TextWrapping="Wrap" Foreground="Gray"/>
+                                    <Grid ColumnDefinitions="Auto, Auto, Auto, Auto, Auto" IsVisible="{Binding HasActiveAccount}">
+                                        <Button Grid.Column="0" Content="Refresh" Command="{Binding SyncCommand}" Padding="10,6"/>
+                                        <Button Grid.Column="1" Content="Cancel" Command="{Binding CancelSyncCommand}"
+                                                IsVisible="{Binding CanCancelSync}" Padding="10,6"/>
+                                        <Button Grid.Column="2" Content="Retry" Command="{Binding RetrySyncCommand}"
+                                                IsVisible="{Binding CanRetrySync}" Padding="10,6"/>
+                                        <Button Grid.Column="3" Content="Characters" Command="{Binding GoToCharactersCommand}" Padding="10,6"
+                                                IsVisible="{Binding HasActiveCache}"/>
+                                        <Button Grid.Column="4" Content="Mods" Command="{Binding GoToModsCommand}" Padding="10,6"
+                                                IsVisible="{Binding HasActiveCache}"/>
+                                    </Grid>
+                                    <Button Content="Optimizer" Command="{Binding GoToOptimizerCommand}" Padding="10,6"
+                                            HorizontalAlignment="Left" IsVisible="{Binding HasActiveCache}"/>
+                                    <TextBlock Text="{Binding SyncStatusText}" TextWrapping="Wrap"/>
+                                    <TextBlock Text="{Binding SyncProgressText}" IsVisible="{Binding HasSyncProgress}"
+                                               TextWrapping="Wrap" Foreground="Gray"/>
+                                    <TextBlock Text="{Binding SyncSummaryText}" IsVisible="{Binding HasSyncSummary}"
+                                               TextWrapping="Wrap" Foreground="Gray"/>
+                                    <TextBlock Text="{Binding SyncDiagnosticsText}" IsVisible="{Binding HasSyncDiagnostics}"
+                                               TextWrapping="Wrap" Foreground="#FFCC80"/>
+                                </StackPanel>
+                                <TextBlock Text="{Binding NextStepText}" IsVisible="{Binding HasNoCachedAccounts}"
+                                           TextWrapping="Wrap" Foreground="Gray"/>
+
+                                <Border Height="1" Background="#444444"/>
+                                <TextBlock Text="Switch account" FontWeight="SemiBold"/>
+                                <TextBox Text="{Binding AccountSearchText}" Watermark="Find a cached account" IsVisible="{Binding HasCachedAccounts}"/>
+                                <ItemsControl ItemsSource="{Binding VisibleCachedAccounts}" IsVisible="{Binding HasVisibleCachedAccounts}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Command="{Binding $parent[ItemsControl].DataContext.SwitchAccountCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    HorizontalContentAlignment="Stretch"
+                                                    Padding="8,7">
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                                    <TextBlock Text="{Binding AllyCode}" Foreground="Gray" FontSize="11"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Text="No cached accounts match this filter."
+                                           IsVisible="{Binding HasNoVisibleCachedAccounts}"
+                                           Foreground="#FFCC80" TextWrapping="Wrap"/>
+                                <TextBlock Text="No accounts are cached yet. Add one to sync its roster."
+                                           IsVisible="{Binding HasNoCachedAccounts}"
+                                           Foreground="Gray" TextWrapping="Wrap"/>
+
+                                <Button Content="＋  New account" Command="{Binding AddAccountCommand}"
+                                        IsVisible="{Binding IsNotAddingAccount}" HorizontalContentAlignment="Left"/>
+
+                                <Border IsVisible="{Binding IsAddingAccount}" BorderBrush="#555555" BorderThickness="1" CornerRadius="4" Padding="10">
+                                    <StackPanel Spacing="8">
+                                        <Grid ColumnDefinitions="*, Auto">
+                                            <TextBlock Text="New account" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                            <Button Grid.Column="1" Content="Cancel" Command="{Binding CancelAddAccountCommand}" Padding="8,5"/>
+                                        </Grid>
+                                <TextBlock Text="Enter a Comlink ally code to create or refresh its local cache."
+                                           Foreground="Gray" TextWrapping="Wrap"/>
+                                <Grid ColumnDefinitions="*, Auto">
+                                    <TextBox Grid.Column="0" Text="{Binding AllyCode}" Watermark="123456789"/>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                                        <Button Content="Sync" Command="{Binding SyncCommand}" Padding="12,7"/>
+                                        <Button Content="Cancel" Command="{Binding CancelSyncCommand}"
+                                                IsVisible="{Binding CanCancelSync}" Padding="10,7"/>
+                                        <Button Content="Retry" Command="{Binding RetrySyncCommand}"
+                                                IsVisible="{Binding CanRetrySync}" Padding="10,7"/>
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock Text="{Binding AllyCodeValidationMessage}"
+                                           IsVisible="{Binding HasAllyCodeValidationError}"
+                                           Foreground="#FF8A80" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding AccountManagementStatusText}"
+                                           TextWrapping="Wrap" Foreground="#FFCC80"/>
+                                <TextBlock Text="{Binding SyncStatusText}" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding SyncSummaryText}"
+                                           IsVisible="{Binding HasSyncSummary}"
+                                           TextWrapping="Wrap" Foreground="Gray"/>
+                                <TextBlock Text="{Binding SyncProgressText}"
+                                           IsVisible="{Binding HasSyncProgress}"
+                                           TextWrapping="Wrap" Foreground="Gray"/>
+                                <TextBlock Text="{Binding SyncDiagnosticsText}"
+                                           IsVisible="{Binding HasSyncDiagnostics}"
+                                           TextWrapping="Wrap" Foreground="#FFCC80"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Height="1" Background="#444444" IsVisible="{Binding HasCachedAccounts}"/>
+                                <TextBlock Text="Remove cached account" FontWeight="SemiBold" IsVisible="{Binding HasCachedAccounts}"/>
+                                <ComboBox ItemsSource="{Binding VisibleCachedAccounts}"
+                                          SelectedItem="{Binding SelectedCachedAccount}"
+                                          IsVisible="{Binding HasVisibleCachedAccounts}">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <TextBlock Text="{Binding Name}"/>
+                                                <TextBlock Text="{Binding AllyCode}" Foreground="Gray"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <CheckBox Content="I understand this removes the cached roster and mod data for the selected account."
+                                          IsChecked="{Binding ConfirmAccountRemoval}"
+                                          IsVisible="{Binding HasCachedAccounts}"/>
+                                <Button Content="Remove selected cached account"
+                                        Command="{Binding RemoveCachedAccountCommand}"
+                                        IsVisible="{Binding HasCachedAccounts}"
+                                        HorizontalAlignment="Left" Padding="12,8"/>
+                            </StackPanel>
+                        </Border>
+                        </ScrollViewer>
+                    </Flyout>
+                </Button.Flyout>
+            </Button>
+        </Grid>
 
         <Border DockPanel.Dock="Top" IsVisible="{Binding HasStartupProgress}" Background="#202A38" BorderBrush="#6FA8DC" BorderThickness="1" CornerRadius="4" Padding="12" Margin="10,0,10,10">
             <StackPanel Spacing="6">

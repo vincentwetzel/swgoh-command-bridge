@@ -34,7 +34,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private string _activeAccountSummaryText = "No active account cache is selected.";
     private string _activeCacheFreshnessText = "Sync freshness is unavailable for the active cache.";
     private string _activeSyncOutcomeText = "No sync attempt is recorded for the active account.";
-    private string _nextStepText = "Enter a nine-digit ally code or choose a cached account to begin.";
+    private string _nextStepText = "Open the account switcher above to add or choose an account.";
     private string _startupProgressText = string.Empty;
     private double _startupProgressPercent;
     private bool _startupProgressIndeterminate;
@@ -42,6 +42,8 @@ public partial class MainWindowViewModel : ViewModelBase
     private int _activeModCount;
     private bool _isActiveCacheStale;
     private bool _confirmAccountRemoval;
+    private bool _isAddingAccount;
+    private Task? _activeAccountRefreshTask;
     private OperationState<bool> _startupState = OperationState<bool>.ToSuccess(true);
     private OperationState<PlayerProfile> _syncState = OperationState<PlayerProfile>.ToEmpty();
 
@@ -133,9 +135,56 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public bool HasCachedAccounts => CachedAccounts.Count > 0;
 
+    public bool HasNoCachedAccounts => !HasCachedAccounts;
+
     public bool HasVisibleCachedAccounts => VisibleCachedAccounts.Count > 0;
 
     public bool HasNoVisibleCachedAccounts => HasCachedAccounts && !HasVisibleCachedAccounts;
+
+    public bool HasActiveAccount => FindActiveCachedAccount() != null ||
+        AllyCodeValidator.TryNormalize(AllyCode, out _, out _);
+
+    public bool IsAddingAccount
+    {
+        get => _isAddingAccount;
+        private set
+        {
+            if (_isAddingAccount == value)
+            {
+                return;
+            }
+
+            _isAddingAccount = value;
+            OnPropertyChanged(nameof(IsAddingAccount));
+            OnPropertyChanged(nameof(IsNotAddingAccount));
+            OnPropertyChanged(nameof(ShowActiveAccountSummary));
+        }
+    }
+
+    public bool IsNotAddingAccount => !IsAddingAccount;
+
+    public bool ShowActiveAccountSummary => HasActiveAccount && IsNotAddingAccount;
+
+    public string ActiveAccountDisplayName
+    {
+        get
+        {
+            var account = FindActiveCachedAccount();
+            if (!string.IsNullOrWhiteSpace(account?.Name))
+            {
+                return account.Name;
+            }
+
+            return AllyCodeValidator.TryNormalize(AllyCode, out var allyCode, out _)
+                ? $"Account {allyCode}"
+                : "Select account";
+        }
+    }
+
+    public string ActiveAccountDisplayCode => IsSyncing
+        ? "Refreshing..."
+        : FindActiveCachedAccount()?.AllyCode ??
+          (AllyCodeValidator.TryNormalize(AllyCode, out var allyCode, out _) ? allyCode : string.Empty);
 
     public string AccountSearchText
     {
@@ -313,6 +362,7 @@ public partial class MainWindowViewModel : ViewModelBase
         await PrepareComlinkAsync();
         await LoadCachedAccountsAsync();
         await LoadFeatureDataAsync();
+        StartStaleActiveAccountRefresh();
     }
 
     public string StartupProgressText
@@ -398,6 +448,10 @@ public partial class MainWindowViewModel : ViewModelBase
                 _syncStatusOverride = string.Empty;
             }
             OnPropertyChanged(nameof(AllyCode));
+            OnPropertyChanged(nameof(HasActiveAccount));
+            OnPropertyChanged(nameof(ShowActiveAccountSummary));
+            OnPropertyChanged(nameof(ActiveAccountDisplayName));
+            OnPropertyChanged(nameof(ActiveAccountDisplayCode));
             OnPropertyChanged(nameof(AllyCodeValidationMessage));
             OnPropertyChanged(nameof(HasAllyCodeValidationError));
             OnPropertyChanged(nameof(SyncStatusText));
@@ -418,6 +472,10 @@ public partial class MainWindowViewModel : ViewModelBase
 
             _selectedCachedAccount = value;
             OnPropertyChanged(nameof(SelectedCachedAccount));
+            OnPropertyChanged(nameof(HasActiveAccount));
+            OnPropertyChanged(nameof(ShowActiveAccountSummary));
+            OnPropertyChanged(nameof(ActiveAccountDisplayName));
+            OnPropertyChanged(nameof(ActiveAccountDisplayCode));
             UseCachedAccountCommand?.NotifyCanExecuteChanged();
             RemoveCachedAccountCommand?.NotifyCanExecuteChanged();
         }
@@ -431,6 +489,7 @@ public partial class MainWindowViewModel : ViewModelBase
             _syncState = value;
             OnPropertyChanged(nameof(SyncState));
             OnPropertyChanged(nameof(IsSyncing));
+            OnPropertyChanged(nameof(ActiveAccountDisplayCode));
             OnPropertyChanged(nameof(CanCancelSync));
             OnPropertyChanged(nameof(CanRetrySync));
             OnPropertyChanged(nameof(SyncStatusText));
@@ -603,6 +662,7 @@ public partial class MainWindowViewModel : ViewModelBase
             await PrepareComlinkAsync();
             await LoadCachedAccountsAsync();
             await LoadFeatureDataAsync();
+            StartStaleActiveAccountRefresh();
         }
         catch (Exception ex)
         {
@@ -662,6 +722,42 @@ public partial class MainWindowViewModel : ViewModelBase
         await RefreshActiveCacheSummaryAsync();
     }
 
+    private void StartStaleActiveAccountRefresh()
+    {
+        if (HasStartupError || IsSyncing ||
+            _activeAccountRefreshTask is { IsCompleted: false })
+        {
+            return;
+        }
+
+        _activeAccountRefreshTask = RefreshStaleActiveAccountAsync();
+    }
+
+    private async Task RefreshStaleActiveAccountAsync()
+    {
+        if (!IsActiveCacheStale ||
+            !AllyCodeValidator.TryNormalize(AllyCode, out _, out _) ||
+            FindActiveCachedAccount() == null)
+        {
+            return;
+        }
+
+        _composition.EventLog.Info(
+            "account-sync",
+            "A stale active account cache will be refreshed in the background.");
+
+        try
+        {
+            await SyncAsync();
+        }
+        catch (Exception ex)
+        {
+            _composition.EventLog.Error(
+                "account-sync",
+                $"Background account refresh failed: {ComlinkErrorFormatter.Describe(ex, "Account refresh")}");
+        }
+    }
+
     private async Task RefreshActiveCacheSummaryAsync()
     {
         if (!AllyCodeValidator.TryNormalize(AllyCode, out var activeAllyCode, out _))
@@ -673,8 +769,8 @@ public partial class MainWindowViewModel : ViewModelBase
             ActiveSyncOutcomeText = "No sync attempt is recorded for the active account.";
             IsActiveCacheStale = false;
             NextStepText = HasCachedAccounts
-                ? "Choose a cached account to work offline, or enter a nine-digit ally code to sync."
-                : "Enter a nine-digit ally code, then choose Sync account to create the local cache.";
+                ? "Choose a cached account to work offline, or open the account switcher to add one."
+                : "Open the account switcher to add an account and sync its local cache.";
             return;
         }
 
@@ -767,6 +863,11 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         OnPropertyChanged(nameof(HasCachedAccounts));
+        OnPropertyChanged(nameof(HasNoCachedAccounts));
+        OnPropertyChanged(nameof(HasActiveAccount));
+        OnPropertyChanged(nameof(ShowActiveAccountSummary));
+        OnPropertyChanged(nameof(ActiveAccountDisplayName));
+        OnPropertyChanged(nameof(ActiveAccountDisplayCode));
         ApplyCachedAccountFilter();
         RemoveCachedAccountCommand.NotifyCanExecuteChanged();
 
@@ -820,6 +921,46 @@ public partial class MainWindowViewModel : ViewModelBase
             SyncState = OperationState<PlayerProfile>.ToError(
                 $"Cached account switch failed: {ex.Message}");
         }
+    }
+
+    [RelayCommand]
+    private async Task SwitchAccountAsync(PlayerEntity? account)
+    {
+        if (account == null || IsSyncing)
+        {
+            return;
+        }
+
+        SelectedCachedAccount = CachedAccounts.FirstOrDefault(candidate =>
+            string.Equals(candidate.AllyCode, account.AllyCode, StringComparison.Ordinal)) ?? account;
+        await UseCachedAccountAsync();
+    }
+
+    [RelayCommand]
+    private async Task AddAccountAsync()
+    {
+        if (IsSyncing)
+        {
+            return;
+        }
+
+        IsAddingAccount = true;
+        SelectedCachedAccount = null;
+        _lastSyncAllyCode = string.Empty;
+        AllyCode = string.Empty;
+        _syncStatusOverride = string.Empty;
+        SyncSummaryText = string.Empty;
+        SyncState = OperationState<PlayerProfile>.ToEmpty();
+        AccountManagementStatusText = "Enter the new account's nine-digit ally code, then choose Sync account.";
+        OnPropertyChanged(nameof(SyncStatusText));
+        await RefreshActiveCacheSummaryAsync();
+    }
+
+    [RelayCommand]
+    private void CancelAddAccount()
+    {
+        IsAddingAccount = false;
+        AccountManagementStatusText = string.Empty;
     }
 
     private bool CanRemoveCachedAccount() =>
@@ -966,6 +1107,15 @@ public partial class MainWindowViewModel : ViewModelBase
         SyncState = OperationState<PlayerProfile>.ToEmpty();
         await LoadCachedAccountsAsync();
         await LoadFeatureDataAsync();
+    }
+
+    private PlayerEntity? FindActiveCachedAccount()
+    {
+        var activeAllyCode = AllyCode.Trim();
+        return string.IsNullOrWhiteSpace(activeAllyCode)
+            ? null
+            : CachedAccounts.FirstOrDefault(account =>
+                string.Equals(account.AllyCode, activeAllyCode, StringComparison.Ordinal));
     }
 
     [RelayCommand]

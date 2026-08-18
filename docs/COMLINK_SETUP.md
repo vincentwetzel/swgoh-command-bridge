@@ -40,6 +40,6 @@ The application defaults to `http://localhost:3000`. You can change the Comlink 
 ## Troubleshooting
 
 - **Test Connection fails:** On Windows x64, retry startup with an internet connection and check that security software allows the downloaded Comlink executable to run. On Linux/macOS, confirm an external Comlink service is running before testing. For any externally managed service, confirm the configured URL includes the correct port and no firewall or proxy blocks it. HTTP 404 indicates an endpoint/version mismatch; HTTP 401/403 indicates a service configuration issue.
-- **Sync fails:** Follow the categorized message in the Home screen and check the Comlink logs when indicated. A failed sync does not intentionally replace the last successful cache.
+- **Sync fails:** Follow the categorized message in the account switcher and check the Comlink logs when indicated. A failed sync does not intentionally replace the last successful cache. If a startup stale-cache refresh fails, the same previous cache remains available and the failure is recorded in sync status/history.
 - **The cache cannot open:** Use Diagnostics to capture the error and Settings to restore a verified backup or reset cached feature data. Reset does not remove JSON settings.
 - **Recommendation refresh is empty or partial:** This can indicate missing character cache data, stale or missing public pages, cancellation, or per-character request failures. Review the refresh summary and retry selectively.

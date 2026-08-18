@@ -1,25 +1,40 @@
-# Build results
-[Dd]ebug/
-[Dd]ebugPublic/
-[Rr]elease/
-[Re]leases/
-x64/
-x86/
-[Aa]R[Mm]/
-[Aa]R[Mm]64/
-bld/
-[Bb]in/
-[Oo]bj/
-[Log]s/
-[Te]st[Re]sult*/
-.tmp/
-.tmp-*
+# Build output
+**/[Bb]in/
+**/[Oo]bj/
+**/[Dd]ebug/
+**/[Dd]ebugPublic/
+**/[Rr]elease/
+**/[Rr]eleases/
+**/[Aa][Rr][Mm]/
+**/[Aa][Rr][Mm]64/
+**/[Ww][Ii][Nn]32/
+**/[Xx]64/
+**/[Xx]86/
+**/bld/
+**/out/
+**/artifacts/
 
-# Visual Studio 2015/2017/2019/2022 cache/options directory
+# Test and coverage output
+**/[Tt]est[Rr]esult*/
+**/[Cc]overage[Rr]eport*/
+*.coverage
+*.coveragexml
+
+# Local scratch and generated tool data
+/.tmp/
+/.tmp-*/
+*.tmp
+*.temp
+
+# Visual Studio, VS Code, and Rider state
 .vs/
+.vscode/*.code-workspace
+.vscode/.ropeproject/
 .VSCodeCounter/
+.idea/
+*.sln.iml
 
-# User-specific files
+# User-specific project files
 *.rsuser
 *.suo
 *.user
@@ -27,13 +42,31 @@ bld/
 *.userosscache
 *.sln.docstates
 
-# Mono Auto Generated Files
+# NuGet and local package caches
+packages/
+*.nupkg
+*.snupkg
+
+# Application data, databases, and runtime logs
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.log
+logs/
+cache-backups/
+
+# Local configuration and secrets
+.env
+.env.*
+*.local.json
+secrets.json
+
+# Native and OS-generated files
 mono_crash.*
-
-# JetBrains Rider
-.idea/
-*.sln.iml
-
-# OS-specific files
+*.dmp
 .DS_Store
 Thumbs.db
+ehthumbs.db
+Desktop.ini

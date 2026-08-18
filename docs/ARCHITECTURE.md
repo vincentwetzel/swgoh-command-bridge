@@ -2,7 +2,7 @@
 
 This project follows a clean, decoupled architecture designed for a .NET 8 desktop application using the Model-View-ViewModel (MVVM) pattern. Avalonia and the Core library target multiple desktop platforms; automatic Comlink installation is currently implemented for Windows x64 only.
 
-The active implementation is compiled from `src/`. Root-level C# files are historical drafts and are not project inputs. The desktop composition root owns one service graph for the process lifetime; there is no scheduled sync or hosted worker.
+The active implementation is compiled from `src/`. Root-level C# files are historical drafts and are not project inputs. The desktop composition root owns one service graph for the process lifetime; there is no scheduled sync or hosted worker. Startup may launch one stale-active-account refresh after cached data is loaded, without blocking the initial cached-data view.
 
 ## Projects
 
@@ -60,4 +60,4 @@ There are two primary data flows:
 1.  `AppDataPaths` resolves the shared platform-local application directory for the SQLite cache, JSON settings, diagnostics, cache backups, and (on managed Windows installs) versioned Comlink binaries.
 2.  `CacheSchemaMigrator` creates or repairs the required SQLite tables and columns inside a transaction, then records the supported schema version.
 3.  Settings can create an integrity-checked backup, restore only a backup from the cache backup directory, or reset cached feature data while preserving JSON settings. Unsupported future-schema backups are rejected before replacement.
-4.  `PlayerRepository` replaces one ally-code cache transactionally and deletes that account's character/mod rows transactionally. ViewModels always query the selected ally-code scope; cached-account switching is offline and never triggers a live sync.
+4.  `PlayerRepository` replaces one ally-code cache transactionally and deletes that account's character/mod rows transactionally. ViewModels always query the selected ally-code scope; cached-account switching is offline and never triggers a live sync. Startup uses the same selected ally-code scope to initiate at most one background refresh when the active cache is stale; failures preserve the previous cache and are surfaced through sync status.

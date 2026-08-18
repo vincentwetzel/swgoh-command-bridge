@@ -1,0 +1,50 @@
+# AI indexing exclusions
+# Keep source, tests, documentation, and checked-in project configuration available.
+
+# Build, test, coverage, and package output
+**/bin/
+**/obj/
+**/[Dd]ebug/
+**/[Rr]elease/
+**/[Tt]est[Rr]esult*/
+**/[Cc]overage[Rr]eport*/
+**/artifacts/
+**/packages/
+*.nupkg
+*.snupkg
+
+# Workspace scratch files and editor-generated reports
+/.tmp/
+/.tmp-*/
+.VSCodeCounter/
+.vs/
+.idea/
+*.tmp
+*.temp
+
+# Runtime state, private account cache, backups, and diagnostics
+**/*.db
+**/*.db-*
+**/*.sqlite
+**/*.sqlite-*
+**/*.sqlite3
+**/cache-backups/
+**/SWGOHCommandBridge/
+**/diagnostics/
+**/comlink/
+**/settings.json
+*.log
+*.dmp
+
+# Local configuration and credentials
+.env
+.env.*
+**/secrets.json
+**/*secret*.json
+**/*credentials*.json
+
+# Generated source and metadata
+**/*.generated.cs
+**/*.g.cs
+**/*.designer.cs
+**/*.generated.json

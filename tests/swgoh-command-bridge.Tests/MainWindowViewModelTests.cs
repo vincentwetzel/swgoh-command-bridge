@@ -159,6 +159,124 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task SwitchAccountCommand_ActivatesCachedAccountAndPersistsSelection()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlite(connection)
+            .Options;
+        await using var context = new AppDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+        context.Players.AddRange(
+            new PlayerEntity
+            {
+                AllyCode = "123456789",
+                Name = "Alpha Account",
+                LastSyncedUtc = DateTime.UtcNow
+            },
+            new PlayerEntity
+            {
+                AllyCode = "987654321",
+                Name = "Beta Account",
+                LastSyncedUtc = DateTime.UtcNow
+            });
+        await context.SaveChangesAsync();
+
+        var settings = new FakeSettingsService(new AppSettings(DefaultAllyCode: "123456789"));
+        using var composition = ApplicationComposition.CreateDefault(context, settings);
+        var viewModel = new MainWindowViewModel(composition);
+        await viewModel.InitializeAsync();
+
+        var beta = Assert.Single(viewModel.CachedAccounts, account => account.AllyCode == "987654321");
+        await viewModel.SwitchAccountCommand.ExecuteAsync(beta);
+
+        Assert.Equal("987654321", viewModel.AllyCode);
+        Assert.Equal("Beta Account", viewModel.ActiveAccountDisplayName);
+        Assert.Equal("987654321", settings.CurrentSettings.DefaultAllyCode);
+    }
+
+    [Fact]
+    public async Task AddAccountCommand_ClearsActiveSelectionAndOpensHomeSyncFlow()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlite(connection)
+            .Options;
+        await using var context = new AppDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+        context.Players.Add(new PlayerEntity
+        {
+            AllyCode = "123456789",
+            Name = "Existing Account",
+            LastSyncedUtc = DateTime.UtcNow
+        });
+        await context.SaveChangesAsync();
+
+        using var composition = ApplicationComposition.CreateDefault(
+            context,
+            new FakeSettingsService(new AppSettings(DefaultAllyCode: "123456789")));
+        var viewModel = new MainWindowViewModel(composition);
+        await viewModel.InitializeAsync();
+
+        await viewModel.AddAccountCommand.ExecuteAsync(null);
+
+        Assert.Same(viewModel, viewModel.CurrentView);
+        Assert.Empty(viewModel.AllyCode);
+        Assert.Null(viewModel.SelectedCachedAccount);
+        Assert.Equal("Select account", viewModel.ActiveAccountDisplayName);
+        Assert.Contains("new account", viewModel.AccountManagementStatusText);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_RefreshesStaleActiveAccountInBackground()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlite(connection)
+            .Options;
+        await using var context = new AppDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+        context.Players.Add(new PlayerEntity
+        {
+            AllyCode = "123456789",
+            Name = "Stale Account",
+            LastSyncedUtc = DateTime.UtcNow.AddDays(-2)
+        });
+        await context.SaveChangesAsync();
+
+        var started = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var playerService = new FakePlayerService(async cancellationToken =>
+        {
+            started.SetResult(true);
+            await release.Task.WaitAsync(cancellationToken);
+            return CreateProfile("123456789");
+        });
+        using var composition = ApplicationComposition.CreateDefault(
+            context,
+            new FakeSettingsService(new AppSettings(DefaultAllyCode: "123456789")),
+            playerService);
+        var viewModel = new MainWindowViewModel(composition);
+
+        await viewModel.InitializeAsync();
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.True(viewModel.IsSyncing);
+        Assert.Contains("Syncing", viewModel.SyncStatusText);
+
+        release.SetResult(true);
+        for (var attempt = 0; attempt < 100 && viewModel.IsSyncing; attempt++)
+        {
+            await Task.Delay(10);
+        }
+
+        Assert.Equal(OperationStatus.Success, viewModel.SyncState.Status);
+    }
+
+    [Fact]
     public async Task SyncCommand_SuccessReportsCountsAndParserWarnings()
     {
         await using var connection = new SqliteConnection("Data Source=:memory:");

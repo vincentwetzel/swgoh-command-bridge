@@ -1,6 +1,6 @@
 # Roadmap History — Completed Implementation Audit
 
-Audit date: 2026-08-07
+Audit date: 2026-08-18
 
 This document records the implementation work verified during the roadmap audit. It is intentionally separate from [`TODO.md`](../TODO.md), which contains only remaining work.
 
@@ -23,11 +23,12 @@ This document records the implementation work verified during the roadmap audit.
 
 ## Account sync and cache
 
-- Home validates ally codes and supports sync progress, cancellation, bounded retry, failure categorization, parser warnings, and retry.
+- The top-right account switcher validates ally codes and supports adding accounts, sync progress, cancellation, bounded retry, failure categorization, parser warnings, and retry.
 - Comlink mapping supports bounded envelopes, known aliases, nested metadata, complete roster/inventory records, duplicate suppression, and record-level diagnostics.
 - Persisted mod snapshots retain primary/secondary stats, roll counts, ownership, level, tier, pips, slot, and set.
 - Character, priority, mod, optimizer, recommendation, and scraper data are scoped to the active ally code.
 - Cached accounts can be selected, searched, switched offline, and removed with confirmation.
+- Startup can refresh one stale active account after cached data loads without blocking offline access to the previous cache.
 - Repository replacement, upsert, account removal, and failed-refresh rollback are transactional.
 - Representative Comlink fixtures cover empty, malformed, duplicate, partial, nested, and inventory-heavy responses.
 
