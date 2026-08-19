@@ -162,13 +162,29 @@ static IEnumerable<string> FindPlayerIds(JsonElement element)
 {
     if (element.ValueKind == JsonValueKind.Object)
     {
-        if (element.TryGetProperty("player", out var player) &&
-            player.ValueKind == JsonValueKind.Object &&
-            player.TryGetProperty("id", out var playerId) &&
-            playerId.ValueKind == JsonValueKind.String &&
-            !string.IsNullOrWhiteSpace(playerId.GetString()))
+        if (element.TryGetProperty("player", out var player))
         {
-            yield return playerId.GetString()!;
+            if (player.ValueKind == JsonValueKind.Object &&
+                player.TryGetProperty("id", out var playerId) &&
+                playerId.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrWhiteSpace(playerId.GetString()))
+            {
+                yield return playerId.GetString()!;
+            }
+
+            if (player.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var playerEntry in player.EnumerateArray())
+                {
+                    if (playerEntry.ValueKind == JsonValueKind.Object &&
+                        playerEntry.TryGetProperty("id", out var playerEntryId) &&
+                        playerEntryId.ValueKind == JsonValueKind.String &&
+                        !string.IsNullOrWhiteSpace(playerEntryId.GetString()))
+                    {
+                        yield return playerEntryId.GetString()!;
+                    }
+                }
+            }
         }
 
         foreach (var property in element.EnumerateObject())

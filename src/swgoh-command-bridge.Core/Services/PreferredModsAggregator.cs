@@ -67,7 +67,8 @@ public sealed class PreferredModsAggregator
             .ToList()
             .AsReadOnly();
         var setups = observations
-            .Where(observation => observation.Character.EquippedMods.Count == Enum.GetValues<ModSlot>().Length)
+            .Where(observation => observation.Character.EquippedMods.Count == Enum.GetValues<ModSlot>().Length &&
+                                  observation.Character.EquippedMods.Values.All(HasKnownPrimary))
             .GroupBy(observation => BuildSetupKey(observation.Character), StringComparer.Ordinal)
             .Select(group => new
             {
@@ -105,7 +106,7 @@ public sealed class PreferredModsAggregator
                 Observation = observation,
                 Mod = observation.Character.EquippedMods.GetValueOrDefault(slot)
             })
-            .Where(item => item.Mod != null && item.Mod.Primary.Type != StatType.None)
+            .Where(item => item.Mod != null && HasKnownPrimary(item.Mod))
             .ToList();
         var totalWeight = values.Sum(item => item.Observation.Weight);
         if (totalWeight <= 0)
@@ -153,7 +154,7 @@ public sealed class PreferredModsAggregator
                 Mod = mod,
                 Speed = mod.Secondaries.FirstOrDefault(stat => stat.Type == StatType.Speed)?.Value ?? 0
             }))
-            .Where(item => item.Mod.Primary.Type != StatType.None)
+            .Where(item => HasKnownPrimary(item.Mod))
             .GroupBy(item => (item.Mod.Set, item.Mod.Slot, item.Mod.Primary.Type))
             .Select(group =>
             {
@@ -246,6 +247,9 @@ public sealed class PreferredModsAggregator
             ? values[lower]
             : values[lower] + ((values[upper] - values[lower]) * (index - lower));
     }
+
+    private static bool HasKnownPrimary(GameMod mod) =>
+        mod.Primary.Type != StatType.None && Enum.IsDefined(mod.Primary.Type);
 
     private static void ValidateOptions(PreferredModsAggregationOptions options)
     {
