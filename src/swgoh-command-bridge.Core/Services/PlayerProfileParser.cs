@@ -366,7 +366,7 @@ public sealed class PlayerProfileParser
         16 => StatType.CriticalDamage,
         17 => StatType.Potency,
         18 => StatType.Tenacity,
-        19 => StatType.DodgeChance,
+        19 => StatType.HealthSteal,
         28 => StatType.Protection,
         41 => StatType.Offense,
         42 => StatType.Defense,

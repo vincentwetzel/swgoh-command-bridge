@@ -505,7 +505,16 @@ namespace swgoh_command_bridge.UI.ViewModels
 
             foreach (var slot in recommendation.Slots.OrderBy(slot => slot.Slot))
             {
-                var options = string.Join(", ", slot.Options.Select(option =>
+                var displayOptions = slot.Options
+                    .Where(option => option.Status is PreferredRecommendationStatus.Preferred or
+                        PreferredRecommendationStatus.ViableAlternative)
+                    .ToList();
+                if (displayOptions.Count == 0 && slot.Options.FirstOrDefault() is { } fallback)
+                {
+                    displayOptions.Add(fallback);
+                }
+
+                var options = string.Join(", ", displayOptions.Select(option =>
                     $"{FormatPreferredStat(option.PrimaryStat)} {option.Share:P0} ({FormatStatus(option.Status)})"));
                 PreferredPrimaryAdvice.Add($"{slot.Slot}: {options}");
 
@@ -530,11 +539,11 @@ namespace swgoh_command_bridge.UI.ViewModels
                 var currentOption = slot.Options.FirstOrDefault(option => option.PrimaryStat == currentPrimary);
                 if (currentOption?.Status == PreferredRecommendationStatus.Preferred)
                 {
-                    CurrentModGuidance.Add($"{slot.Slot}: current primary is preferred.");
+                    continue;
                 }
                 else if (currentOption?.Status == PreferredRecommendationStatus.ViableAlternative)
                 {
-                    CurrentModGuidance.Add($"{slot.Slot}: current primary is a viable alternative.");
+                    continue;
                 }
                 else
                 {

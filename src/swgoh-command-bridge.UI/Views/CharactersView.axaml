@@ -14,7 +14,7 @@
     <TextBlock Grid.Row="2" Margin="0,0,0,8" Text="{Binding CatalogStatusText}" IsVisible="{Binding HasCatalogStatus}"
                Foreground="Gray" TextWrapping="Wrap"/>
 
-    <Grid Grid.Row="3" ColumnDefinitions="*, 380">
+    <Grid Grid.Row="3" ColumnDefinitions="*, 460">
       <Grid>
         <TextBlock Text="Loading characters..." IsVisible="{Binding IsLoading}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         <TextBlock Text="No cached characters. Sync an account from Home to begin." IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"/>
