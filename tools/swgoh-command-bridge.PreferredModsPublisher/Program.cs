@@ -41,7 +41,7 @@ using var client = new HttpClient
 };
 client.DefaultRequestHeaders.UserAgent.ParseAdd("SWGOHCommandBridgePreferredModsPublisher/1.0");
 
-var allyCodes = new List<string>();
+var playerIds = new List<string>();
 foreach (var division in divisions)
 {
     var leaderboard = await PostJsonAsync(client, "/getLeaderboard", new
@@ -54,40 +54,40 @@ foreach (var division in divisions)
         },
         enums = false
     });
-    allyCodes.AddRange(FindAllyCodesFromJson(leaderboard));
+    playerIds.AddRange(FindPlayerIdsFromJson(leaderboard));
 }
 
-var selectedAllyCodes = allyCodes
+var selectedPlayerIds = playerIds
     .Distinct(StringComparer.Ordinal)
     .Take(maximumAccounts)
     .ToList();
-if (selectedAllyCodes.Count == 0)
+if (selectedPlayerIds.Count == 0)
 {
-    Console.Error.WriteLine("No ally codes were returned by the Kyber GAC leaderboards.");
+    Console.Error.WriteLine("No player IDs were returned by the Kyber GAC leaderboards.");
     return 1;
 }
 
-Console.WriteLine($"Fetching {selectedAllyCodes.Count} top Kyber GAC profiles.");
+Console.WriteLine($"Fetching {selectedPlayerIds.Count} top Kyber GAC profiles.");
 var profiles = new ConcurrentBag<PlayerProfile>();
 var failures = new ConcurrentBag<string>();
 var parser = new PlayerProfileParser();
 await Parallel.ForEachAsync(
-    selectedAllyCodes,
+    selectedPlayerIds,
     new ParallelOptions { MaxDegreeOfParallelism = concurrency },
-    async (allyCode, cancellationToken) =>
+    async (playerId, cancellationToken) =>
     {
         try
         {
             var rawProfile = await PostJsonAsync(client, "/player", new
             {
-                payload = new { allyCode },
+                payload = new { playerId },
                 enums = false
             }, cancellationToken);
-            profiles.Add(parser.Parse(allyCode, rawProfile));
+            profiles.Add(parser.Parse(playerId, rawProfile));
         }
         catch (Exception ex)
         {
-            failures.Add($"{allyCode}: {ex.Message}");
+            failures.Add($"{playerId}: {ex.Message}");
         }
     });
 
@@ -152,29 +152,28 @@ static async Task<string> PostJsonAsync(
     return await response.Content.ReadAsStringAsync(cancellationToken);
 }
 
-static IEnumerable<string> FindAllyCodesFromJson(string rawJson)
+static IEnumerable<string> FindPlayerIdsFromJson(string rawJson)
 {
     using var document = JsonDocument.Parse(rawJson);
-    return FindAllyCodes(document.RootElement).Distinct(StringComparer.Ordinal).ToList();
+    return FindPlayerIds(document.RootElement).Distinct(StringComparer.Ordinal).ToList();
 }
 
-static IEnumerable<string> FindAllyCodes(JsonElement element)
+static IEnumerable<string> FindPlayerIds(JsonElement element)
 {
     if (element.ValueKind == JsonValueKind.Object)
     {
+        if (element.TryGetProperty("player", out var player) &&
+            player.ValueKind == JsonValueKind.Object &&
+            player.TryGetProperty("id", out var playerId) &&
+            playerId.ValueKind == JsonValueKind.String &&
+            !string.IsNullOrWhiteSpace(playerId.GetString()))
+        {
+            yield return playerId.GetString()!;
+        }
+
         foreach (var property in element.EnumerateObject())
         {
-            if (string.Equals(property.Name, "allyCode", StringComparison.OrdinalIgnoreCase) &&
-                property.Value.ValueKind is JsonValueKind.String or JsonValueKind.Number)
-            {
-                var candidate = property.Value.ToString().Replace("-", string.Empty, StringComparison.Ordinal);
-                if (candidate.Length == 9 && candidate.All(char.IsAsciiDigit))
-                {
-                    yield return candidate;
-                }
-            }
-
-            foreach (var nested in FindAllyCodes(property.Value))
+            foreach (var nested in FindPlayerIds(property.Value))
             {
                 yield return nested;
             }
@@ -184,7 +183,7 @@ static IEnumerable<string> FindAllyCodes(JsonElement element)
     {
         foreach (var child in element.EnumerateArray())
         {
-            foreach (var nested in FindAllyCodes(child))
+            foreach (var nested in FindPlayerIds(child))
             {
                 yield return nested;
             }
