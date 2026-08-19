@@ -31,7 +31,7 @@ public interface IPreferredModsDatasetService
 public sealed record PreferredModsUpdateOptions(
     Uri? ManifestUrl,
     TimeSpan UpdateInterval,
-    int MaximumDatasetBytes = 5 * 1024 * 1024)
+    int MaximumDatasetBytes = 8 * 1024 * 1024)
 {
     public static PreferredModsUpdateOptions Default { get; } = new(
         new Uri(

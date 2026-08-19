@@ -26,7 +26,7 @@ Preferred GAC data should use a separate global contract and repository:
 
 - `PreferredModsDataset`: immutable loaded dataset plus metadata.
 - `PreferredCharacterRecommendation`: one character’s preferred setups and slot distributions.
-- `PreferredSetupPattern`: a commonly observed complete set pattern with its population share.
+- `PreferredSetupPattern`: one of the leading complete set patterns, with representative primaries and its population share. Slot-level distributions retain the full primary-stat nuance separately.
 - `PreferredSlotRecommendation`: normalized slot/primary usage with counts, percentages, and confidence.
 - `PreferredModQualityProfile`: optional quality distributions retained for farming analysis.
 
@@ -151,7 +151,7 @@ Update sequence:
 2. Fetch the small GitHub-hosted manifest using conditional HTTP requests when possible.
 3. Ignore the result when the manifest is not newer or the schema is unsupported.
 4. Download the dataset to a temporary file.
-5. Validate size, JSON shape, schema, character IDs, slot coverage, percentages, and SHA-256.
+5. Validate the bounded compact JSON payload (currently 8 MiB maximum), schema, character IDs, slot coverage, percentages, and SHA-256.
 6. Atomically replace `current.json` and the accepted manifest.
 7. Keep the previous dataset when any step fails.
 

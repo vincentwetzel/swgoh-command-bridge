@@ -115,8 +115,7 @@ PreferredModsDatasetService.ValidateDataset(dataset, "generated preferred-mod da
 Directory.CreateDirectory(outputDirectory);
 var serializerOptions = new JsonSerializerOptions
 {
-    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    WriteIndented = true
+    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
 };
 var datasetPath = Path.Combine(outputDirectory, "dataset.json");
 var datasetBytes = JsonSerializer.SerializeToUtf8Bytes(dataset, serializerOptions);

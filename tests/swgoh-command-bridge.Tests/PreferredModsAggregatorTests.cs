@@ -50,12 +50,35 @@ public sealed class PreferredModsAggregatorTests
                 Assert.Equal(0.45, option.Share, 3);
                 Assert.Equal(PreferredRecommendationStatus.ViableAlternative, option.Status);
             });
-        Assert.Equal(2, character.Setups.Count);
+        var setup = Assert.Single(character.Setups);
+        Assert.Equal(StatType.HealthPercent, setup.SlotPrimaries.Single(primary => primary.Slot == ModSlot.Triangle).PrimaryStat);
         Assert.Contains(character.QualityProfiles, profile =>
             profile.Set == ModSet.CriticalDamage &&
             profile.Slot == ModSlot.Triangle &&
             profile.PrimaryStat == StatType.HealthPercent &&
             profile.SampleSize == 11);
+    }
+
+    [Fact]
+    public void Aggregate_LimitsPublishedSetupPatterns()
+    {
+        var observations = Enumerable.Range(0, 20)
+            .Select(index => new PreferredModsObservation(CreateProfile(
+                $"{index:D9}",
+                index < 11 ? StatType.HealthPercent : StatType.ProtectionPercent,
+                10 + index)))
+            .ToList();
+        var result = new PreferredModsAggregator().Aggregate(
+            observations,
+            "test-setup-limit",
+            new PreferredModsSource("GAC", new[] { "Kyber Division 1" }, 20, 20),
+            new PreferredModsAggregationOptions(
+                MinimumSampleSize: 10,
+                MediumConfidenceSampleSize: 15,
+                HighConfidenceSampleSize: 20,
+                MaxSetupPatterns: 1));
+
+        Assert.Single(Assert.Single(result.Characters).Setups);
     }
 
     private static PlayerProfile CreateProfile(string allyCode, StatType trianglePrimary, int speed)
