@@ -16,6 +16,11 @@ public record Character(
     public int Stars { get; init; }
 
     /// <summary>
+    /// The bundled portrait asset selected from the authoritative game-data catalog.
+    /// </summary>
+    public string PortraitAsset { get; init; } = string.Empty;
+
+    /// <summary>
     /// Gets the current set bonuses active on this character.
     /// </summary>
     public IEnumerable<ModSet> GetActiveSets()

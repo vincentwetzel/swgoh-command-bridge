@@ -6,6 +6,7 @@ It reports:
 
 - the local SQLite cache and backup locations;
 - the settings file location;
+- the verified character-catalog location and catalog refresh/import status;
 - the Comlink authority only, without URL credentials or paths;
 - a redacted ally code showing only the last four digits;
 - aggregate counts for players, characters, mods, and recommendations; and
@@ -17,7 +18,7 @@ Export creates a timestamped text report under the application's local `diagnost
 
 Diagnostics is observational. It does not send account payloads, repair the cache, or change Comlink settings. Refresh only rereads local metadata, bounded sync outcome history, and event state. Use Settings for backup, restore, reset, settings transfer, and configuration changes.
 
-Comlink startup failures are reported through the shell startup status and bounded application events. Account-sync failures, including a stale-cache refresh started during startup, are reported in the account switcher and bounded sync history. Diagnostics identifies the configured authority but does not expose downloaded executable contents, process output, or account payloads. On Windows x64, a managed runtime is stored under the documented application-data directory; on other platforms, the configured service is external to this application.
+Comlink startup failures are reported through the shell startup status and bounded application events. Account-sync failures, including a stale-cache refresh started during startup, are reported in the account switcher and bounded sync history. Catalog refresh failures are best-effort and leave the last verified embedded or persisted catalog active. Diagnostics identifies the configured authority but does not expose downloaded executable contents, process output, catalog payloads, or account payloads. On Windows x64, a managed runtime is stored under the documented application-data directory; on other platforms, the configured service is external to this application.
 
 Diagnostics shows the latest sync outcome plus the ten most recent account attempts. Ally codes are redacted in the display and export; statuses, counts, parser-warning totals, cancellation/interruption state, and privacy-safe failure summaries are retained for support.
 

@@ -22,6 +22,8 @@ public class SettingsViewModel : StateViewModelBase<bool>
     private readonly Func<Task<string>>? _backupCache;
     private readonly Func<string, Task>? _restoreCache;
     private readonly Func<Task>? _refreshAfterImport;
+    private readonly ICharacterCatalogSnapshotService? _characterCatalogService;
+    private readonly Func<Task>? _refreshAfterCatalogImport;
     private readonly DiagnosticEventLog _eventLog;
     private readonly Action<string> _applyTheme;
     private readonly SettingsTransferService _transferService = new();
@@ -35,6 +37,9 @@ public class SettingsViewModel : StateViewModelBase<bool>
     private string _restoreStatusText = "No cache restore performed in this session.";
     private string _settingsTransferPath = string.Empty;
     private string _settingsTransferStatusText = "No settings transfer performed in this session.";
+    private string _characterCatalogPath = string.Empty;
+    private string _shipCatalogPath = string.Empty;
+    private string _catalogUpdateStatusText = "Catalog updates are unavailable in this application composition.";
     private bool _confirmCacheReset;
     private bool _confirmCacheRestore;
 
@@ -51,7 +56,9 @@ public class SettingsViewModel : StateViewModelBase<bool>
         Func<string, Task>? restoreCache = null,
         Func<Task>? refreshAfterImport = null,
         DiagnosticEventLog? eventLog = null,
-        Action<string>? applyTheme = null)
+        Action<string>? applyTheme = null,
+        ICharacterCatalogSnapshotService? characterCatalogService = null,
+        Func<Task>? refreshAfterCatalogImport = null)
     {
         ArgumentNullException.ThrowIfNull(settingsService);
         ArgumentNullException.ThrowIfNull(applyComlinkUrl);
@@ -68,11 +75,17 @@ public class SettingsViewModel : StateViewModelBase<bool>
         _refreshAfterImport = refreshAfterImport;
         _eventLog = eventLog ?? new DiagnosticEventLog();
         _applyTheme = applyTheme ?? ThemeManager.Apply;
+        _characterCatalogService = characterCatalogService;
+        _refreshAfterCatalogImport = refreshAfterCatalogImport;
         _comlinkBaseUrl = settingsService.CurrentSettings.ComlinkBaseUrl;
         _defaultAllyCode = settingsService.CurrentSettings.DefaultAllyCode ?? string.Empty;
         _theme = ThemePreference.Normalize(settingsService.CurrentSettings.Theme);
         _enableLocalRecommendationScraping = settingsService.CurrentSettings.EnableLocalRecommendationScraping;
         _recommendationContactEmail = settingsService.CurrentSettings.RecommendationContactEmail ?? string.Empty;
+        if (_characterCatalogService != null)
+        {
+            _catalogUpdateStatusText = _characterCatalogService.GetSnapshotInfo().Summary;
+        }
         SaveCommand = new AsyncRelayCommand(SaveAsync);
         TestConnectionCommand = new AsyncRelayCommand(TestConnectionAsync);
         BackupCacheCommand = new AsyncRelayCommand(BackupCacheAsync);
@@ -80,6 +93,7 @@ public class SettingsViewModel : StateViewModelBase<bool>
         RestoreCacheCommand = new AsyncRelayCommand(RestoreCacheAsync);
         ExportSettingsCommand = new AsyncRelayCommand(ExportSettingsAsync);
         ImportSettingsCommand = new AsyncRelayCommand(ImportSettingsAsync);
+        ImportCatalogCommand = new AsyncRelayCommand(ImportCatalogAsync);
     }
 
     public string HeaderText => "Application Settings";
@@ -156,6 +170,24 @@ public class SettingsViewModel : StateViewModelBase<bool>
         private set => SetField(ref _settingsTransferStatusText, value);
     }
 
+    public string CharacterCatalogPath
+    {
+        get => _characterCatalogPath;
+        set => SetField(ref _characterCatalogPath, value);
+    }
+
+    public string ShipCatalogPath
+    {
+        get => _shipCatalogPath;
+        set => SetField(ref _shipCatalogPath, value);
+    }
+
+    public string CatalogUpdateStatusText
+    {
+        get => _catalogUpdateStatusText;
+        private set => SetField(ref _catalogUpdateStatusText, value);
+    }
+
     protected override void OnStateChanged() =>
         OnPropertyChanged(nameof(StatusText));
 
@@ -180,6 +212,8 @@ public class SettingsViewModel : StateViewModelBase<bool>
     public IAsyncRelayCommand ExportSettingsCommand { get; }
 
     public IAsyncRelayCommand ImportSettingsCommand { get; }
+
+    public IAsyncRelayCommand ImportCatalogCommand { get; }
 
     private async Task SaveAsync()
     {
@@ -403,6 +437,35 @@ public class SettingsViewModel : StateViewModelBase<bool>
         {
             _eventLog.Error("settings-transfer", "Application settings import failed.");
             SettingsTransferStatusText = $"Failed to import settings: {ex.Message}";
+        }
+    }
+
+    private async Task ImportCatalogAsync()
+    {
+        if (_characterCatalogService == null)
+        {
+            CatalogUpdateStatusText = "Catalog updates are unavailable in this application composition.";
+            return;
+        }
+
+        try
+        {
+            CatalogUpdateStatusText = "Validating and importing catalog snapshots...";
+            var imported = await _characterCatalogService
+                .ImportAsync(CharacterCatalogPath, ShipCatalogPath)
+                .ConfigureAwait(true);
+            if (_refreshAfterCatalogImport != null)
+            {
+                await _refreshAfterCatalogImport().ConfigureAwait(true);
+            }
+
+            CatalogUpdateStatusText = $"Catalog imported and applied. {imported.Summary}";
+            _eventLog.Info("character-catalog-import", imported.Summary);
+        }
+        catch (Exception ex)
+        {
+            CatalogUpdateStatusText = $"Catalog import failed: {ex.Message}";
+            _eventLog.Error("character-catalog-import", "Catalog import failed.");
         }
     }
 

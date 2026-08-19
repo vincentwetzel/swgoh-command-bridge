@@ -44,6 +44,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private bool _confirmAccountRemoval;
     private bool _isAddingAccount;
     private Task? _activeAccountRefreshTask;
+    private Task? _catalogRefreshTask;
     private OperationState<bool> _startupState = OperationState<bool>.ToSuccess(true);
     private OperationState<PlayerProfile> _syncState = OperationState<PlayerProfile>.ToEmpty();
 
@@ -83,7 +84,11 @@ public partial class MainWindowViewModel : ViewModelBase
         _comlinkClient = composition.ComlinkClient;
         _playerService = composition.PlayerService;
 
-        CharactersViewModel = new CharactersViewModel(_context, () => AllyCode);
+        CharactersViewModel = new CharactersViewModel(
+            _context,
+            () => AllyCode,
+            composition.CharacterCatalogService,
+            composition.EventLog);
         CharacterPrioritiesViewModel = new CharacterPrioritiesViewModel(_context, () => AllyCode);
         ModThresholdsViewModel = new ModThresholdsViewModel(_settingsService);
         ModsViewModel = new ModsViewModel(
@@ -125,7 +130,9 @@ public partial class MainWindowViewModel : ViewModelBase
             RestoreCacheAsync,
             RefreshAfterSettingsImportAsync,
             composition.EventLog,
-            ThemeManager.Apply);
+            ThemeManager.Apply,
+            composition.CharacterCatalogService,
+            RefreshAfterCatalogImportAsync);
         _currentView = this;
     }
 
@@ -362,6 +369,7 @@ public partial class MainWindowViewModel : ViewModelBase
         await PrepareComlinkAsync();
         await LoadCachedAccountsAsync();
         await LoadFeatureDataAsync();
+        StartCatalogRefresh();
         StartStaleActiveAccountRefresh();
     }
 
@@ -1027,6 +1035,42 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         await LoadCachedAccountsAsync();
         await LoadFeatureDataAsync();
+    }
+
+    private async Task RefreshAfterCatalogImportAsync()
+    {
+        await CharactersViewModel.RefreshCatalogAsync();
+        await CharacterPrioritiesViewModel.LoadCharactersAsync();
+        await ModOptimizerViewModel.LoadCharactersAsync();
+    }
+
+    private void StartCatalogRefresh()
+    {
+        if (_catalogRefreshTask != null)
+        {
+            return;
+        }
+
+        _catalogRefreshTask = RefreshCatalogInBackgroundAsync();
+    }
+
+    private async Task RefreshCatalogInBackgroundAsync()
+    {
+        try
+        {
+            _composition.EventLog.Info("character-catalog-refresh", "Checking Comlink for a newer character catalog.");
+            var snapshot = await _composition.CatalogRefreshService.RefreshAsync().ConfigureAwait(true);
+            await RefreshAfterCatalogImportAsync().ConfigureAwait(true);
+            _composition.EventLog.Info("character-catalog-refresh", snapshot.Summary);
+        }
+        catch (Exception ex)
+        {
+            // Background refresh is best-effort. The last verified local or
+            // embedded catalog remains active when Comlink is unavailable.
+            _composition.EventLog.Warning(
+                "character-catalog-refresh",
+                $"Background catalog refresh skipped: {ComlinkErrorFormatter.Describe(ex, "Catalog refresh")}");
+        }
     }
 
     private bool CanSync() =>

@@ -20,9 +20,16 @@
         <ListBox ItemsSource="{Binding Characters}" SelectedItem="{Binding SelectedCharacter}" IsVisible="{Binding HasCharacters}">
           <ListBox.ItemTemplate>
             <DataTemplate>
-              <Grid ColumnDefinitions="*, Auto">
-                <TextBlock Text="{Binding Name}"/>
-                <TextBlock Grid.Column="1" Text="{Binding Priority, StringFormat='Priority: {0}' }"/>
+              <Grid ColumnDefinitions="44,*, Auto" Margin="2,4">
+                <Border Width="38" Height="38" CornerRadius="19" Background="#26344A" ClipToBounds="True">
+                  <Grid>
+                    <TextBlock Text="{Binding Converter={StaticResource CharacterInitials}}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#9CC9FF"/>
+                    <Image Source="{Binding Converter={StaticResource CharacterPortrait}}" Stretch="UniformToFill"/>
+                  </Grid>
+                </Border>
+                <TextBlock Grid.Column="1" Margin="10,0,0,0" Text="{Binding Converter={StaticResource CharacterDisplayName}}" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="2" Text="{Binding Priority, StringFormat='Priority: {0}' }" VerticalAlignment="Center" Foreground="Gray"/>
               </Grid>
             </DataTemplate>
           </ListBox.ItemTemplate>
@@ -31,8 +38,19 @@
 
       <Border Grid.Column="1" BorderBrush="#555555" BorderThickness="1" CornerRadius="6" Padding="16" IsVisible="{Binding HasCharacters}">
         <StackPanel Spacing="12">
-          <TextBlock Text="Selected character" FontSize="18" FontWeight="SemiBold"/>
-          <TextBlock Text="{Binding SelectedCharacter.Name}" FontSize="16"/>
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <Border Width="64" Height="64" CornerRadius="32" Background="#26344A" ClipToBounds="True">
+              <Grid>
+                <TextBlock Text="{Binding SelectedCharacter, Converter={StaticResource CharacterInitials}}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#9CC9FF"/>
+                <Image Source="{Binding SelectedCharacter, Converter={StaticResource CharacterPortrait}}" Stretch="UniformToFill"/>
+              </Grid>
+            </Border>
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+              <TextBlock Text="Selected character" FontSize="18" FontWeight="SemiBold"/>
+              <TextBlock Text="{Binding SelectedCharacter, Converter={StaticResource CharacterDisplayName}}" FontSize="16"/>
+            </StackPanel>
+          </StackPanel>
           <TextBlock Text="Priority (0–100)"/>
           <TextBox Text="{Binding SelectedCharacterPriority}"/>
           <TextBlock Text="{Binding ValidationError}" IsVisible="{Binding HasValidationError}" Foreground="#FF8A80" TextWrapping="Wrap"/>

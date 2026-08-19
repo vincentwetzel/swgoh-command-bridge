@@ -1,31 +1,16 @@
 # File Manifest
 
-This document lists the current tracked source and documentation files in the project, organized by directory.
-
-The active implementation is under `src/`; only the project files under `src/` are compiled. Older drafts are retained under `legacy/` for reference. Generated folders such as `bin/`, `obj/`, `.tmp/`, `.tmp-build/`, and `.VSCodeCounter/` are intentionally omitted.
+This document lists the current source and documentation files in the repository, organized by directory. The active implementation is under `src/`; only the projects under `src/` are compiled. Generated folders such as `bin/`, `obj/`, `.build-*`, `.tmp*`, and `.VSCodeCounter/` are intentionally omitted.
 
 ```text
 .
+|-- .aiexclude
 |-- .gitignore
 |-- CHANGELOG.md
 |-- CODING_STANDARDS.md
 |-- README.md
 |-- TODO.md
 |-- swgoh-command-bridge.sln
-|-- legacy
-|   |-- CharacterEntity.cs
-|   |-- ComlinkService.cs
-|   |-- GameModEntity.cs
-|   |-- IComlinkService.cs
-|   |-- IModAssignmentService.cs
-|   |-- IPlayerRepository.cs
-|   |-- ISwgohGgScraperService.cs
-|   |-- ModAssignmentService.cs
-|   |-- PlayerEntity.cs
-|   |-- PlayerRepository.cs
-|   |-- SwgohGgRecommendationEntity.cs
-|   |-- SwgohGgScraperService.cs
-|   `-- build-probe.tmp
 |-- docs
 |   |-- AGENTS.md
 |   |-- ARCHITECTURE.md
@@ -50,6 +35,10 @@ The active implementation is under `src/`; only the project files under `src/` a
 |   |   |-- ModSwapRecommendation.cs
 |   |   |-- SwgohGgScraperService.cs
 |   |   |-- swgoh-command-bridge.Core.csproj
+|   |   |-- Assets
+|   |   |   `-- CharacterCatalog
+|   |   |       |-- swgoh-characters.json
+|   |   |       `-- swgoh-ships.json
 |   |   |-- Database
 |   |   |   |-- CacheSchemaMigrator.cs
 |   |   |   |-- Entities
@@ -64,44 +53,48 @@ The active implementation is under `src/`; only the project files under `src/` a
 |   |   |       |-- PlayerRepository.cs
 |   |   |       `-- SyncHistoryRepository.cs
 |   |   |-- Models
-|   |       |-- AllyCodeValidator.cs
-|   |       |-- AppDataPaths.cs
-|   |       |-- AppSettings.cs
-|   |       |-- AssignedModDetail.cs
-|   |       |-- Character.cs
-|   |       |-- GameMod.cs
-|   |       |-- IModAdvisorService.cs
-|   |       |-- IPlayerService.cs
-|   |       |-- ModAdvisorService.cs
-|   |       |-- ModAssignmentAlternative.cs
-|   |       |-- ModEnums.cs
-|   |       |-- ModLoadoutResult.cs
-|   |       |-- ModLoadoutProjection.cs
-|   |       |-- ModRecommendation.cs
-|   |       |-- ModStat.cs
-|   |       |-- ModThresholdTransferDocument.cs
-|   |       |-- ModUpgradeThreshold.cs
-|   |       |-- OperationState.cs
-|   |       |-- PlayerProfile.cs
-|   |       |-- PlayerService.cs
-|   |       |-- PlayerSyncDiagnostics.cs
-|   |       |-- PlayerSyncProgress.cs
-|   |       |-- RecommendationSnapshot.cs
-|   |       |-- RosterLoadoutPlan.cs
-|   |       |-- ScrapeCharacterResult.cs
-|   |       |-- ScrapeProgress.cs
-|   |       |-- ScrapeRetryPolicy.cs
-|   |       |-- ThemePreference.cs
-|   |       `-- SettingsTransferDocument.cs
+|   |   |   |-- AllyCodeValidator.cs
+|   |   |   |-- AppDataPaths.cs
+|   |   |   |-- AppSettings.cs
+|   |   |   |-- AssignedModDetail.cs
+|   |   |   |-- Character.cs
+|   |   |   |-- GameMod.cs
+|   |   |   |-- IModAdvisorService.cs
+|   |   |   |-- IPlayerService.cs
+|   |   |   |-- ModAdvisorService.cs
+|   |   |   |-- ModAssignmentAlternative.cs
+|   |   |   |-- ModEnums.cs
+|   |   |   |-- ModLoadoutProjection.cs
+|   |   |   |-- ModLoadoutResult.cs
+|   |   |   |-- ModRecommendation.cs
+|   |   |   |-- ModStat.cs
+|   |   |   |-- ModThresholdTransferDocument.cs
+|   |   |   |-- ModUpgradeThreshold.cs
+|   |   |   |-- OperationState.cs
+|   |   |   |-- PlayerProfile.cs
+|   |   |   |-- PlayerService.cs
+|   |   |   |-- PlayerSyncDiagnostics.cs
+|   |   |   |-- PlayerSyncProgress.cs
+|   |   |   |-- RecommendationSnapshot.cs
+|   |   |   |-- RosterLoadoutPlan.cs
+|   |   |   |-- ScrapeCharacterResult.cs
+|   |   |   |-- ScrapeProgress.cs
+|   |   |   |-- ScrapeRetryPolicy.cs
+|   |   |   |-- SettingsTransferDocument.cs
+|   |   |   `-- ThemePreference.cs
 |   |   `-- Services
+|   |       |-- BundledCharacterCatalogService.cs
+|   |       |-- CharacterCatalogParser.cs
 |   |       |-- CharacterMetadataParser.cs
+|   |       |-- CharacterNameFormatter.cs
+|   |       |-- ComlinkCatalogRefreshService.cs
 |   |       |-- ComlinkErrorFormatter.cs
 |   |       |-- ComlinkRuntimeManager.cs
 |   |       |-- ComlinkService.cs
 |   |       |-- DiagnosticEventLog.cs
 |   |       |-- DiagnosticLogger.cs
-|   |       |-- IComlinkService.cs
 |   |       |-- IComlinkRuntimeManager.cs
+|   |       |-- IComlinkService.cs
 |   |       |-- IModAssignmentService.cs
 |   |       |-- ISettingsService.cs
 |   |       |-- ModAssignmentService.cs
@@ -111,19 +104,21 @@ The active implementation is under `src/`; only the project files under `src/` a
 |   |       |-- PersistedModelMapper.cs
 |   |       |-- PlayerProfileParser.cs
 |   |       |-- SecondaryStatFilterService.cs
-|   |       |-- SettingsService.cs
 |   |       |-- SettingsMigrationService.cs
+|   |       |-- SettingsService.cs
 |   |       |-- SettingsTransferService.cs
 |   |       `-- SwgohGgRecommendationParser.cs
-|   `-- swgoh-command-bridge.UI
-|       |-- ApplicationComposition.cs
+|   |-- swgoh-command-bridge.UI
 |       |-- App.axaml
 |       |-- App.axaml.cs
-|       |-- Program.cs
-|       |-- ViewLocator.cs
 |       |-- app.manifest
+|       |-- ApplicationComposition.cs
+|       |-- Program.cs
 |       |-- swgoh-command-bridge.UI.csproj
 |       |-- ThemeManager.cs
+|       |-- ViewLocator.cs
+|       |-- Converters
+|       |   `-- CharacterPortraitConverter.cs
 |       |-- ViewModels
 |       |   |-- CharacterPrioritiesViewModel.cs
 |       |   |-- CharactersViewModel.cs
@@ -131,7 +126,6 @@ The active implementation is under `src/`; only the project files under `src/` a
 |       |   |-- MainWindowViewModel.cs
 |       |   |-- ModOptimizerViewModel.cs
 |       |   |-- ModThresholdsViewModel.cs
-|       |   |-- SettingsViewModel.cs
 |       |   |-- ModsViewModel.cs
 |       |   |-- StateViewModelBase.cs
 |       |   `-- ViewModelBase.cs
@@ -158,40 +152,48 @@ The active implementation is under `src/`; only the project files under `src/` a
     `-- swgoh-command-bridge.Tests
         |-- AllyCodeValidatorTests.cs
         |-- AppDataPathsTests.cs
-        |-- ModAdvisorServiceTests.cs
-        |-- ModAdvisorDecisionMatrixTests.cs
-        |-- ModAssignmentServiceTests.cs
-        |-- ModThresholdsViewModelTests.cs
-        |-- ModsViewModelTests.cs
+        |-- ApplicationCompositionTests.cs
+        |-- CharacterCatalogParserTests.cs
+        |-- CharacterMetadataParserTests.cs
+        |-- CharacterViewModelTests.cs
         |-- ComlinkErrorFormatterTests.cs
         |-- ComlinkServiceTests.cs
         |-- DiagnosticEventLogTests.cs
         |-- DiagnosticLoggerTests.cs
         |-- DiagnosticsViewModelTests.cs
+        |-- MainWindowViewModelTests.cs
+        |-- ModAdvisorDecisionMatrixTests.cs
+        |-- ModAdvisorServiceTests.cs
+        |-- ModAssignmentServiceTests.cs
         |-- ModFilterServiceTests.cs
+        |-- ModOptimizerViewModelTests.cs
+        |-- ModThresholdTransferServiceTests.cs
+        |-- ModThresholdsViewModelTests.cs
+        |-- ModsViewModelTests.cs
         |-- OperationStateTests.cs
+        |-- PersistedModelMapperTests.cs
         |-- PlayerRepositoryTests.cs
         |-- PlayerServiceTests.cs
-        |-- PersistedModelMapperTests.cs
+        |-- RecommendationSnapshotTests.cs
+        |-- ScrapeRetryPolicyTests.cs
         |-- SecondaryStatFilterServiceTests.cs
         |-- SettingsServiceTests.cs
         |-- SettingsTransferServiceTests.cs
         |-- SettingsViewModelTests.cs
         |-- StateViewModelBaseTests.cs
-        |-- CharacterViewModelTests.cs
-        |-- CharacterMetadataParserTests.cs
-        |-- ModOptimizerViewModelTests.cs
-        |-- MainWindowViewModelTests.cs
-        |-- ApplicationCompositionTests.cs
-        |-- ViewModelErrorStateTests.cs
-        |-- ModThresholdTransferServiceTests.cs
-        |-- RecommendationSnapshotTests.cs
         |-- SwgohGgRecommendationParserTests.cs
         |-- SwgohGgScraperServiceTests.cs
-        |-- ScrapeRetryPolicyTests.cs
         |-- SyncHistoryRepositoryTests.cs
+        |-- ViewModelErrorStateTests.cs
         |-- Fixtures
         |   |-- ComlinkPayloadFixtures.cs
         |   `-- RecommendationPageFixtures.cs
         `-- swgoh-command-bridge.Tests.csproj
 ```
+
+## Asset and generated-file boundaries
+
+- Core embeds the verified fallback character and ship catalogs from `src/swgoh-command-bridge.Core/Assets/CharacterCatalog/`.
+- The UI packages Avalonia resources and links portrait PNGs from the sibling `swgoh-command-bridge-assets` workspace when available.
+- Runtime catalog snapshots, SQLite cache, settings, backups, diagnostics, and managed Windows Comlink binaries live below the platform-local `SWGOHCommandBridge` application-data directory; they are not repository files.
+- Build, test, publish, and temporary folders are not source inputs and should not be added to this manifest.

@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,11 +19,13 @@ namespace swgoh_command_bridge.Core.Services
     public class PlayerService : IPlayerService
     {
         private readonly IComlinkService _comlinkService;
+        private readonly ICharacterCatalogService? _characterCatalogService;
         private readonly IPlayerRepository _playerRepository;
         private readonly ISyncHistoryRepository? _syncHistoryRepository;
         private readonly ILogger<PlayerService> _logger;
         private readonly PlayerProfileParser _profileParser = new();
         private readonly CharacterMetadataParser _metadataParser = new();
+        private readonly CharacterCatalogParser _catalogParser = new();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="PlayerService"/> class.
@@ -31,13 +34,15 @@ namespace swgoh_command_bridge.Core.Services
             IComlinkService comlinkService,
             IPlayerRepository playerRepository,
             ILogger<PlayerService> logger,
-            ISyncHistoryRepository? syncHistoryRepository = null)
+            ISyncHistoryRepository? syncHistoryRepository = null,
+            ICharacterCatalogService? characterCatalogService = null)
         {
             ArgumentNullException.ThrowIfNull(comlinkService);
             ArgumentNullException.ThrowIfNull(playerRepository);
             ArgumentNullException.ThrowIfNull(logger);
 
             _comlinkService = comlinkService;
+            _characterCatalogService = characterCatalogService ?? comlinkService as ICharacterCatalogService;
             _playerRepository = playerRepository;
             _logger = logger;
             _syncHistoryRepository = syncHistoryRepository;
@@ -201,6 +206,51 @@ namespace swgoh_command_bridge.Core.Services
             CancellationToken cancellationToken)
         {
             var rawJson = await _comlinkService.FetchPlayerRawAsync(allyCode, cancellationToken).ConfigureAwait(false);
+
+            if (_characterCatalogService is { } catalogService)
+            {
+                try
+                {
+                    var catalogPayload = await catalogService
+                        .FetchCharacterCatalogAsync(cancellationToken)
+                        .ConfigureAwait(false);
+                    var catalogResult = _catalogParser.ParseWithAudit(catalogPayload);
+                    _logger.LogInformation(
+                        "Character catalog audit: {CatalogSummary}",
+                        catalogResult.Audit.Summary);
+                    var catalog = catalogResult.Entries;
+                    if (catalogResult.Audit.Entries == 0 || catalogResult.Audit.EntriesWithNames == 0)
+                    {
+                        throw new InvalidOperationException(
+                            $"{catalogPayload.Source} returned a catalog without character names: {catalogResult.Audit.Summary}");
+                    }
+                    var names = catalog.ToDictionary(pair => pair.Key, pair => pair.Value.Name, StringComparer.OrdinalIgnoreCase);
+                    var catalogProfile = _profileParser.Parse(allyCode, rawJson, names);
+                    return catalogProfile with
+                    {
+                        Characters = catalogProfile.Characters
+                            .Select(character => catalog.TryGetValue(character.Id, out var entry)
+                                ? character with
+                                {
+                                    Name = entry.Name,
+                                    PortraitAsset = entry.PortraitAsset
+                                }
+                                : character)
+                            .ToArray()
+                    };
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(
+                        ex,
+                        "Comlink character catalog enrichment failed; continuing with player payload names");
+                }
+            }
+
             IReadOnlyDictionary<string, string>? metadataNames = null;
             string? metadataWarning = null;
 
@@ -261,6 +311,7 @@ namespace swgoh_command_bridge.Core.Services
                     GearLevel = character.GearLevel,
                     GalacticPower = character.GalacticPower,
                     Priority = character.Priority,
+                    PortraitAsset = character.PortraitAsset,
                     Player = entity
                 });
             }

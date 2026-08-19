@@ -25,6 +25,8 @@ public sealed class ApplicationComposition : IDisposable
         HttpClient comlinkClient,
         IComlinkRuntimeManager comlinkRuntimeManager,
         IComlinkService comlinkService,
+        ICharacterCatalogSnapshotService characterCatalogService,
+        ComlinkCatalogRefreshService catalogRefreshService,
         IPlayerService playerService,
         IPlayerRepository playerRepository,
         DiagnosticEventLog eventLog,
@@ -39,6 +41,8 @@ public sealed class ApplicationComposition : IDisposable
         ComlinkClient = comlinkClient;
         ComlinkRuntimeManager = comlinkRuntimeManager;
         ComlinkService = comlinkService;
+        CharacterCatalogService = characterCatalogService;
+        CatalogRefreshService = catalogRefreshService;
         PlayerService = playerService;
         PlayerRepository = playerRepository;
         AdvisorService = advisorService;
@@ -58,6 +62,10 @@ public sealed class ApplicationComposition : IDisposable
     public IComlinkRuntimeManager ComlinkRuntimeManager { get; }
 
     public IComlinkService ComlinkService { get; }
+
+    public ICharacterCatalogSnapshotService CharacterCatalogService { get; }
+
+    public ComlinkCatalogRefreshService CatalogRefreshService { get; }
 
     public IPlayerService PlayerService { get; }
 
@@ -97,6 +105,10 @@ public sealed class ApplicationComposition : IDisposable
         var comlinkService = new ComlinkService(
             comlinkClient,
             new DiagnosticLogger<ComlinkService>(eventLog));
+        var characterCatalogService = new BundledCharacterCatalogService();
+        var catalogRefreshService = new ComlinkCatalogRefreshService(
+            comlinkService,
+            characterCatalogService);
         var playerRepository = new PlayerRepository(
             resolvedDatabase,
             new DiagnosticLogger<PlayerRepository>(eventLog));
@@ -105,7 +117,8 @@ public sealed class ApplicationComposition : IDisposable
             comlinkService,
             playerRepository,
             new DiagnosticLogger<PlayerService>(eventLog),
-            syncHistoryRepository);
+            syncHistoryRepository,
+            characterCatalogService);
         var advisorService = new ModAdvisorService(
             new DiagnosticLogger<ModAdvisorService>(eventLog),
             new ModMechanicsService());
@@ -124,6 +137,8 @@ public sealed class ApplicationComposition : IDisposable
             comlinkClient,
             comlinkRuntimeManager,
             comlinkService,
+            characterCatalogService,
+            catalogRefreshService,
             playerService,
             playerRepository,
             eventLog,

@@ -15,10 +15,19 @@
         <ListBox ItemsSource="{Binding Characters}" SelectedItem="{Binding SelectedCharacter}">
           <ListBox.ItemTemplate>
             <DataTemplate>
-              <StackPanel Spacing="3">
-                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
-                <TextBlock Text="{Binding Priority, StringFormat='Priority: {0}'}" Foreground="Gray"/>
-              </StackPanel>
+              <Grid ColumnDefinitions="44, *" Margin="2,5">
+                <Border Width="38" Height="38" CornerRadius="19" Background="#26344A" ClipToBounds="True">
+                  <Grid>
+                    <TextBlock Text="{Binding Converter={StaticResource CharacterInitials}}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#9CC9FF"/>
+                    <Image Source="{Binding Converter={StaticResource CharacterPortrait}}" Stretch="UniformToFill"/>
+                  </Grid>
+                </Border>
+                <StackPanel Grid.Column="1" Margin="10,0,0,0" Spacing="3" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding Converter={StaticResource CharacterDisplayName}}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Text="{Binding Priority, StringFormat='Priority: {0}'}" Foreground="Gray"/>
+                </StackPanel>
+              </Grid>
             </DataTemplate>
           </ListBox.ItemTemplate>
         </ListBox>

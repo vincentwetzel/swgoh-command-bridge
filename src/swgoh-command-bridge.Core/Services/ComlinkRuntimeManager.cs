@@ -25,10 +25,12 @@ namespace swgoh_command_bridge.Core.Services;
 /// </summary>
 public sealed class ComlinkRuntimeManager : IComlinkRuntimeManager
 {
-    // Recent releases currently contain incompatible pkg/V8 bytecode on Windows. Try older
-    // release candidates automatically if one exits before its HTTP endpoint is ready.
+    // Prefer the current protocol-compatible runtime. Fall back only when a release
+    // cannot start on the local Windows installation.
     private static readonly ManagedRelease[] ManagedReleases =
     [
+        new("4.5.0", "https://api.github.com/repos/swgoh-utils/swgoh-comlink/releases/tags/v4.5.0"),
+        new("4.4.2", "https://api.github.com/repos/swgoh-utils/swgoh-comlink/releases/tags/v4.4.2"),
         new("4.4.0", "https://api.github.com/repos/swgoh-utils/swgoh-comlink/releases/tags/v4.4.0"),
         new("4.2.0", "https://api.github.com/repos/swgoh-utils/swgoh-comlink/releases/tags/v4.2.0"),
     ];
@@ -76,17 +78,21 @@ public sealed class ComlinkRuntimeManager : IComlinkRuntimeManager
                 return new ComlinkRuntimeResult(requestedBaseAddress, false);
             }
 
-            if (_ownedAddress != null && !_ownedAddress.Equals(requestedBaseAddress))
+            if (_ownedProcess is { HasExited: false } && _ownedAddress != null &&
+                await IsHealthyAsync(_ownedAddress, cancellationToken).ConfigureAwait(false))
+            {
+                Report(progress, "Account service is ready.", 100);
+                return new ComlinkRuntimeResult(_ownedAddress, true);
+            }
+
+            if (_ownedProcess != null)
             {
                 await StopOwnedProcessAsync(cancellationToken).ConfigureAwait(false);
             }
 
-            if (await IsHealthyAsync(requestedBaseAddress, cancellationToken).ConfigureAwait(false))
-            {
-                Report(progress, "Account service is ready.", 100);
-                return new ComlinkRuntimeResult(requestedBaseAddress, false);
-            }
-
+            // A local listener may be an older Comlink process left behind by a
+            // previous app run. Do not silently reuse it: select a free port and
+            // start the managed, protocol-compatible runtime instead.
             var port = requestedBaseAddress.Port > 0 && IsPortAvailable(requestedBaseAddress.Port)
                 ? requestedBaseAddress.Port
                 : GetAvailablePort();

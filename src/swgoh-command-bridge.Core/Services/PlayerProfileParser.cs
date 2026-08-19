@@ -333,13 +333,19 @@ public sealed class PlayerProfileParser
     }
 
     private static string ToDisplayName(string characterId) =>
-        characterId.Replace('_', ' ').Trim();
+        CharacterNameFormatter.Format(characterId);
 
     private static string GetCharacterName(
         JsonElement unit,
         string characterId,
         IReadOnlyDictionary<string, string>? characterNames)
     {
+        if (characterNames != null && characterNames.TryGetValue(characterId, out var catalogName) &&
+            !string.IsNullOrWhiteSpace(catalogName))
+        {
+            return catalogName;
+        }
+
         var name = GetString(unit, "name", "characterName", "displayName", "unitName");
         if (!string.IsNullOrWhiteSpace(name))
         {
@@ -360,9 +366,7 @@ public sealed class PlayerProfileParser
             return nestedName;
         }
 
-        return characterNames != null && characterNames.TryGetValue(characterId, out var metadataName)
-            ? metadataName
-            : ToDisplayName(characterId);
+        return ToDisplayName(characterId);
     }
 
     private static string? GetNestedObjectString(

@@ -12,6 +12,8 @@ namespace swgoh_command_bridge.Core.Database.Entities
         public string PlayerAllyCode { get; set; } = string.Empty;
         
         public string Name { get; set; } = string.Empty;
+
+        public string PortraitAsset { get; set; } = string.Empty;
         
         public int Level { get; set; }
         

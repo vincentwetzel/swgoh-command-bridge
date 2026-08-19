@@ -35,6 +35,7 @@ public sealed class DiagnosticsViewModel : StateViewModelBase<bool>
     private string _lastSyncOutcomeText = "No sync attempt is recorded.";
     private string _recentSyncHistoryText = "No sync attempts are recorded.";
     private string _recentEventsText = "No application events recorded in this session.";
+    private string _eventLogPath = "Unavailable";
     private int _playerCount;
     private int _characterCount;
     private int _modCount;
@@ -137,6 +138,12 @@ public sealed class DiagnosticsViewModel : StateViewModelBase<bool>
         private set => SetField(ref _recentEventsText, value);
     }
 
+    public string EventLogPath
+    {
+        get => _eventLogPath;
+        private set => SetField(ref _eventLogPath, value);
+    }
+
     public int PlayerCount
     {
         get => _playerCount;
@@ -174,6 +181,7 @@ public sealed class DiagnosticsViewModel : StateViewModelBase<bool>
         SettingsPath = _settingsService.SettingsPath;
         CachePath = _context.CachePath ?? "Unavailable or in-memory database";
         BackupDirectory = _context.CacheBackupDirectory ?? "Unavailable";
+        EventLogPath = _eventLog.PersistentLogPath;
             LastScrapeSummary = FormatScrapeSummary(settings.LastRecommendationScrape);
         RecentEventsText = _eventLog.FormatRecent();
 
@@ -250,6 +258,7 @@ public sealed class DiagnosticsViewModel : StateViewModelBase<bool>
                 .AppendLine($"Settings path: {SettingsPath}")
                 .AppendLine($"Cache path: {CachePath}")
                 .AppendLine($"Backup directory: {BackupDirectory}")
+                .AppendLine($"Application event log: {EventLogPath}")
                 .AppendLine($"Players: {PlayerCount}")
                 .AppendLine($"Characters: {CharacterCount}")
                 .AppendLine($"Mods: {ModCount}")

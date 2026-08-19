@@ -3,7 +3,7 @@
              xmlns:vm="using:swgoh_command_bridge.UI.ViewModels"
              x:Class="swgoh_command_bridge.UI.Views.CharactersView"
              x:DataType="vm:CharactersViewModel">
-  <Grid RowDefinitions="Auto, Auto, *" Margin="24">
+  <Grid RowDefinitions="Auto, Auto, Auto, *" Margin="24">
     <Grid Grid.Row="0" ColumnDefinitions="*, Auto">
       <TextBlock Text="{Binding HeaderText}" FontSize="26" FontWeight="Bold" VerticalAlignment="Center"/>
       <Button Grid.Column="1" Content="Refresh" Command="{Binding RefreshCommand}"/>
@@ -11,7 +11,10 @@
 
     <TextBox Grid.Row="1" Margin="0,16,0,16" Text="{Binding SearchText}" Watermark="Search characters..."/>
 
-    <Grid Grid.Row="2">
+    <TextBlock Grid.Row="2" Margin="0,0,0,8" Text="{Binding CatalogStatusText}" IsVisible="{Binding HasCatalogStatus}"
+               Foreground="Gray" TextWrapping="Wrap"/>
+
+    <Grid Grid.Row="3">
       <TextBlock Text="Loading characters..." IsVisible="{Binding IsLoading}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
       <TextBlock Text="No cached characters. Sync an account from Home to begin." IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"/>
       <StackPanel IsVisible="{Binding HasError}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" MaxWidth="360">
@@ -23,11 +26,19 @@
         <ListBox.ItemTemplate>
           <DataTemplate>
             <Border BorderBrush="#444444" BorderThickness="0,0,0,1" Padding="8">
-              <Grid ColumnDefinitions="*, Auto, Auto, Auto">
-                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
-                <TextBlock Grid.Column="1" Text="{Binding Stars, StringFormat='Stars: {0}'}"/>
-                <TextBlock Grid.Column="2" Text="{Binding GearLevel, StringFormat='Gear: {0}'}"/>
-                <TextBlock Grid.Column="3" Text="{Binding Priority, StringFormat='Priority: {0}'}"/>
+              <Grid ColumnDefinitions="64,*, Auto, Auto, Auto">
+                <Border Width="56" Height="56" CornerRadius="28" Background="#26344A" ClipToBounds="True">
+                  <Grid>
+                    <TextBlock Text="{Binding Converter={StaticResource CharacterInitials}}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#9CC9FF"/>
+                    <Image Source="{Binding Converter={StaticResource CharacterPortrait}}" Stretch="UniformToFill"/>
+                  </Grid>
+                </Border>
+                <TextBlock Grid.Column="1" Margin="14,0,0,0" Text="{Binding Converter={StaticResource CharacterDisplayName}}"
+                           FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Grid.Column="2" Text="{Binding Stars, StringFormat='Stars: {0}'}" VerticalAlignment="Center" Foreground="Gray"/>
+                <TextBlock Grid.Column="3" Text="{Binding GearLevel, StringFormat='Gear: {0}'}" VerticalAlignment="Center" Foreground="Gray"/>
+                <TextBlock Grid.Column="4" Text="{Binding Priority, StringFormat='Priority: {0}'}" VerticalAlignment="Center"/>
               </Grid>
             </Border>
           </DataTemplate>

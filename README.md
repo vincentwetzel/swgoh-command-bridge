@@ -11,7 +11,7 @@ The application is an analysis tool: it reads account data through a configured 
 - The optimizer supports deterministic priority-first planning and a bounded joint roster plan that reserves each mod once. It reports conflicts, alternatives, swap candidates, and persisted mod-stat projections as analysis estimates rather than guaranteed in-game gains.
 - `tests/swgoh-command-bridge.Tests` contains focused xUnit coverage for operation states, settings and transfer validation, cache/repository behavior, player parsing and sync, diagnostics, view-model workflows, mod filtering/mechanics/advisor decisions, assignment planning, and recommendation parsing/scraping.
 
-The root-level C# files are historical drafts. The solution compiles the projects under `src/`; see [FILE_MANIFEST.md](docs/FILE_MANIFEST.md) for the active layout.
+The solution compiles the projects under `src/`; see [FILE_MANIFEST.md](docs/FILE_MANIFEST.md) for the active layout and bundled asset boundaries.
 
 ## Prerequisites
 - [.NET 8 SDK](https://dotnet.microsoft.com/download)
@@ -38,7 +38,7 @@ The root-level C# files are historical drafts. The solution compiles the project
    dotnet test swgoh-command-bridge.sln
    ```
 
-At startup, the app creates a SQLite cache and JSON settings under the case-stable `SWGOHCommandBridge` directory inside the platform's local application-data directory. On Windows x64, it checks the configured local endpoint and, when necessary, installs and starts a pinned managed Comlink runtime there. A healthy existing local service or any non-local endpoint is used as configured; on Linux and macOS, run Comlink separately. Cache, settings, diagnostics, backups, and the managed Windows runtime share that directory. Diagnostics shows the cache, settings, and backup paths; Settings reports the paths created by backup and restore actions. Configure the Comlink URL, default ally code, theme, optional recommendation contact email, and local scraping policy in Settings. Use the account switcher in the top-right shell area to add an account, sync it, switch among cached accounts offline, refresh the active account, or remove a cached account. On startup, a stale active cache may refresh once in the background after cached data is available; the previous cache remains usable if that refresh fails. Recommendation scraping, cache backup/restore/reset, and account removal remain explicit user actions.
+At startup, the app creates a SQLite cache and JSON settings under the case-stable `SWGOHCommandBridge` directory inside the platform's local application-data directory. On Windows x64, it checks the configured local endpoint and, when necessary, installs and starts a pinned managed Comlink runtime there. A healthy existing local service or any non-local endpoint is used as configured; on Linux and macOS, run Comlink separately. Cache, settings, diagnostics, backups, the verified character catalog, and the managed Windows runtime share that directory. The app starts with an embedded catalog, then performs one best-effort catalog refresh from Comlink; a failed refresh leaves the last verified catalog in place. Settings can import character/ship catalogs from JSON and restore the prior catalog on failure. Configure the Comlink URL, default ally code, theme, optional recommendation contact email, and local scraping policy in Settings. Use the account switcher in the top-right shell area to add an account, sync it, switch among cached accounts offline, refresh the active account, or remove a cached account. On startup, a stale active cache may refresh once in the background after cached data is available; the previous cache remains usable if that refresh fails. Recommendation scraping, cache backup/restore/reset, and account removal remain explicit user actions.
 
 The application writes only local cache, settings, backup, and diagnostics files. Diagnostics and exported settings are redacted or credential-safe by design; review any exported report before sharing it. See [DIAGNOSTICS.md](docs/DIAGNOSTICS.md) and [COMLINK_SETUP.md](docs/COMLINK_SETUP.md) for the privacy and recovery boundaries.
 
@@ -56,5 +56,6 @@ The application writes only local cache, settings, backup, and diagnostics files
 - [Changelog](CHANGELOG.md)
 - [Coding standards](CODING_STANDARDS.md)
 - [Roadmap](TODO.md)
+- [Agent and background-process boundaries](docs/AGENTS.md)
 
 The roadmap is split intentionally: `ROADMAP_HISTORY.md` records completed implementation work, while `TODO.md` contains only release gates and deferred product scope. The current release target is a read-only desktop build; packaged runtime and visual smoke verification remain release-operator gates.

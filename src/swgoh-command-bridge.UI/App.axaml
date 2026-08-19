@@ -1,7 +1,14 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:swgoh_command_bridge.UI"
+             xmlns:converters="using:swgoh_command_bridge.UI.Converters"
              x:Class="swgoh_command_bridge.UI.App">
+    <Application.Resources>
+        <converters:CharacterPortraitConverter x:Key="CharacterPortrait" />
+        <converters:CharacterInitialsConverter x:Key="CharacterInitials" />
+        <converters:CharacterDisplayNameConverter x:Key="CharacterDisplayName" />
+    </Application.Resources>
+
     <Application.DataTemplates>
         <local:ViewLocator/>
     </Application.DataTemplates>

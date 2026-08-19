@@ -127,7 +127,7 @@ public sealed class PlayerRepositoryTests : IDisposable
         using var command = _connection.CreateCommand();
         command.CommandText = "SELECT \"Version\" FROM \"__CacheSchema\" WHERE \"Id\" = 1;";
 
-        Assert.Equal(6L, command.ExecuteScalar());
+        Assert.Equal(7L, command.ExecuteScalar());
     }
 
     [Fact]
@@ -137,18 +137,19 @@ public sealed class PlayerRepositoryTests : IDisposable
 
         Assert.NotNull(_context.LastSchemaMigration);
         Assert.Equal(0, _context.LastSchemaMigration!.PreviousVersion);
-        Assert.Equal(6, _context.LastSchemaMigration.CurrentVersion);
+        Assert.Equal(7, _context.LastSchemaMigration.CurrentVersion);
         Assert.True(_context.LastSchemaMigration.Changed);
         Assert.Contains("2: mod stat snapshots", _context.LastSchemaMigration.AppliedMigrations);
         Assert.Contains("3: recommendation provenance", _context.LastSchemaMigration.AppliedMigrations);
         Assert.Contains("4: player sync timestamps", _context.LastSchemaMigration.AppliedMigrations);
         Assert.Contains("5: sync outcome history", _context.LastSchemaMigration.AppliedMigrations);
         Assert.Contains("6: account-scoped recommendations", _context.LastSchemaMigration.AppliedMigrations);
+        Assert.Contains("7: character portrait catalog mappings", _context.LastSchemaMigration.AppliedMigrations);
 
         _context.InitializeDatabase();
 
         Assert.NotNull(_context.LastSchemaMigration);
-        Assert.Equal(6, _context.LastSchemaMigration!.PreviousVersion);
+        Assert.Equal(7, _context.LastSchemaMigration!.PreviousVersion);
         Assert.False(_context.LastSchemaMigration.Changed);
     }
 
@@ -174,6 +175,7 @@ public sealed class PlayerRepositoryTests : IDisposable
         Assert.Contains("4: player sync timestamps", result.AppliedMigrations);
         Assert.Contains("5: sync outcome history", result.AppliedMigrations);
         Assert.Contains("6: account-scoped recommendations", result.AppliedMigrations);
+        Assert.Contains("7: character portrait catalog mappings", result.AppliedMigrations);
 
         using var tableCommand = connection.CreateCommand();
         tableCommand.CommandText =
@@ -204,7 +206,7 @@ public sealed class PlayerRepositoryTests : IDisposable
 
         var result = new CacheSchemaMigrator().Migrate(connection);
 
-        Assert.Equal(6, result.CurrentVersion);
+        Assert.Equal(7, result.CurrentVersion);
         using var scopeCommand = connection.CreateCommand();
         scopeCommand.CommandText =
             "SELECT \"PlayerAllyCode\" FROM \"SwgohGgRecommendations\" WHERE \"CharacterId\" = 'CHARACTER';";

@@ -23,6 +23,7 @@
 # Local scratch and generated tool data
 /.tmp/
 /.tmp-*/
+.build-*
 *.tmp
 *.temp
 
@@ -56,12 +57,18 @@ packages/
 *.log
 logs/
 cache-backups/
+**/SWGOHCommandBridge/
+**/diagnostics/
+**/comlink/
+**/settings.json
 
 # Local configuration and secrets
 .env
 .env.*
 *.local.json
 secrets.json
+*secret*.json
+*credentials*.json
 
 # Native and OS-generated files
 mono_crash.*

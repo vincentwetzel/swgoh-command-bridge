@@ -20,7 +20,7 @@ public sealed record CacheSchemaMigrationResult(
 /// </summary>
 public sealed class CacheSchemaMigrator
 {
-    public const int CurrentVersion = 6;
+    public const int CurrentVersion = 7;
 
     public CacheSchemaMigrationResult Migrate(DbConnection connection)
     {
@@ -100,6 +100,19 @@ public sealed class CacheSchemaMigrator
                 applied.Add("6: account-scoped recommendations");
             }
 
+            if (previousVersion < 7)
+            {
+                EnsureColumns(
+                    connection,
+                    transaction,
+                    "Characters",
+                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["PortraitAsset"] = "TEXT NOT NULL DEFAULT ''"
+                    });
+                applied.Add("7: character portrait catalog mappings");
+            }
+
             if (previousVersion < CurrentVersion)
             {
                 Execute(
@@ -142,6 +155,7 @@ public sealed class CacheSchemaMigrator
         Execute(connection, transaction,
             "CREATE TABLE IF NOT EXISTS \"Characters\" (" +
             "\"Id\" TEXT NOT NULL, \"PlayerAllyCode\" TEXT NOT NULL, \"Name\" TEXT NOT NULL, " +
+            "\"PortraitAsset\" TEXT NOT NULL DEFAULT '', " +
             "\"Level\" INTEGER NOT NULL, \"Stars\" INTEGER NOT NULL, \"GearLevel\" INTEGER NOT NULL, " +
             "\"GalacticPower\" INTEGER NOT NULL, \"Priority\" INTEGER NOT NULL, " +
             "CONSTRAINT \"PK_Characters\" PRIMARY KEY (\"Id\", \"PlayerAllyCode\"), " +

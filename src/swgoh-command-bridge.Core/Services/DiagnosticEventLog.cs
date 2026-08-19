@@ -2,13 +2,16 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
+using swgoh_command_bridge.Core.Models;
 
 namespace swgoh_command_bridge.Core.Services;
 
 /// <summary>
-/// Bounded, in-memory application event history intended for privacy-safe support diagnostics.
+/// Bounded, privacy-safe application event history retained in memory and on disk.
 /// </summary>
 public sealed class DiagnosticEventLog
 {
@@ -21,6 +24,8 @@ public sealed class DiagnosticEventLog
         RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
     private readonly object _gate = new();
     private readonly Queue<DiagnosticEvent> _events = new();
+
+    public string PersistentLogPath => Path.Combine(AppDataPaths.DiagnosticsDirectory, "application-events.log");
 
     public void Info(string operation, string message) => Add("INFO", operation, message);
 
@@ -56,11 +61,30 @@ public sealed class DiagnosticEventLog
         safeMessage = UrlPattern.Replace(safeMessage, "[url-redacted]");
         lock (_gate)
         {
-            _events.Enqueue(new DiagnosticEvent(DateTime.UtcNow, level, operation, safeMessage));
+            var entry = new DiagnosticEvent(DateTime.UtcNow, level, operation, safeMessage);
+            _events.Enqueue(entry);
             while (_events.Count > MaximumEvents)
             {
                 _events.Dequeue();
             }
+
+            TryAppendToDisk(entry);
+        }
+    }
+
+    private void TryAppendToDisk(DiagnosticEvent entry)
+    {
+        try
+        {
+            Directory.CreateDirectory(AppDataPaths.DiagnosticsDirectory);
+            File.AppendAllText(
+                PersistentLogPath,
+                entry + Environment.NewLine,
+                Encoding.UTF8);
+        }
+        catch
+        {
+            // Diagnostics must never interrupt the user flow if the filesystem is unavailable.
         }
     }
 }

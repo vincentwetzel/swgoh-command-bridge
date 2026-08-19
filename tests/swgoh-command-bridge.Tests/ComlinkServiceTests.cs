@@ -3,6 +3,7 @@
 using System;
 using System.Net;
 using System.Net.Http;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -115,6 +116,44 @@ public sealed class ComlinkServiceTests
         Assert.Equal("/player", path);
         Assert.Contains("123456789", body);
         Assert.Equal("application/json", mediaType);
+    }
+
+    [Fact]
+    public async Task FetchCharacterCatalogAsync_UsesNumericAggregateRequestSegment()
+    {
+        string? dataBody = null;
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            var path = request.RequestUri?.AbsolutePath;
+            if (path == "/data")
+            {
+                dataBody = request.Content?.ReadAsStringAsync().GetAwaiter().GetResult();
+            }
+
+            var response = path switch
+            {
+                "/metadata" => "{\"latestGamedataVersion\":\"1\",\"latestLocalizationBundleVersion\":\"2\"}",
+                "/data" => "{\"units\":[]}",
+                "/localization" => "{}",
+                _ => throw new InvalidOperationException($"Unexpected path: {path}")
+            };
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(response)
+            });
+        });
+        using var client = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("http://localhost:3000")
+        };
+        var service = new ComlinkService(client, NullLogger<ComlinkService>.Instance);
+
+        await service.FetchCharacterCatalogAsync();
+
+        Assert.NotNull(dataBody);
+        using var document = JsonDocument.Parse(dataBody!);
+        Assert.Equal(0, document.RootElement.GetProperty("payload").GetProperty("requestSegment").GetInt32());
+        Assert.False(document.RootElement.GetProperty("payload").TryGetProperty("items", out _));
     }
 
     private sealed class StubHttpMessageHandler : HttpMessageHandler

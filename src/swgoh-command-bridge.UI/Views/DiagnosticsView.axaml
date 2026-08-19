@@ -47,6 +47,7 @@
           <TextBlock Text="Local cache" FontSize="18" FontWeight="SemiBold"/>
           <TextBlock Text="{Binding CachePath, StringFormat='Cache path: {0}'}" TextWrapping="Wrap"/>
           <TextBlock Text="{Binding BackupDirectory, StringFormat='Backup directory: {0}'}" TextWrapping="Wrap"/>
+          <TextBlock Text="{Binding EventLogPath, StringFormat='Application event log: {0}'}" TextWrapping="Wrap"/>
           <TextBlock Text="{Binding PlayerCount, StringFormat='Players: {0}'}"/>
           <TextBlock Text="{Binding CharacterCount, StringFormat='Characters: {0}'}"/>
           <TextBlock Text="{Binding ModCount, StringFormat='Mods: {0}'}"/>

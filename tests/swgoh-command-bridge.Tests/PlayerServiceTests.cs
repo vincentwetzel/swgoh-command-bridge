@@ -286,6 +286,11 @@ namespace swgoh_command_bridge.Tests
         {
             public PlayerEntity? SavedPlayer { get; private set; }
 
+            public Task<PlayerEntity?> GetPlayerAsync(
+                string allyCode,
+                CancellationToken cancellationToken = default) =>
+                Task.FromResult<PlayerEntity?>(null);
+
             public Task SavePlayerAsync(PlayerEntity player, CancellationToken cancellationToken = default)
             {
                 SavedPlayer = player;

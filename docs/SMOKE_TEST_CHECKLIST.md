@@ -21,6 +21,8 @@ Run `dotnet build swgoh-command-bridge.sln` and `dotnet test swgoh-command-bridg
 - [ ] Confirm the latest sync result and warning count appear in the account dropdown and Diagnostics.
 - [ ] Confirm Diagnostics lists recent redacted sync attempts without full ally codes or account payloads.
 - [ ] Confirm characters, priorities, mods, equipped owners, and optimizer data refresh without restarting.
+- [ ] Confirm startup catalog refresh is best-effort: localized character names and bundled portraits appear when the catalog is available, while an unavailable Comlink leaves the embedded/previous catalog usable.
+- [ ] Import valid character/ship catalog JSON from Settings and confirm the character screens refresh; import invalid JSON and confirm the previous catalog remains active.
 - [ ] Close and reopen the app with Comlink unavailable; confirm cached data remains viewable offline.
 - [ ] With a stale cache and Comlink unavailable, confirm the background refresh fails visibly while the previous cached roster and mods remain usable.
 - [ ] Select a different cached account from the account dropdown and confirm Characters, Mods, Priorities, and Optimizer remain scoped to that account without a Comlink request.
