@@ -54,7 +54,7 @@ foreach (var division in divisions)
         },
         enums = false
     });
-    allyCodes.AddRange(FindAllyCodes(leaderboard));
+    allyCodes.AddRange(FindAllyCodesFromJson(leaderboard));
 }
 
 var selectedAllyCodes = allyCodes
@@ -152,7 +152,7 @@ static async Task<string> PostJsonAsync(
     return await response.Content.ReadAsStringAsync(cancellationToken);
 }
 
-static IEnumerable<string> FindAllyCodes(string rawJson)
+static IEnumerable<string> FindAllyCodesFromJson(string rawJson)
 {
     using var document = JsonDocument.Parse(rawJson);
     return FindAllyCodes(document.RootElement).Distinct(StringComparer.Ordinal).ToList();
