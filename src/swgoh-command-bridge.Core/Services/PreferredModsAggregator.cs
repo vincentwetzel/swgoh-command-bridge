@@ -16,7 +16,8 @@ public sealed record PreferredModsAggregationOptions(
     int HighConfidenceSampleSize = 150,
     int MediumConfidenceSampleSize = 75,
     double ViableAlternativeGap = 0.20,
-    double HighPercentile = 0.90);
+    double HighPercentile = 0.90,
+    int MaxSetupPatterns = 10);
 
 /// <summary>
 /// Aggregates equipped mod observations into the portable preferred-mod
@@ -73,7 +74,7 @@ public sealed class PreferredModsAggregator
             .Select(group => new
             {
                 Weight = group.Sum(item => item.Weight),
-                Pattern = ToSetupPattern(group.First().Character)
+                Pattern = ToSetupPattern(group)
             })
             .OrderByDescending(item => item.Weight)
             .ThenBy(item => string.Join("|", item.Pattern.Sets.Select(set => set.Set)))
@@ -81,7 +82,8 @@ public sealed class PreferredModsAggregator
         var setupWeight = setups.Sum(item => item.Weight);
         IReadOnlyList<PreferredSetupPattern> normalizedSetups = setupWeight <= 0
             ? Array.Empty<PreferredSetupPattern>()
-            : setups.Select(item => item.Pattern with { Share = item.Weight / setupWeight })
+            : setups.Take(options.MaxSetupPatterns)
+                .Select(item => item.Pattern with { Share = item.Weight / setupWeight })
                 .ToList()
                 .AsReadOnly();
         var qualityProfiles = AggregateQualityProfiles(observations, options.HighPercentile);
@@ -178,17 +180,25 @@ public sealed class PreferredModsAggregator
             .AsReadOnly();
     }
 
-    private static PreferredSetupPattern ToSetupPattern(Character character)
+    private static PreferredSetupPattern ToSetupPattern(IEnumerable<CharacterObservation> observations)
     {
-        var sets = character.EquippedMods.Values
+        var characters = observations.Select(observation => observation.Character).ToList();
+        var sets = characters[0].EquippedMods.Values
             .GroupBy(mod => mod.Set)
             .OrderBy(group => group.Key)
             .Select(group => new PreferredSetCount(group.Key, group.Count()))
             .ToList()
             .AsReadOnly();
-        var primaries = character.EquippedMods
-            .OrderBy(pair => pair.Key)
-            .Select(pair => new PreferredSetupSlotPrimary(pair.Key, pair.Value.Primary.Type))
+        var primaries = Enum.GetValues<ModSlot>()
+            .Select(slot => new PreferredSetupSlotPrimary(
+                slot,
+                characters
+                    .Select(character => character.EquippedMods[slot].Primary.Type)
+                    .GroupBy(primary => primary)
+                    .OrderByDescending(group => group.Count())
+                    .ThenBy(group => group.Key)
+                    .First()
+                    .Key))
             .ToList()
             .AsReadOnly();
         return new PreferredSetupPattern(0, sets, primaries);
@@ -196,9 +206,10 @@ public sealed class PreferredModsAggregator
 
     private static string BuildSetupKey(Character character) => string.Join(
         "|",
-        character.EquippedMods
-            .OrderBy(pair => pair.Key)
-            .Select(pair => $"{(int)pair.Key}:{(int)pair.Value.Set}:{(int)pair.Value.Primary.Type}"));
+        character.EquippedMods.Values
+            .GroupBy(mod => mod.Set)
+            .OrderBy(group => group.Key)
+            .Select(group => $"{(int)group.Key}:{group.Count()}"));
 
     private static PreferredConfidence ClassifyConfidence(
         int sampleSize,
@@ -255,7 +266,8 @@ public sealed class PreferredModsAggregator
     {
         if (options.MinimumSampleSize <= 0 || options.MediumConfidenceSampleSize < options.MinimumSampleSize ||
             options.HighConfidenceSampleSize < options.MediumConfidenceSampleSize ||
-            options.ViableAlternativeGap is < 0 or > 1 || options.HighPercentile is <= 0 or > 1)
+            options.ViableAlternativeGap is < 0 or > 1 || options.HighPercentile is <= 0 or > 1 ||
+            options.MaxSetupPatterns <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(options), "Preferred-mod aggregation options are invalid.");
         }

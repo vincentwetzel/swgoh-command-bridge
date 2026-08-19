@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "datasetVersion": "bootstrap-1",
-  "generatedAtUtc": "2026-08-19T00:00:00+00:00",
+  "datasetVersion": "2026-08-19.203757",
+  "generatedAtUtc": "2026-08-19T20:37:57.1818488+00:00",
   "datasetUrl": "https://raw.githubusercontent.com/vincentwetzel/swgoh-command-bridge/main/data/preferred-mods/dataset.json",
-  "datasetSha256": "9CF885F4D08101C39BA8CA22A72D593D05F4E21FA29E6B4BD70570376F883D97"
+  "datasetSha256": "345175418E471D051EB452AA22193A0FA84D35473719FFC3481A37D0CC439C7E"
 }
