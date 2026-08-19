@@ -17,7 +17,9 @@ public sealed record PreferredModsAggregationOptions(
     int MediumConfidenceSampleSize = 75,
     double ViableAlternativeGap = 0.20,
     double HighPercentile = 0.90,
-    int MaxSetupPatterns = 10);
+    int MaxSetupPatterns = 10,
+    double MinimumPreferredShare = 0.40,
+    double MinimumRelativeShareForViableAlternative = 0.75);
 
 /// <summary>
 /// Aggregates equipped mod observations into the portable preferred-mod
@@ -129,6 +131,7 @@ public sealed class PreferredModsAggregator
             .ToList();
         var sufficientData = values.Count >= options.MinimumSampleSize;
         var leaderShare = grouped[0].Weight / totalWeight;
+        var hasClearLeader = leaderShare >= options.MinimumPreferredShare;
         var primaryOptions = grouped
             .Select((item, index) => new PreferredPrimaryOption(
                 item.Primary,
@@ -139,7 +142,9 @@ public sealed class PreferredModsAggregator
                     item.Weight / totalWeight,
                     leaderShare,
                     sufficientData,
-                    options.ViableAlternativeGap)))
+                    hasClearLeader,
+                    options.ViableAlternativeGap,
+                    options.MinimumRelativeShareForViableAlternative)))
             .ToList()
             .AsReadOnly();
         return new PreferredSlotRecommendation(slot, primaryOptions);
@@ -227,9 +232,11 @@ public sealed class PreferredModsAggregator
         double share,
         double leaderShare,
         bool sufficientData,
-        double viableAlternativeGap)
+        bool hasClearLeader,
+        double viableAlternativeGap,
+        double minimumRelativeShareForViableAlternative)
     {
-        if (!sufficientData)
+        if (!sufficientData || !hasClearLeader)
         {
             return PreferredRecommendationStatus.Inconclusive;
         }
@@ -239,7 +246,8 @@ public sealed class PreferredModsAggregator
             return PreferredRecommendationStatus.Preferred;
         }
 
-        return leaderShare - share <= viableAlternativeGap
+        return leaderShare - share <= viableAlternativeGap &&
+               share >= leaderShare * minimumRelativeShareForViableAlternative
             ? PreferredRecommendationStatus.ViableAlternative
             : PreferredRecommendationStatus.LessCommon;
     }
@@ -267,7 +275,8 @@ public sealed class PreferredModsAggregator
         if (options.MinimumSampleSize <= 0 || options.MediumConfidenceSampleSize < options.MinimumSampleSize ||
             options.HighConfidenceSampleSize < options.MediumConfidenceSampleSize ||
             options.ViableAlternativeGap is < 0 or > 1 || options.HighPercentile is <= 0 or > 1 ||
-            options.MaxSetupPatterns <= 0)
+            options.MaxSetupPatterns <= 0 || options.MinimumPreferredShare is <= 0 or > 1 ||
+            options.MinimumRelativeShareForViableAlternative is <= 0 or > 1)
         {
             throw new ArgumentOutOfRangeException(nameof(options), "Preferred-mod aggregation options are invalid.");
         }

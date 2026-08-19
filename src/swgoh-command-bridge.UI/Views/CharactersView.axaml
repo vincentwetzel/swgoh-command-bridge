@@ -51,23 +51,31 @@
               IsVisible="{Binding HasCharacters}">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <StackPanel Spacing="12">
-            <StackPanel Orientation="Horizontal" Spacing="12">
-              <Border Width="64" Height="64" CornerRadius="32" Background="#26344A" ClipToBounds="True">
-                <Grid>
-                  <TextBlock Text="{Binding SelectedCharacter, Converter={StaticResource CharacterInitials}}"
-                             HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#9CC9FF"/>
-                  <Image Source="{Binding SelectedCharacter, Converter={StaticResource CharacterPortrait}}" Stretch="UniformToFill"/>
-                </Grid>
-              </Border>
-              <StackPanel VerticalAlignment="Center" Spacing="2">
-                <TextBlock Text="{Binding SelectedCharacter, Converter={StaticResource CharacterDisplayName}}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                <TextBlock Text="{Binding SelectedCharacter.Stars, StringFormat='Stars: {0}'}" Foreground="Gray"/>
-                <TextBlock Text="{Binding SelectedCharacter.GearLevel, StringFormat='Gear: {0}'}" Foreground="Gray"/>
-              </StackPanel>
-            </StackPanel>
-            <TextBlock Text="{Binding SelectedCharacter.Level, StringFormat='Level: {0}'}"/>
-            <TextBlock Text="{Binding SelectedCharacter.GalacticPower, StringFormat='Galactic Power: {0:N0}'}"/>
-            <TextBlock Text="{Binding SelectedCharacter.Priority, StringFormat='Priority: {0}'}"/>
+            <ContentControl Content="{Binding SelectedCharacter}">
+              <ContentControl.ContentTemplate>
+                <DataTemplate>
+                  <StackPanel Spacing="12">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                      <Border Width="64" Height="64" CornerRadius="32" Background="#26344A" ClipToBounds="True">
+                        <Grid>
+                          <TextBlock Text="{Binding Converter={StaticResource CharacterInitials}}"
+                                     HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#9CC9FF"/>
+                          <Image Source="{Binding Converter={StaticResource CharacterPortrait}}" Stretch="UniformToFill"/>
+                        </Grid>
+                      </Border>
+                      <StackPanel VerticalAlignment="Center" Spacing="2">
+                        <TextBlock Text="{Binding Converter={StaticResource CharacterDisplayName}}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding Stars, StringFormat='Stars: {0}'}" Foreground="Gray"/>
+                        <TextBlock Text="{Binding GearLevel, StringFormat='Gear: {0}'}" Foreground="Gray"/>
+                      </StackPanel>
+                    </StackPanel>
+                    <TextBlock Text="{Binding Level, StringFormat='Level: {0}'}"/>
+                    <TextBlock Text="{Binding GalacticPower, StringFormat='Galactic Power: {0:N0}'}"/>
+                    <TextBlock Text="{Binding Priority, StringFormat='Priority: {0}'}"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ContentControl.ContentTemplate>
+            </ContentControl>
             <TextBlock Text="Top GAC mod setup" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,0"/>
             <TextBlock Text="{Binding PreferredModDataText}" Foreground="Gray" TextWrapping="Wrap"/>
             <ItemsControl ItemsSource="{Binding PreferredSetups}" IsVisible="{Binding HasPreferredSetups}">

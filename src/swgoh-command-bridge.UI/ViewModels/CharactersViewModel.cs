@@ -505,10 +505,14 @@ namespace swgoh_command_bridge.UI.ViewModels
 
             foreach (var slot in recommendation.Slots.OrderBy(slot => slot.Slot))
             {
-                var displayOptions = slot.Options
-                    .Where(option => option.Status is PreferredRecommendationStatus.Preferred or
-                        PreferredRecommendationStatus.ViableAlternative)
-                    .ToList();
+                var preferred = slot.Options.FirstOrDefault(option =>
+                    option.Status == PreferredRecommendationStatus.Preferred);
+                var displayOptions = preferred == null
+                    ? slot.Options.Take(3).ToList()
+                    : slot.Options
+                        .Where(option => option.Status is PreferredRecommendationStatus.Preferred or
+                            PreferredRecommendationStatus.ViableAlternative)
+                        .ToList();
                 if (displayOptions.Count == 0 && slot.Options.FirstOrDefault() is { } fallback)
                 {
                     displayOptions.Add(fallback);
@@ -519,10 +523,13 @@ namespace swgoh_command_bridge.UI.ViewModels
                 PreferredPrimaryAdvice.Add($"{slot.Slot}: {options}");
 
                 var currentMod = CurrentMods.FirstOrDefault(mod => mod.Slot == (int)slot.Slot);
-                var preferred = slot.Options.FirstOrDefault(option =>
-                    option.Status == PreferredRecommendationStatus.Preferred) ?? slot.Options.FirstOrDefault();
                 if (preferred == null)
                 {
+                    if (currentMod == null)
+                    {
+                        CurrentModGuidance.Add($"{slot.Slot}: no clear primary consensus; use one of the listed options.");
+                    }
+
                     continue;
                 }
 

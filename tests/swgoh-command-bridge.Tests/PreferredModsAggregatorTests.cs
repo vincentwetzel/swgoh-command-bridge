@@ -60,6 +60,32 @@ public sealed class PreferredModsAggregatorTests
     }
 
     [Fact]
+    public void Aggregate_ClassifiesDispersedPrimaryUsageAsInconclusive()
+    {
+        var primaries = new[]
+        {
+            StatType.ProtectionPercent, StatType.ProtectionPercent, StatType.ProtectionPercent,
+            StatType.HealthPercent, StatType.HealthPercent,
+            StatType.DefensePercent, StatType.DefensePercent,
+            StatType.OffensePercent, StatType.OffensePercent,
+            StatType.CriticalDamage
+        };
+        var observations = primaries.Select((primary, index) => new PreferredModsObservation(
+            CreateProfile($"{index:D9}", primary, 10 + index)));
+        var source = new PreferredModsSource("GAC", new[] { "Kyber Division 1" }, 10, 10);
+
+        var result = new PreferredModsAggregator().Aggregate(
+            observations,
+            "test-dispersed",
+            source,
+            new PreferredModsAggregationOptions(MinimumSampleSize: 10),
+            new DateTimeOffset(2026, 8, 19, 0, 0, 0, TimeSpan.Zero));
+
+        var triangle = Assert.Single(Assert.Single(result.Characters).Slots.Where(slot => slot.Slot == ModSlot.Triangle));
+        Assert.All(triangle.Options, option => Assert.Equal(PreferredRecommendationStatus.Inconclusive, option.Status));
+    }
+
+    [Fact]
     public void Aggregate_LimitsPublishedSetupPatterns()
     {
         var observations = Enumerable.Range(0, 20)
