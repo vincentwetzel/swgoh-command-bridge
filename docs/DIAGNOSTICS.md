@@ -6,7 +6,7 @@ It reports:
 
 - the local SQLite cache and backup locations;
 - the settings file location;
-- the verified character-catalog location and catalog refresh/import status;
+- the verified character-catalog location and catalog refresh status;
 - the Comlink authority only, without URL credentials or paths;
 - a redacted ally code showing only the last four digits;
 - aggregate counts for players, characters, mods, and recommendations; and

@@ -130,9 +130,7 @@ public partial class MainWindowViewModel : ViewModelBase
             RestoreCacheAsync,
             RefreshAfterSettingsImportAsync,
             composition.EventLog,
-            ThemeManager.Apply,
-            composition.CharacterCatalogService,
-            RefreshAfterCatalogImportAsync);
+            ThemeManager.Apply);
         _currentView = this;
     }
 

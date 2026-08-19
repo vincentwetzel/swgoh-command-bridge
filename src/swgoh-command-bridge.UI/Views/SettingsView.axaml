@@ -37,14 +37,6 @@
         </StackPanel>
         <TextBlock Text="{Binding SettingsTransferStatusText}" TextWrapping="Wrap" Foreground="Gray"/>
         <Separator/>
-        <TextBlock Text="Character catalog update" FontSize="18" FontWeight="SemiBold"/>
-        <TextBlock Text="Download the current swgoh-characters.json and swgoh-ships.json files in your browser, enter their paths below, then import. The app validates the complete ID/name/image catalog before activating it and refreshes cached roster names immediately." TextWrapping="Wrap" Foreground="Gray"/>
-        <TextBox Text="{Binding CharacterCatalogPath}" Watermark="Full path to swgoh-characters.json"/>
-        <TextBox Text="{Binding ShipCatalogPath}" Watermark="Full path to swgoh-ships.json"/>
-        <Button Content="Import catalog snapshots" Command="{Binding ImportCatalogCommand}"/>
-        <TextBlock Text="{Binding CatalogUpdateStatusText}" TextWrapping="Wrap" Foreground="Gray"/>
-        <TextBlock Text="New portrait images must also exist in the installed portrait asset pack; otherwise the character still receives its canonical name and uses the initials fallback." TextWrapping="Wrap" Foreground="Gray"/>
-        <Separator/>
         <TextBlock Text="Cache backup" FontSize="18" FontWeight="SemiBold"/>
         <TextBlock Text="Create a portable SQLite backup before resetting or troubleshooting the cache." TextWrapping="Wrap" Foreground="Gray"/>
         <Button Content="Back up local cache" Command="{Binding BackupCacheCommand}"/>

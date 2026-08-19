@@ -29,7 +29,7 @@ This document records the implementation work verified during the roadmap audit.
 - Character, priority, mod, optimizer, recommendation, and scraper data are scoped to the active ally code.
 - Cached accounts can be selected, searched, switched offline, and removed with confirmation.
 - Startup can refresh one stale active account after cached data loads without blocking offline access to the previous cache.
-- Character catalogs use embedded verified JSON, best-effort Comlink refresh, localized names, portrait assets, audit summaries, atomic persistence, and validated Settings import with rollback to the prior snapshot.
+- Character catalogs use embedded verified JSON, best-effort Comlink refresh, localized names, portrait assets, audit summaries, and atomic persistence with rollback to the prior snapshot.
 - Repository replacement, upsert, account removal, and failed-refresh rollback are transactional.
 - Representative Comlink fixtures cover empty, malformed, duplicate, partial, nested, and inventory-heavy responses.
 
@@ -66,7 +66,7 @@ This document records the implementation work verified during the roadmap audit.
 - View-model, navigation, command, validation, no-data, backup/restore failure, threshold failure, and diagnostics retry coverage exists.
 - Migration coverage includes schema versions 0–5, repair, rollback, idempotence, unsupported versions, backup, and restore using isolated databases.
 - Diagnostics capture bounded privacy-safe events and redact ally codes/account payloads.
-- Character catalog parser, refresh, import, fallback, and UI portrait/name behavior are covered by the current source and tests.
+- Character catalog parser, refresh, fallback, and UI portrait/name behavior are covered by the current source and tests.
 - Crash-safe cache recovery, guarded reset, verified restore rollback, and offline behavior are implemented.
 - README, architecture, state-flow, Comlink setup, diagnostics, file manifest, release guide, and coding standards reflect the shipped behavior and platform support boundary.
 - The read-only boundary is documented in the README, specification, and smoke checklist.
