@@ -3,11 +3,13 @@
 ## Background Agents & Services
 This section describes any automated agents, background services, or long-running processes that are part of the application ecosystem.
 
-*There are currently no scheduled long-running in-app agents defined for this project.*
+*There are currently no scheduled long-running in-app agents defined for this project.* The only scheduled process is the repository's GitHub Actions preferred-mod publisher; it runs outside the desktop app.
 
 `SwgohGgScraperService` is a Core service that can run a user-triggered, incremental, sequential scrape of cached roster characters. It reports `ScrapeProgress`, supports cooperative cancellation, skips fresh cached recommendations, records per-character failures, and uses an explicit `ScrapeRetryPolicy` for bounded attempts, exponential backoff, server retry timing, and inter-request pacing. It is not hosted as a scheduled background worker. The desktop UI may perform one stale-active-account refresh after startup cache loading; this remains lifecycle-scoped, cancellable, and visible to the user rather than an autonomous worker.
 
 The character catalog has a separate best-effort startup refresh. `BundledCharacterCatalogService` is the offline fallback, while `ComlinkCatalogRefreshService` validates and atomically stores a newer snapshot. This refresh must not block cached account access or replace a verified catalog with incomplete data.
+
+Preferred-mod data has a separate best-effort startup refresh. `PreferredModsDatasetService` validates schema and hash before atomically replacing a global aggregate snapshot and preserves the embedded or prior verified dataset when unavailable. The GitHub Actions publisher may query a hosted Comlink endpoint but publishes only aggregate character/mod distributions, never raw player payloads, ally codes, or credentials.
 
 On Windows x64, `ComlinkRuntimeManager` may own a hidden child process for the duration of the desktop session. This is a lifecycle-managed local dependency, not an autonomous agent: it starts only when the configured local endpoint is unavailable and is stopped during composition disposal. Linux and macOS currently require an externally managed Comlink service.
 

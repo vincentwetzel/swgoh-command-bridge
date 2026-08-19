@@ -65,6 +65,27 @@ namespace swgoh_command_bridge.Tests
         }
 
         [Fact]
+        public async Task GetPlayerProfileAsync_ParsesRawComlinkModDefinitionAndStats()
+        {
+            var service = new PlayerService(
+                new FakeComlinkService(ComlinkPayloadFixtures.RawRosterModShape),
+                new FakePlayerRepository(),
+                NullLogger<PlayerService>.Instance);
+
+            var result = await service.GetPlayerProfileAsync("123456789");
+
+            var mod = Assert.Single(result.Mods);
+            Assert.Equal(ModSet.CriticalDamage, mod.Set);
+            Assert.Equal(ModSlot.Arrow, mod.Slot);
+            Assert.Equal(6, mod.Pips);
+            Assert.Equal(StatType.Speed, mod.Primary.Type);
+            Assert.Equal(32, mod.Primary.Value);
+            Assert.Equal(2, mod.Secondaries.Count);
+            Assert.Equal(StatType.Potency, mod.Secondaries[1].Type);
+            Assert.Equal(3, mod.Secondaries[0].RollCount);
+        }
+
+        [Fact]
         public async Task SyncPlayerProfileAsync_WhenInvoked_SavesToRepositoryCorrectly()
         {
             // Arrange

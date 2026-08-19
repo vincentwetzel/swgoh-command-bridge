@@ -1,6 +1,6 @@
 # Roadmap History — Completed Implementation Audit
 
-Audit date: 2026-08-18
+Audit date: 2026-08-19
 
 This document records the implementation work verified during the roadmap audit. It is intentionally separate from [`TODO.md`](../TODO.md), which contains only remaining work.
 
@@ -59,6 +59,13 @@ This document records the implementation work verified during the roadmap audit.
 - Roster planning supports priority-first and bounded joint optimization, reservation/conflict reporting, cancellation, and large-roster fallback.
 - Optimizer UI exposes provenance, stale/missing states, explanations, alternatives, swap candidates, projected persisted-stat impact, and conflict summaries.
 - Fixtures and tests cover competing mods, equipped mods, missing slots, duplicates, set constraints, reserved inventory, invalid six-slot distributions, and roster conflicts.
+
+## Preferred GAC mod data
+
+- A global preferred-mod dataset models high-ranking GAC equipped-mod trends by character, including complete set patterns, slot-primary distributions, viable alternatives, confidence, and aggregate speed-quality profiles.
+- The desktop app embeds a bootstrap baseline, caches a validated last-known-good dataset offline, and silently refreshes it from a GitHub-hosted manifest without requiring the user's Comlink endpoint.
+- Characters shows prescriptive set/primary guidance for equipped and empty slots while remaining permissive for close top-player usage splits.
+- A GitHub Actions publisher queries a configured hosted Comlink instance, aggregates a few hundred GAC accounts, validates the result, and commits only aggregate data and its manifest; it does not publish raw profiles or ally codes.
 
 ## Hardening and documentation
 

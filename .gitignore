@@ -26,6 +26,10 @@
 .build-*
 *.tmp
 *.temp
+src/swgoh-command-bridge.UI/.tmp*
+src/swgoh-command-bridge.Core/.tmp*
+.codex*/
+**/.codex*/
 
 # Visual Studio, VS Code, and Rider state
 .vs/

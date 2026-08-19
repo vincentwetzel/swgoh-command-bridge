@@ -11,6 +11,8 @@ This unreleased work is not a packaged release. The product remains read-only. W
 
 ### Added
 - Added an embedded character/ship catalog with localized-name and portrait resolution, best-effort Comlink catalog refresh, atomic catalog persistence, audit summaries, and bundled portrait/initials UI fallbacks.
+- Added aggregated preferred GAC mod guidance with complete set patterns, slot-primary recommendations, viable alternatives for close usage splits, an embedded/offline-safe cache, and silent GitHub-hosted refreshes.
+- Added a scheduled/manual GitHub Actions publisher that samples high-ranking GAC accounts through a repository-secret Comlink URL and commits only validated aggregate preferred-mod data plus a manifest.
 - Added a top-right account switcher for adding, searching, switching, refreshing, retrying, and removing cached accounts, plus one non-blocking stale-active-account refresh after startup cache loading.
 - Added bounded per-account sync history for completed, failed, cancelled, and interrupted attempts, including privacy-safe status, counts, warning totals, and failure summaries in Diagnostics and Home.
 - Added a Windows x64 Comlink runtime manager that downloads pinned compatible releases, verifies supplied SHA-256 digests, starts a hidden local process, reports startup progress, reuses installed binaries, and stops owned processes on application shutdown.

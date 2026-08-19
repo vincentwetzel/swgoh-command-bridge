@@ -7,6 +7,7 @@ It reports:
 - the local SQLite cache and backup locations;
 - the settings file location;
 - the verified character-catalog location and catalog refresh status;
+- preferred-mod dataset version, source date, aggregate account/character counts, and last update result, without raw sampled profiles or ally codes;
 - the Comlink authority only, without URL credentials or paths;
 - a redacted ally code showing only the last four digits;
 - aggregate counts for players, characters, mods, and recommendations; and
@@ -21,5 +22,7 @@ Diagnostics is observational. It does not send account payloads, repair the cach
 Comlink startup failures are reported through the shell startup status and bounded application events. Account-sync failures, including a stale-cache refresh started during startup, are reported in the account switcher and bounded sync history. Catalog refresh failures are best-effort and leave the last verified embedded or persisted catalog active. Diagnostics identifies the configured authority but does not expose downloaded executable contents, process output, catalog payloads, or account payloads. On Windows x64, a managed runtime is stored under the documented application-data directory; on other platforms, the configured service is external to this application.
 
 Diagnostics shows the latest sync outcome plus the ten most recent account attempts. Ally codes are redacted in the display and export; statuses, counts, parser-warning totals, cancellation/interruption state, and privacy-safe failure summaries are retained for support.
+
+The initial bundled preferred-mod dataset is intentionally a bootstrap baseline. If it remains empty, confirm that the repository workflow has run successfully after `COMLINK_BASE_URL` was configured, then restart the app or wait for its next silent startup check. Offline use keeps the last verified dataset. An invalid manifest or download is rejected without replacing that copy.
 
 For a support report, include the report's timestamp, operating system, .NET runtime, and the operation that failed. Do not attach `cache.db`, a backup database, `settings.json`, or Comlink credentials unless they have been separately sanitized.

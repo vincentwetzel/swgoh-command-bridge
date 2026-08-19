@@ -45,12 +45,18 @@ public enum StatType
     Tenacity = 18,
     HealthSteal = 19,
     Protection = 28,
+    Offense = 41,
+    Defense = 42,
+    CriticalChance = 45,
     Accuracy = 48,
     CriticalAvoidance = 49,
+    CriticalChancePercent = 53,
+    CriticalAvoidancePercent = 54,
     
     // Percentage variants
     HealthPercent = 55,
     ProtectionPercent = 56,
     OffensePercent = 57,
-    DefensePercent = 58
+    DefensePercent = 58,
+    SpeedPercent = 59
 }

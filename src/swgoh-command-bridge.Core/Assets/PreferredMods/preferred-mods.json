@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "bundled-baseline",
+  "generatedAtUtc": "2026-08-19T00:00:00+00:00",
+  "source": {
+    "gameMode": "GAC",
+    "seasons": [],
+    "accountCount": 0,
+    "observationCount": 0
+  },
+  "characters": []
+}

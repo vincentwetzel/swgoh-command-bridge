@@ -45,6 +45,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private bool _isAddingAccount;
     private Task? _activeAccountRefreshTask;
     private Task? _catalogRefreshTask;
+    private Task? _preferredModsRefreshTask;
     private OperationState<bool> _startupState = OperationState<bool>.ToSuccess(true);
     private OperationState<PlayerProfile> _syncState = OperationState<PlayerProfile>.ToEmpty();
 
@@ -88,7 +89,8 @@ public partial class MainWindowViewModel : ViewModelBase
             _context,
             () => AllyCode,
             composition.CharacterCatalogService,
-            composition.EventLog);
+            composition.EventLog,
+            composition.PreferredModsService);
         CharacterPrioritiesViewModel = new CharacterPrioritiesViewModel(_context, () => AllyCode);
         ModThresholdsViewModel = new ModThresholdsViewModel(_settingsService);
         ModsViewModel = new ModsViewModel(
@@ -368,6 +370,7 @@ public partial class MainWindowViewModel : ViewModelBase
         await LoadCachedAccountsAsync();
         await LoadFeatureDataAsync();
         StartCatalogRefresh();
+        StartPreferredModsRefresh();
         StartStaleActiveAccountRefresh();
     }
 
@@ -610,9 +613,11 @@ public partial class MainWindowViewModel : ViewModelBase
 
         try
         {
+            _composition.EventLog.Info("account-sync", "Ensuring Comlink is ready for account sync.");
             await _composition.EnsureComlinkReadyAsync(
                 new Progress<ComlinkRuntimeProgress>(update => SyncProgressText = update.Message),
                 _syncCancellation.Token);
+            _composition.EventLog.Info("account-sync", "Comlink is ready; requesting the player profile.");
             var profile = await _playerService.SyncPlayerProfileAsync(
                 allyCode,
                 _syncCancellation.Token,
@@ -644,13 +649,20 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            _composition.EventLog.Error("account-sync", ComlinkErrorFormatter.Describe(ex, "Account sync"));
+            var failure = ComlinkErrorFormatter.Describe(ex, "Account sync");
+            var detail = ex.GetType().Name + ": " + ex.Message;
+            if (ex.InnerException != null)
+            {
+                detail += " Inner=" + ex.InnerException.GetType().Name + ": " + ex.InnerException.Message;
+            }
+
+            _composition.EventLog.Error("account-sync", failure + " [" + detail + "]");
             SyncState = OperationState<PlayerProfile>.ToError(
-                $"{ComlinkErrorFormatter.Describe(ex, "Account sync")}. Existing cached data was preserved.");
+                $"{failure}. Existing cached data was preserved.");
             SyncProgressText = "Account sync failed; existing cached data was preserved.";
             SyncSummaryText =
                 $"Sync failed for {allyCode}; existing cached data was preserved. " +
-                ComlinkErrorFormatter.Describe(ex, "Account sync");
+                failure;
         }
         finally
         {
@@ -701,7 +713,10 @@ public partial class MainWindowViewModel : ViewModelBase
                 }
             });
 
-            await _composition.EnsureComlinkReadyAsync(progress).ConfigureAwait(true);
+            var result = await _composition.EnsureComlinkReadyAsync(progress).ConfigureAwait(true);
+            _composition.EventLog.Info(
+                "startup-comlink",
+                $"Account service ready at {result.BaseAddress} (managed locally: {result.ManagedLocally}).");
             StartupState = OperationState<bool>.ToSuccess(true);
         }
         catch (Exception ex)
@@ -794,11 +809,24 @@ public partial class MainWindowViewModel : ViewModelBase
         var accountName = string.IsNullOrWhiteSpace(account?.Name) ? "Active account" : account.Name;
         ActiveAccountSummaryText =
             $"{accountName} ({activeAllyCode}) — {ActiveCharacterCount} character(s), {ActiveModCount} mod(s) cached locally.";
-        IsActiveCacheStale = account?.LastSyncedUtc is not DateTime lastSynced ||
+        var isOlderThan24Hours = account?.LastSyncedUtc is not DateTime lastSynced ||
             lastSynced < DateTime.UtcNow.Subtract(TimeSpan.FromHours(24));
+        var hasUnreadableModCache = ActiveModCount > 0 && await _context.Mods
+            .AsNoTracking()
+            .AnyAsync(mod =>
+                mod.PlayerAllyCode == activeAllyCode &&
+                (mod.Set <= 0 ||
+                 mod.Slot <= 0 ||
+                 mod.PrimaryStatType == nameof(StatType.None) ||
+                 string.IsNullOrWhiteSpace(mod.SecondaryStatsJson) ||
+                 mod.SecondaryStatsJson == "[]"))
+            .ConfigureAwait(true);
+        IsActiveCacheStale = isOlderThan24Hours || hasUnreadableModCache;
         ActiveCacheFreshnessText = account?.LastSyncedUtc is DateTime synced
             ? $"Last synced {FormatAge(DateTime.UtcNow - synced)} ago ({synced.ToLocalTime():yyyy-MM-dd HH:mm})." +
-              (IsActiveCacheStale ? " This cache is over 24 hours old." : string.Empty)
+              (hasUnreadableModCache
+                  ? " This cache contains unreadable mod data and will be refreshed."
+                  : IsActiveCacheStale ? " This cache is over 24 hours old." : string.Empty)
             : "Last sync time is unavailable for this legacy cache.";
         var latestSync = await _context.SyncHistory
             .AsNoTracking()
@@ -811,7 +839,9 @@ public partial class MainWindowViewModel : ViewModelBase
             ? "No sync attempt is recorded for the active account."
             : FormatSyncOutcome(latestSync);
         NextStepText = HasActiveCache && IsActiveCacheStale
-            ? "The cache is over 24 hours old. Sync again when Comlink is available, or continue inspecting the cached data offline."
+            ? hasUnreadableModCache
+                ? "The cached mod data is unreadable. It will be refreshed from Comlink when available."
+                : "The cache is over 24 hours old. Sync again when Comlink is available, or continue inspecting the cached data offline."
             : HasActiveCache
                 ? "Choose a screen below to inspect the cached account, or sync again to refresh it from Comlink."
             : "This ally code has no cached roster yet. Choose Sync account to fetch it from Comlink.";
@@ -1068,6 +1098,35 @@ public partial class MainWindowViewModel : ViewModelBase
             _composition.EventLog.Warning(
                 "character-catalog-refresh",
                 $"Background catalog refresh skipped: {ComlinkErrorFormatter.Describe(ex, "Catalog refresh")}");
+        }
+    }
+
+    private void StartPreferredModsRefresh()
+    {
+        if (_preferredModsRefreshTask != null)
+        {
+            return;
+        }
+
+        _preferredModsRefreshTask = RefreshPreferredModsInBackgroundAsync();
+    }
+
+    private async Task RefreshPreferredModsInBackgroundAsync()
+    {
+        try
+        {
+            var result = await _composition.PreferredModsService
+                .RefreshIfDueAsync()
+                .ConfigureAwait(true);
+            _composition.EventLog.Info("preferred-mods-refresh", result.Message);
+        }
+        catch (Exception ex)
+        {
+            // The bundled or last verified dataset remains available. This is
+            // intentionally invisible during startup unless Diagnostics is opened.
+            _composition.EventLog.Warning(
+                "preferred-mods-refresh",
+                $"Background preferred-mod refresh skipped: {ex.Message}");
         }
     }
 

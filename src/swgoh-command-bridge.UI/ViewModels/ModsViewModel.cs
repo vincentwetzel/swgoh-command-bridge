@@ -91,12 +91,18 @@ public class ModsViewModel : StateViewModelBase<IReadOnlyList<GameModEntity>>
             "Tenacity",
             "HealthSteal",
             "Protection",
+            "Offense",
+            "Defense",
+            "CriticalChance",
             "Accuracy",
             "CriticalAvoidance",
+            "CriticalChancePercent",
+            "CriticalAvoidancePercent",
             "HealthPercent",
             "ProtectionPercent",
             "OffensePercent",
-            "DefensePercent"
+            "DefensePercent",
+            "SpeedPercent"
         };
 
     public IReadOnlyList<string> SortOptions { get; } =

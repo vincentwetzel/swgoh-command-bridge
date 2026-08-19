@@ -25,6 +25,8 @@ public sealed class ApplicationComposition : IDisposable
         HttpClient comlinkClient,
         IComlinkRuntimeManager comlinkRuntimeManager,
         IComlinkService comlinkService,
+        HttpClient preferredModsClient,
+        IPreferredModsDatasetService preferredModsService,
         ICharacterCatalogSnapshotService characterCatalogService,
         ComlinkCatalogRefreshService catalogRefreshService,
         IPlayerService playerService,
@@ -41,6 +43,8 @@ public sealed class ApplicationComposition : IDisposable
         ComlinkClient = comlinkClient;
         ComlinkRuntimeManager = comlinkRuntimeManager;
         ComlinkService = comlinkService;
+        PreferredModsClient = preferredModsClient;
+        PreferredModsService = preferredModsService;
         CharacterCatalogService = characterCatalogService;
         CatalogRefreshService = catalogRefreshService;
         PlayerService = playerService;
@@ -62,6 +66,10 @@ public sealed class ApplicationComposition : IDisposable
     public IComlinkRuntimeManager ComlinkRuntimeManager { get; }
 
     public IComlinkService ComlinkService { get; }
+
+    public HttpClient PreferredModsClient { get; }
+
+    public IPreferredModsDatasetService PreferredModsService { get; }
 
     public ICharacterCatalogSnapshotService CharacterCatalogService { get; }
 
@@ -105,6 +113,9 @@ public sealed class ApplicationComposition : IDisposable
         var comlinkService = new ComlinkService(
             comlinkClient,
             new DiagnosticLogger<ComlinkService>(eventLog));
+        var preferredModsClient = new HttpClient();
+        preferredModsClient.DefaultRequestHeaders.UserAgent.ParseAdd("SWGOHCommandBridge/1.0");
+        var preferredModsService = new PreferredModsDatasetService(preferredModsClient);
         var characterCatalogService = new BundledCharacterCatalogService();
         var catalogRefreshService = new ComlinkCatalogRefreshService(
             comlinkService,
@@ -137,6 +148,8 @@ public sealed class ApplicationComposition : IDisposable
             comlinkClient,
             comlinkRuntimeManager,
             comlinkService,
+            preferredModsClient,
+            preferredModsService,
             characterCatalogService,
             catalogRefreshService,
             playerService,
@@ -158,6 +171,7 @@ public sealed class ApplicationComposition : IDisposable
         _disposed = true;
         ComlinkRuntimeManager.Dispose();
         ComlinkClient.Dispose();
+        PreferredModsClient.Dispose();
         if (_ownsDatabase)
         {
             Database.Dispose();
@@ -173,7 +187,14 @@ public sealed class ApplicationComposition : IDisposable
             requestedAddress,
             progress,
             cancellationToken).ConfigureAwait(false);
-        ComlinkClient.BaseAddress = result.BaseAddress;
+        // HttpClient forbids changing BaseAddress after its first request. The
+        // startup sync and background catalog refresh can both ensure Comlink,
+        // so avoid reassigning the same address on the second call.
+        if (ComlinkClient.BaseAddress != result.BaseAddress)
+        {
+            ComlinkClient.BaseAddress = result.BaseAddress;
+        }
+
         return result;
     }
 

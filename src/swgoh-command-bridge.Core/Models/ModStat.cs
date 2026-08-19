@@ -15,8 +15,12 @@ public record ModStat(
                               or StatType.ProtectionPercent 
                               or StatType.OffensePercent 
                               or StatType.DefensePercent 
+                              or StatType.CriticalChance
+                              or StatType.CriticalChancePercent
                               or StatType.Accuracy 
-                              or StatType.CriticalAvoidance 
+                              or StatType.CriticalAvoidance
+                              or StatType.CriticalAvoidancePercent
+                              or StatType.SpeedPercent
                               or StatType.CriticalDamage 
                               or StatType.Potency 
                               or StatType.Tenacity 

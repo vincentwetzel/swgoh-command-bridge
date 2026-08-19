@@ -191,9 +191,18 @@ This document lists the current source and documentation files in the repository
         `-- swgoh-command-bridge.Tests.csproj
 ```
 
+## Preferred-mod additions
+
+- `.github/workflows/refresh-preferred-mods.yml` publishes aggregate preferred-mod data from a repository-secret Comlink endpoint.
+- `data/preferred-mods/dataset.json` and `manifest.json` are the published aggregate dataset and its validation metadata.
+- `src/swgoh-command-bridge.Core/Assets/PreferredMods/preferred-mods.json` is the embedded offline bootstrap baseline.
+- `PreferredModsDataset.cs`, `PreferredModsDatasetService.cs`, and `PreferredModsAggregator.cs` implement the model, offline cache/update path, and aggregation logic.
+- `tools/swgoh-command-bridge.PreferredModsPublisher/` is the standalone publisher, and its focused tests live beside the existing test project.
+
 ## Asset and generated-file boundaries
 
 - Core embeds the verified fallback character and ship catalogs from `src/swgoh-command-bridge.Core/Assets/CharacterCatalog/`.
+- Core embeds a deliberately empty preferred-mod bootstrap baseline from `src/swgoh-command-bridge.Core/Assets/PreferredMods/`; `data/preferred-mods/` holds only the GitHub-published aggregate dataset and manifest.
 - The UI packages Avalonia resources and links portrait PNGs from the sibling `swgoh-command-bridge-assets` workspace when available.
 - Runtime catalog snapshots, SQLite cache, settings, backups, diagnostics, and managed Windows Comlink binaries live below the platform-local `SWGOHCommandBridge` application-data directory; they are not repository files.
-- Build, test, publish, and temporary folders are not source inputs and should not be added to this manifest.
+- Build, test, publish, temporary, and Codex-generated folders are not source inputs and should not be added to this manifest.

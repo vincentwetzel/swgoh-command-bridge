@@ -14,36 +14,106 @@
     <TextBlock Grid.Row="2" Margin="0,0,0,8" Text="{Binding CatalogStatusText}" IsVisible="{Binding HasCatalogStatus}"
                Foreground="Gray" TextWrapping="Wrap"/>
 
-    <Grid Grid.Row="3">
-      <TextBlock Text="Loading characters..." IsVisible="{Binding IsLoading}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-      <TextBlock Text="No cached characters. Sync an account from Home to begin." IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"/>
-      <StackPanel IsVisible="{Binding HasError}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" MaxWidth="360">
-        <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" Foreground="#FF8A80"/>
-        <Button Content="Retry" Command="{Binding RefreshCommand}" HorizontalAlignment="Center"/>
-      </StackPanel>
+    <Grid Grid.Row="3" ColumnDefinitions="*, 380">
+      <Grid>
+        <TextBlock Text="Loading characters..." IsVisible="{Binding IsLoading}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        <TextBlock Text="No cached characters. Sync an account from Home to begin." IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"/>
+        <StackPanel IsVisible="{Binding HasError}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" MaxWidth="360">
+          <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" Foreground="#FF8A80"/>
+          <Button Content="Retry" Command="{Binding RefreshCommand}" HorizontalAlignment="Center"/>
+        </StackPanel>
 
-      <ListBox ItemsSource="{Binding Characters}" IsVisible="{Binding HasCharacters}">
-        <ListBox.ItemTemplate>
-          <DataTemplate>
-            <Border BorderBrush="#444444" BorderThickness="0,0,0,1" Padding="8">
-              <Grid ColumnDefinitions="64,*, Auto, Auto, Auto">
-                <Border Width="56" Height="56" CornerRadius="28" Background="#26344A" ClipToBounds="True">
-                  <Grid>
-                    <TextBlock Text="{Binding Converter={StaticResource CharacterInitials}}"
-                               HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#9CC9FF"/>
-                    <Image Source="{Binding Converter={StaticResource CharacterPortrait}}" Stretch="UniformToFill"/>
-                  </Grid>
-                </Border>
-                <TextBlock Grid.Column="1" Margin="14,0,0,0" Text="{Binding Converter={StaticResource CharacterDisplayName}}"
-                           FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                <TextBlock Grid.Column="2" Text="{Binding Stars, StringFormat='Stars: {0}'}" VerticalAlignment="Center" Foreground="Gray"/>
-                <TextBlock Grid.Column="3" Text="{Binding GearLevel, StringFormat='Gear: {0}'}" VerticalAlignment="Center" Foreground="Gray"/>
-                <TextBlock Grid.Column="4" Text="{Binding Priority, StringFormat='Priority: {0}'}" VerticalAlignment="Center"/>
-              </Grid>
-            </Border>
-          </DataTemplate>
-        </ListBox.ItemTemplate>
-      </ListBox>
+        <ListBox ItemsSource="{Binding Characters}" SelectedItem="{Binding SelectedCharacter}" IsVisible="{Binding HasCharacters}">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <Border BorderBrush="#444444" BorderThickness="0,0,0,1" Padding="8">
+                <Grid ColumnDefinitions="64,*, Auto, Auto, Auto">
+                  <Border Width="56" Height="56" CornerRadius="28" Background="#26344A" ClipToBounds="True">
+                    <Grid>
+                      <TextBlock Text="{Binding Converter={StaticResource CharacterInitials}}"
+                                 HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#9CC9FF"/>
+                      <Image Source="{Binding Converter={StaticResource CharacterPortrait}}" Stretch="UniformToFill"/>
+                    </Grid>
+                  </Border>
+                  <TextBlock Grid.Column="1" Margin="14,0,0,0" Text="{Binding Converter={StaticResource CharacterDisplayName}}"
+                             FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Grid.Column="2" Text="{Binding Stars, StringFormat='Stars: {0}'}" VerticalAlignment="Center" Foreground="Gray"/>
+                  <TextBlock Grid.Column="3" Text="{Binding GearLevel, StringFormat='Gear: {0}'}" VerticalAlignment="Center" Foreground="Gray"/>
+                  <TextBlock Grid.Column="4" Text="{Binding Priority, StringFormat='Priority: {0}'}" VerticalAlignment="Center"/>
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Grid>
+
+      <Border Grid.Column="1" Margin="16,0,0,0" BorderBrush="#555555" BorderThickness="1" CornerRadius="6" Padding="16"
+              IsVisible="{Binding HasCharacters}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Spacing="12">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <Border Width="64" Height="64" CornerRadius="32" Background="#26344A" ClipToBounds="True">
+                <Grid>
+                  <TextBlock Text="{Binding SelectedCharacter, Converter={StaticResource CharacterInitials}}"
+                             HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#9CC9FF"/>
+                  <Image Source="{Binding SelectedCharacter, Converter={StaticResource CharacterPortrait}}" Stretch="UniformToFill"/>
+                </Grid>
+              </Border>
+              <StackPanel VerticalAlignment="Center" Spacing="2">
+                <TextBlock Text="{Binding SelectedCharacter, Converter={StaticResource CharacterDisplayName}}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding SelectedCharacter.Stars, StringFormat='Stars: {0}'}" Foreground="Gray"/>
+                <TextBlock Text="{Binding SelectedCharacter.GearLevel, StringFormat='Gear: {0}'}" Foreground="Gray"/>
+              </StackPanel>
+            </StackPanel>
+            <TextBlock Text="{Binding SelectedCharacter.Level, StringFormat='Level: {0}'}"/>
+            <TextBlock Text="{Binding SelectedCharacter.GalacticPower, StringFormat='Galactic Power: {0:N0}'}"/>
+            <TextBlock Text="{Binding SelectedCharacter.Priority, StringFormat='Priority: {0}'}"/>
+            <TextBlock Text="Top GAC mod setup" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,0"/>
+            <TextBlock Text="{Binding PreferredModDataText}" Foreground="Gray" TextWrapping="Wrap"/>
+            <ItemsControl ItemsSource="{Binding PreferredSetups}" IsVisible="{Binding HasPreferredSetups}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding}" Foreground="#9CC9FF" TextWrapping="Wrap"/>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <ItemsControl ItemsSource="{Binding PreferredPrimaryAdvice}" IsVisible="{Binding HasPreferredPrimaryAdvice}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding}" TextWrapping="Wrap"/>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="Guidance" FontWeight="SemiBold" IsVisible="{Binding HasCurrentModGuidance}"/>
+            <ItemsControl ItemsSource="{Binding CurrentModGuidance}" IsVisible="{Binding HasCurrentModGuidance}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding}" Foreground="Gray" TextWrapping="Wrap"/>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="Current mods" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,0"/>
+            <TextBlock Text="No equipped mods are cached for this character." IsVisible="{Binding HasNoCurrentMods}" Foreground="Gray" TextWrapping="Wrap"/>
+            <ItemsControl ItemsSource="{Binding CurrentMods}" IsVisible="{Binding HasCurrentMods}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border BorderBrush="#444444" BorderThickness="0,0,0,1" Padding="0,8">
+                    <StackPanel Spacing="3">
+                      <Grid ColumnDefinitions="*, Auto">
+                        <TextBlock Text="{Binding Id}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Grid.Column="1" Text="{Binding QualitySummary}" Foreground="Gray"/>
+                      </Grid>
+                      <TextBlock Text="{Binding SetSlotSummary}" Foreground="Gray"/>
+                      <TextBlock Text="{Binding PrimaryStatSummary}"/>
+                      <TextBlock Text="{Binding SecondaryStatsSummary}" Foreground="Gray" TextWrapping="Wrap"/>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
     </Grid>
   </Grid>
 </UserControl>

@@ -232,11 +232,16 @@ public sealed class PlayerProfileParser
             return null;
         }
 
-        var id = GetString(modJson, "id", "modId");
+        var id = GetString(modJson, "id", "modId", "instanceId");
         if (string.IsNullOrWhiteSpace(id))
         {
             return null;
         }
+
+        // Raw Comlink mods identify their set, rarity, and slot through the
+        // stat-mod definition id rather than top-level set/slot/pips fields.
+        var definitionId = GetString(modJson, "definitionId", "definition");
+        var definitionParts = ParseModDefinitionParts(definitionId);
 
         var primary = ParseStat(modJson, "primaryStat", "primary") ?? new ModStat(StatType.None, 0);
         var secondaries = new List<ModStat>(4);
@@ -247,23 +252,58 @@ public sealed class PlayerProfileParser
             {
                 secondaries.Add(secondary with
                 {
-                    RollCount = GetInt(secondaryJson, 1, "roll", "rollCount")
+                    RollCount = GetInt(secondaryJson, 1, "statRolls", "rollCount", "roll")
                 });
             }
         }
 
-        var slot = Math.Clamp(GetInt(modJson, 1, "slot"), 1, 6);
-        var set = Math.Max(1, GetInt(modJson, 1, "set", "setId"));
+        var slot = GetOptionalInt(modJson, "slot") ?? definitionParts.Slot;
+        var set = GetOptionalInt(modJson, "set", "setId") ?? definitionParts.Set;
+        var pips = GetOptionalInt(modJson, "pips", "rarity") ?? definitionParts.Pips;
         return new GameMod(
             Id: id,
             Level: Math.Clamp(GetInt(modJson, 1, "level"), 1, 15),
-            Pips: Math.Clamp(GetInt(modJson, 5, "pips", "rarity"), 1, 6),
+            Pips: Math.Clamp(pips, 1, 6),
             Tier: Math.Clamp(GetInt(modJson, 1, "tier"), 1, 5),
-            Slot: (ModSlot)slot,
-            Set: (ModSet)set,
+            Slot: (ModSlot)Math.Clamp(slot, 1, 6),
+            Set: (ModSet)Math.Max(1, set),
             Primary: primary,
             Secondaries: secondaries,
             EquippedUnitId: string.IsNullOrWhiteSpace(equippedUnitId) ? null : equippedUnitId);
+    }
+
+    private static (int Set, int Pips, int Slot) ParseModDefinitionParts(string? definitionId)
+    {
+        if (string.IsNullOrWhiteSpace(definitionId))
+        {
+            return (1, 5, 1);
+        }
+
+        if (definitionId.Length == 3 && definitionId.All(char.IsDigit))
+        {
+            return (
+                Math.Max(1, definitionId[0] - '0'),
+                Math.Clamp(definitionId[1] - '0', 1, 6),
+                Math.Clamp(definitionId[2] - '0', 1, 6));
+        }
+
+        var numericParts = definitionId
+            .Split(new[] { '-', '_', ':', '|', '/' }, StringSplitOptions.RemoveEmptyEntries)
+            .Take(3)
+            .Select(part => int.TryParse(part, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
+                ? (int?)value
+                : null)
+            .ToArray();
+
+        if (numericParts.Length < 3 || numericParts.Any(part => !part.HasValue))
+        {
+            return (1, 5, 1);
+        }
+
+        return (
+            Math.Max(1, numericParts[0]!.Value),
+            Math.Clamp(numericParts[1]!.Value, 1, 6),
+            Math.Clamp(numericParts[2]!.Value, 1, 6));
     }
 
     private static ModStat? ParseStat(JsonElement parent, params string[] names)
@@ -292,17 +332,56 @@ public sealed class PlayerProfileParser
             statJson = nestedStat;
         }
 
-        var unitId = GetInt(statJson, 0, "unitId", "statId", "type");
+        var hasComlinkUnitStatId = TryGetProperty(statJson, "unitStatId", out _) ||
+                                    TryGetProperty(statJson, "unitStat", out _);
+        var unitId = GetInt(statJson, 0, "unitId", "unitStat", "unitStatId", "statId", "type");
         if (unitId == 0)
         {
             return null;
         }
 
         return new ModStat(
-            (StatType)unitId,
-            GetDouble(statJson, 0, "value", "amount") / 100000000.0,
+            hasComlinkUnitStatId ? MapComlinkStat(unitId) : (StatType)unitId,
+            GetDouble(statJson, 0, "value", "amount", "unscaledDecimalValue", "statValueDecimal") / 100000000.0,
             1);
     }
+
+    private static StatType MapComlinkStat(int unitStatId) => unitStatId switch
+    {
+        1 => StatType.Health,
+        2 => StatType.Strength,
+        3 => StatType.Agility,
+        4 => StatType.Tactics,
+        5 => StatType.Speed,
+        6 => StatType.PhysicalDamage,
+        7 => StatType.SpecialDamage,
+        8 => StatType.Armor,
+        9 => StatType.Resistance,
+        10 => StatType.ArmorPenetration,
+        11 => StatType.ResistancePenetration,
+        12 => StatType.DodgeChance,
+        13 => StatType.DeflectionChance,
+        14 => StatType.PhysicalCriticalChance,
+        15 => StatType.SpecialCriticalChance,
+        16 => StatType.CriticalDamage,
+        17 => StatType.Potency,
+        18 => StatType.Tenacity,
+        19 => StatType.DodgeChance,
+        28 => StatType.Protection,
+        41 => StatType.Offense,
+        42 => StatType.Defense,
+        45 => StatType.CriticalChance,
+        46 => StatType.Accuracy,
+        47 => StatType.CriticalAvoidance,
+        48 => StatType.OffensePercent,
+        49 => StatType.DefensePercent,
+        53 => StatType.CriticalChancePercent,
+        54 => StatType.CriticalAvoidancePercent,
+        55 => StatType.HealthPercent,
+        56 => StatType.ProtectionPercent,
+        57 => StatType.SpeedPercent,
+        _ => (StatType)unitStatId
+    };
 
     private static int ParseRelicTier(JsonElement unit)
     {
@@ -433,6 +512,29 @@ public sealed class PlayerProfileParser
     {
         var value = GetDouble(parent, fallback, names);
         return value is >= int.MinValue and <= int.MaxValue ? (int)value : fallback;
+    }
+
+    private static int? GetOptionalInt(JsonElement parent, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (!TryGetProperty(parent, name, out var value))
+            {
+                continue;
+            }
+
+            if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var integer))
+            {
+                return integer;
+            }
+
+            if (int.TryParse(value.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out integer))
+            {
+                return integer;
+            }
+        }
+
+        return null;
     }
 
     private static long GetLong(JsonElement parent, long fallback, params string[] names)

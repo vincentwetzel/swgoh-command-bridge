@@ -1,6 +1,6 @@
 # TODO Roadmap — Release Readiness
 
-Audit date: 2026-08-18
+Audit date: 2026-08-19
 
 ## What is actually left
 
@@ -15,7 +15,8 @@ These require packaged builds and runtime verification, which are intentionally 
 
 ## Future product scope — not required for the read-only release
 
-- [ ] Decide whether to provide a central recommendation server/shared cache.
+- [ ] Add the priority-weighted mod-farming recommender: rank mod sets and slot/primary combinations by roster need, character priority, and relative mod-quality weakness.
+- [ ] Add authenticated Comlink support to the preferred-mod publisher, or run it on infrastructure that can safely reach an authenticated endpoint.
 - [ ] Complete legal/release-policy review for public recommendation scraping and deployment authentication.
 - [ ] Support multiple saved loadouts per character.
 - [ ] Add Grand Arena multi-squad planning.

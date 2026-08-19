@@ -54,6 +54,55 @@ public sealed class CharacterViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task CharactersViewModel_SelectsCharacterAndShowsItsEquippedMods()
+    {
+        await SeedPlayersAsync();
+        _context.Mods.AddRange(
+            new GameModEntity
+            {
+                Id = "ACTIVE-MOD",
+                PlayerAllyCode = "123456789",
+                CharacterId = "ACTIVE",
+                Set = 4,
+                Slot = 2,
+                Level = 15,
+                Tier = 5,
+                Rarity = 6,
+                PrimaryStatType = "Speed",
+                PrimaryStatValue = 30,
+                SecondaryStatsJson = "[{\"Type\":\"Speed\",\"Value\":10,\"RollCount\":1}]"
+            },
+            new GameModEntity
+            {
+                Id = "OTHER-MOD",
+                PlayerAllyCode = "987654321",
+                CharacterId = "OTHER",
+                Set = 1,
+                Slot = 1,
+                Level = 15,
+                Tier = 5,
+                Rarity = 6
+            });
+        await _context.SaveChangesAsync();
+
+        var viewModel = new CharactersViewModel(_context, () => "123456789");
+
+        await viewModel.LoadCharactersAsync();
+
+        var character = Assert.Single(viewModel.Characters);
+        Assert.Same(character, viewModel.SelectedCharacter);
+        var mod = Assert.Single(viewModel.CurrentMods);
+        Assert.Equal("ACTIVE-MOD", mod.Id);
+        Assert.Equal("Speed • Arrow", mod.SetSlotSummary);
+        Assert.Contains("+10 Speed", mod.SecondaryStatsSummary);
+
+        viewModel.SelectedCharacter = null;
+
+        Assert.Empty(viewModel.CurrentMods);
+        Assert.True(viewModel.HasNoCurrentMods);
+    }
+
+    [Fact]
     public async Task CharacterPrioritiesViewModel_ValidatesAndPersistsPriorityChanges()
     {
         await SeedPlayersAsync();

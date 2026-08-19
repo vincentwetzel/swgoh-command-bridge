@@ -9,6 +9,7 @@ Run `dotnet build swgoh-command-bridge.sln` and `dotnet test swgoh-command-bridg
 - [ ] Start with no existing application-data cache or settings file.
 - [ ] Launch the application and confirm the shell opens without fabricated roster/mod data.
 - [ ] Confirm the local SQLite cache is created and empty states are readable.
+- [ ] Open Characters and confirm preferred-mod guidance handles the bundled bootstrap dataset without errors.
 - [ ] Open Settings, enter a valid Comlink URL and ally code, save, close, and reopen the app.
 - [ ] On Linux/macOS candidate builds, configure a healthy externally managed Comlink endpoint and confirm the app does not assume the Windows managed runtime is available.
 
@@ -54,3 +55,6 @@ Run `dotnet build swgoh-command-bridge.sln` and `dotnet test swgoh-command-bridg
 - [ ] Confirm stale or missing `swgoh.gg` data is labeled and does not silently appear as current.
 - [ ] Exercise a transient recommendation failure or rate limit and confirm bounded retry/backoff behavior and a useful refresh summary.
 - [ ] Disable local recommendation scraping in Settings, confirm cached recommendations remain readable, and confirm refresh actions explain that new scraping is disabled.
+- [ ] With a published preferred-mod dataset available, verify Characters shows a preferred set pattern and slot-primary guidance for a represented character.
+- [ ] Verify a close primary split is shown as a viable alternative rather than a hard mismatch, and an empty slot still receives guidance.
+- [ ] Disconnect the network, restart, and confirm the last verified preferred-mod dataset remains readable.

@@ -153,6 +153,37 @@ internal static class ComlinkPayloadFixtures
         }
         """;
 
+    public const string RawRosterModShape = """
+        {
+          "name": "Raw Shape",
+          "rosterUnit": [
+            {
+              "definitionId": "DARTHTRAYA:SEVEN_STAR",
+              "equippedStatMod": [
+                {
+                  "id": "raw-mod",
+                  "definitionId": "462",
+                  "level": 15,
+                  "tier": 5,
+                  "primaryStat": {
+                    "stat": { "unitStat": 5, "unscaledDecimalValue": 3200000000 }
+                  },
+                  "secondaryStat": [
+                    {
+                      "stat": { "unitStatId": 5, "unscaledDecimalValue": 1700000000 },
+                      "roll": 3
+                    },
+                    {
+                      "stat": { "unitStatId": 17, "unscaledDecimalValue": 500000000 }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+        """;
+
     public const string NestedEnvelopeWithUnequippedInventory = """
         {
           "data": {

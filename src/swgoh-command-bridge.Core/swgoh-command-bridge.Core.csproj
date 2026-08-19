@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Assets\CharacterCatalog\*.json" />
+    <EmbeddedResource Include="Assets\PreferredMods\*.json" />
   </ItemGroup>
 
 </Project>

@@ -31,6 +31,7 @@ public sealed class ApplicationCompositionTests
         Assert.Same(context, composition.Database);
         Assert.Same(settings, composition.Settings);
         Assert.NotNull(composition.ComlinkService);
+        Assert.NotNull(composition.PreferredModsService);
         Assert.NotNull(composition.PlayerService);
         Assert.NotNull(composition.PlayerRepository);
         Assert.NotNull(composition.AdvisorService);

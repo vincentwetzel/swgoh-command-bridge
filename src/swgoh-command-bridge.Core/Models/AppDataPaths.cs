@@ -23,6 +23,8 @@ public static class AppDataPaths
 
     public static string CharacterCatalogDirectory => Path.Combine(ApplicationDirectory, "character-catalog");
 
+    public static string PreferredModsDirectory => Path.Combine(ApplicationDirectory, "preferred-mods");
+
     public static string ComlinkDirectory => Path.Combine(ApplicationDirectory, "comlink");
 
     private static string GetLocalApplicationDataRoot()

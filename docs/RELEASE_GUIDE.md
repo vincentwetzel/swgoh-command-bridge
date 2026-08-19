@@ -48,7 +48,7 @@ Trimming stays disabled until a release-specific test confirms that Avalonia XAM
 ## Upgrade and recovery policy
 
 1. Before upgrading, use Settings to create a timestamped cache backup.
-2. Keep the existing `SWGOHCommandBridge` application-data directory. Settings, cache, diagnostics, and backups share this case-stable platform-local directory and are not part of the published output.
+2. Keep the existing `SWGOHCommandBridge` application-data directory. Settings, cache, diagnostics, backups, and the cached preferred-mod dataset share this case-stable platform-local directory and are not part of the published output.
 3. On first launch after an upgrade, startup applies the transactional compatibility pass and records the resulting schema version.
 4. Confirm existing player sync timestamps, bounded sync history, recommendation provenance, and settings values survive the compatibility pass.
 5. If startup cannot initialize the cache, use the visible retry action, restore a verified backup, or reset the cache. Reset preserves JSON settings.
@@ -67,3 +67,15 @@ The following are required before publishing an artifact:
 - The fresh-install, populated-cache, offline, malformed-cache, backup/restore, and read-only scenarios in [SMOKE_TEST_CHECKLIST.md](SMOKE_TEST_CHECKLIST.md) pass.
 - The published directory contains the UI executable, Core assembly, Avalonia assets, SQLite provider assets, and all required runtime files.
 - Windows documentation identifies the managed Comlink release sequence and target architecture; non-Windows documentation identifies the external Comlink prerequisite.
+- The embedded preferred-mod baseline opens safely offline, and a verified published dataset is exercised through the Characters smoke checks when one is available.
+
+## Preferred-mod data publishing
+
+The preferred-mod dataset has its own cadence and does not block a desktop release. After the workflow has been pushed to GitHub:
+
+1. Host a Comlink endpoint reachable from GitHub Actions; a local `localhost` endpoint will not work.
+2. Add its URL as the repository Actions secret `COMLINK_BASE_URL`.
+3. Run **Refresh preferred mods** manually once and verify that it commits only `data/preferred-mods/dataset.json` and `manifest.json`.
+4. Confirm a fresh app startup downloads the dataset and an offline restart retains it.
+
+The committed bootstrap dataset is intentionally empty until the first successful refresh. The current publisher does not support Comlink access-key/secret-key authentication; do not place credentials in the URL or repository until that support exists.
