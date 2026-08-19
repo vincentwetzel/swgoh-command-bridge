@@ -12,7 +12,7 @@ const int GacTopLeaderboardType = 6;
 const string DefaultDatasetUrl =
     "https://raw.githubusercontent.com/vincentwetzel/swgoh-command-bridge/main/data/preferred-mods/dataset.json";
 
-var comlinkBaseUrl = Environment.GetEnvironmentVariable("COMLINK_BASE_URL");
+var comlinkBaseUrl = Environment.GetEnvironmentVariable("COMLINK_BASE_URL") ?? "http://localhost:3000";
 if (!Uri.TryCreate(comlinkBaseUrl, UriKind.Absolute, out var comlinkUri) ||
     (comlinkUri.Scheme != Uri.UriSchemeHttp && comlinkUri.Scheme != Uri.UriSchemeHttps))
 {

@@ -71,11 +71,11 @@ The following are required before publishing an artifact:
 
 ## Preferred-mod data publishing
 
-The preferred-mod dataset has its own cadence and does not block a desktop release. After the workflow has been pushed to GitHub:
+The preferred-mod dataset has its own cadence and does not block a desktop release. A maintainer refreshes it locally:
 
-1. Host a Comlink endpoint reachable from GitHub Actions; a local `localhost` endpoint will not work.
-2. Add its URL as the repository Actions secret `COMLINK_BASE_URL`.
-3. Run **Refresh preferred mods** manually once and verify that it commits only `data/preferred-mods/dataset.json` and `manifest.json`.
-4. Confirm a fresh app startup downloads the dataset and an offline restart retains it.
+1. Start local ComLink on the maintainer PC.
+2. Run `dotnet run --project tools/swgoh-command-bridge.PreferredModsPublisher -- data/preferred-mods` from the repository root.
+3. Review and commit only `data/preferred-mods/dataset.json` and `manifest.json`.
+4. Push the commit to GitHub, then confirm a fresh app startup downloads the dataset and an offline restart retains it.
 
-The committed bootstrap dataset is intentionally empty until the first successful refresh. The current publisher does not support Comlink access-key/secret-key authentication; do not place credentials in the URL or repository until that support exists.
+The committed bootstrap dataset is intentionally empty until the first successful local refresh. Do not put ComLink credentials in source control, dataset files, or a GitHub secret.

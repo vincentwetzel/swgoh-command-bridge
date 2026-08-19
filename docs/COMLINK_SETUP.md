@@ -29,11 +29,15 @@ The application defaults to `http://localhost:3000`. You can change the Comlink 
 
 ## Preferred-mod publisher
 
-The repository's **Refresh preferred mods** workflow is separate from the desktop app. It uses the repository secret `COMLINK_BASE_URL` to query a Comlink instance that is reachable from a GitHub-hosted runner, samples high-ranking GAC profiles, and commits only aggregated mod trends to `data/preferred-mods/`.
+Preferred-mod publication is a maintainer task performed on a local PC. Start local ComLink, then run:
 
-Do not use `http://localhost:3000` for this secret: GitHub Actions cannot reach your PC's local service. Publish Comlink behind a reachable HTTPS URL first, then add the URL under **Settings → Secrets and variables → Actions → New repository secret**. Push the workflow, run it once manually, and let desktop clients download the resulting dataset silently on a subsequent startup.
+```powershell
+dotnet run --project tools/swgoh-command-bridge.PreferredModsPublisher -- data/preferred-mods
+```
 
-The current publisher does not supply Comlink `ACCESS_KEY` or `SECRET_KEY` authentication. Use an unauthenticated, access-restricted endpoint for it, or defer the refresh until authenticated publisher support or a self-hosted runner is available. Never put credentials into `COMLINK_BASE_URL`, committed configuration, workflow output, or dataset files.
+The publisher defaults to `http://localhost:3000`; set the local `COMLINK_BASE_URL` environment variable only when the local service uses a different URL. It samples high-ranking GAC accounts, writes only aggregate mod trends to `data/preferred-mods/`, and never writes raw profiles or ally codes to disk. Review and commit the generated `dataset.json` and `manifest.json`, then push them to GitHub. Desktop clients silently download those public aggregate files and cache them offline.
+
+No GitHub Actions secret, hosted ComLink service, or user-side bulk profile download is required. Do not put ComLink access keys, session values, or credentials in source control, the environment URL, command output, or dataset files.
 
 ## Notes
 - Keep this service local; SWGOH Command Bridge is currently scoped as a read-only analysis tool.

@@ -193,7 +193,6 @@ This document lists the current source and documentation files in the repository
 
 ## Preferred-mod additions
 
-- `.github/workflows/refresh-preferred-mods.yml` publishes aggregate preferred-mod data from a repository-secret Comlink endpoint.
 - `data/preferred-mods/dataset.json` and `manifest.json` are the published aggregate dataset and its validation metadata.
 - `src/swgoh-command-bridge.Core/Assets/PreferredMods/preferred-mods.json` is the embedded offline bootstrap baseline.
 - `PreferredModsDataset.cs`, `PreferredModsDatasetService.cs`, and `PreferredModsAggregator.cs` implement the model, offline cache/update path, and aggregation logic.

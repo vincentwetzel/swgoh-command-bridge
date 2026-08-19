@@ -2,7 +2,7 @@
 
 This project follows a clean, decoupled architecture designed for a .NET 8 desktop application using the Model-View-ViewModel (MVVM) pattern. Avalonia and the Core library target multiple desktop platforms; automatic Comlink installation is currently implemented for Windows x64 only.
 
-The active implementation is compiled from `src/`. The desktop composition root owns one service graph for the process lifetime; there is no long-running in-app worker. Startup may launch one stale-active-account refresh plus best-effort character-catalog and preferred-mod dataset refreshes after cached data is loaded, without blocking the initial cached-data view. A separate GitHub Actions workflow publishes the aggregate preferred-mod dataset on a schedule.
+The active implementation is compiled from `src/`. The desktop composition root owns one service graph for the process lifetime; there is no long-running in-app worker. Startup may launch one stale-active-account refresh plus best-effort character-catalog and preferred-mod dataset refreshes after cached data is loaded, without blocking the initial cached-data view. A maintainer runs the local preferred-mod publisher when a new aggregate dataset is wanted.
 
 ## Projects
 
@@ -36,7 +36,7 @@ The solution is divided into three main projects. A few older root-level `.cs` d
 
 *   **`swgoh-comlink`:** This is the critical read-only account service. On Windows x64, `ComlinkRuntimeManager` checks for a healthy configured local endpoint, otherwise downloads a pinned compatible release (`4.4.0`, then `4.2.0`), starts it as a hidden child process, waits for its local HTTP endpoint, and stops processes owned by the app. A healthy externally managed local or remote endpoint remains supported through the configurable URL; Linux and macOS currently require that arrangement. The application communicates with Comlink via HTTP from the `Core` project.
 *   **`swgoh.gg`:** The application scrapes public-facing `swgoh.gg` "best mods" pages for supplemental data such as optimal mod sets, primary stats, and usage percentages. These calls originate from `SwgohGgScraperService` within the `Core` project and are cached locally.
-*   **Preferred-mod dataset:** A GitHub Actions publisher queries a hosted Comlink instance for high-ranking GAC profiles, aggregates only character set/primary usage and quality distributions, and commits a versioned dataset plus manifest. Desktop clients download only those aggregate files, validate hashes, cache them atomically, and retain the embedded or last-known-good copy offline.
+*   **Preferred-mod dataset:** A maintainer-run local publisher queries local ComLink for high-ranking GAC profiles, aggregates only character set/primary usage and quality distributions, and commits a versioned dataset plus manifest to GitHub. Desktop clients download only those aggregate files, validate hashes, cache them atomically, and retain the embedded or last-known-good copy offline.
 
 ## Data Flow
 There are two primary data flows:
@@ -65,8 +65,8 @@ There are two primary data flows:
 4.  `PlayerRepository` replaces one ally-code cache transactionally and deletes that account's character/mod rows transactionally. ViewModels always query the selected ally-code scope; cached-account switching is offline and never triggers a live sync. Startup uses the same selected ally-code scope to initiate at most one background refresh when the active cache is stale; failures preserve the previous cache and are surfaced through sync status.
 
 **4. Preferred GAC mod data:**
-1. A scheduled or manually dispatched GitHub Actions workflow uses its `COMLINK_BASE_URL` secret to query the configured reachable Comlink instance for a few hundred high-ranking GAC accounts.
+1. A maintainer runs the publisher locally against local ComLink to query a few hundred high-ranking GAC accounts.
 2. The publisher aggregates equipped mod sets and slot primaries by character, classifies clear preferences and viable alternatives, and writes no raw player payloads or ally codes to the repository.
-3. The workflow validates the dataset and manifest before committing `data/preferred-mods/`.
+3. The publisher validates the dataset and manifest before the maintainer commits `data/preferred-mods/` to GitHub.
 4. At desktop startup, `PreferredModsDatasetService` loads the embedded baseline or cached `preferred-mods/current.json`, then silently checks the manifest at a bounded interval. Hash/schema validation and atomic replacement protect the last-known-good copy.
 5. `CharactersViewModel` presents complete preferred setups and per-slot primary guidance, including advice for empty slots and tolerant wording for close usage splits.

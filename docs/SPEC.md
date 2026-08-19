@@ -74,5 +74,5 @@ The compiled implementation lives under `src/`. The application is composed as a
 - Account payloads and recommendation cache data remain local unless the user separately operates the configured Comlink or public recommendation requests.
 - Logs and diagnostics must not contain full ally codes, access keys, session values, or raw account payloads.
 - The application may request public `swgoh.gg` recommendation pages, subject to the service's rate limits and freshness policy.
-- The preferred-mod publisher may query its separately configured hosted Comlink endpoint, but it publishes only aggregate distributions and metadata.
+- The preferred-mod publisher runs on a maintainer's local machine against local ComLink and publishes only aggregate distributions and metadata.
 - The local scraping switch prevents new recommendation requests while retaining previously cached recommendations for offline viewing.

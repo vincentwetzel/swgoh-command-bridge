@@ -1,6 +1,6 @@
 # State Flow
 
-This document describes the application's state management strategy and the boundaries between live requests, local cache state, and ViewModel state. There is no long-running in-app sync or scraper. Account sync normally starts from the account switcher, while startup may initiate one lifecycle-scoped refresh when the selected cache is stale plus best-effort character-catalog and preferred-mod dataset refreshes. The preferred-mod publisher runs externally in GitHub Actions, not on the user's machine.
+This document describes the application's state management strategy and the boundaries between live requests, local cache state, and ViewModel state. There is no long-running in-app sync or scraper. Account sync normally starts from the account switcher, while startup may initiate one lifecycle-scoped refresh when the selected cache is stale plus best-effort character-catalog and preferred-mod dataset refreshes. The preferred-mod publisher is a maintainer-run local tool, not an in-app background process.
 
 ## Current State
 The application currently follows a simple state management approach where each feature's state is managed by its corresponding ViewModel. Character, mod inventory, priority, threshold, and optimizer state are separated into their own ViewModels.

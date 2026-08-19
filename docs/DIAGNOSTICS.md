@@ -23,6 +23,6 @@ Comlink startup failures are reported through the shell startup status and bound
 
 Diagnostics shows the latest sync outcome plus the ten most recent account attempts. Ally codes are redacted in the display and export; statuses, counts, parser-warning totals, cancellation/interruption state, and privacy-safe failure summaries are retained for support.
 
-The initial bundled preferred-mod dataset is intentionally a bootstrap baseline. If it remains empty, confirm that the repository workflow has run successfully after `COMLINK_BASE_URL` was configured, then restart the app or wait for its next silent startup check. Offline use keeps the last verified dataset. An invalid manifest or download is rejected without replacing that copy.
+The initial bundled preferred-mod dataset is intentionally a bootstrap baseline. If it remains empty, a maintainer must run the local publisher against their local ComLink, commit `data/preferred-mods/`, and push it to GitHub. Then restart the app or wait for its next silent startup check. Offline use keeps the last verified dataset. An invalid manifest or download is rejected without replacing that copy.
 
 For a support report, include the report's timestamp, operating system, .NET runtime, and the operation that failed. Do not attach `cache.db`, a backup database, `settings.json`, or Comlink credentials unless they have been separately sanitized.
