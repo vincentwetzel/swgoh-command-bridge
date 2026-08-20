@@ -13,6 +13,7 @@ The current release target is read-only. Any feature that changes the game accou
 -   **Local Caching:** It uses a local SQLite database to cache player data, minimizing redundant API calls and enabling offline viewing.
 -   **Configurable Local Services:** It stores the local `swgoh-comlink` base URL, default ally code, normalized Dark/Light/System theme choice, scraping policy, and user-defined mod thresholds in cross-platform application settings.
 -   **Character Catalog:** It ships verified embedded character/ship catalogs, best-effort refreshes them from Comlink, resolves localized names and portrait assets, and atomically preserves the previous snapshot when a refresh is rejected.
+-   **Priority Board:** Users organize cached roster units on separate character and ship boards using S/A/B/C/D tiers, left-to-right order within each tier, and an Unranked holding area. The board persists placement locally and retains it when a roster is replaced by a later sync.
 
 ### 2.1.1. Preferred GAC Mod Guidance
 -   **Aggregate data:** The app bundles and caches an aggregate dataset describing how a few hundred high-ranking GAC accounts mod each character.
@@ -24,6 +25,7 @@ The current release target is read-only. Any feature that changes the game accou
 ### 2.2. Mod Viewing & Filtering
 -   **Inventory View:** Display the entire mod inventory in a sortable, filterable grid.
 -   **Advanced Filtering:** Filter mods by any combination of slot, set, primary stat, secondary stats, level, pips, tier, and equipped status.
+-   **Primary validation:** Parsed and persisted mod primaries are checked against the legal primary-stat set for each shape. Known legacy fixed-primary identifiers are normalized; unknown invalid combinations are excluded from recommendations rather than treated as valid data.
 -   **Quick Search:** Instantly find mods with specific secondary stats (e.g., "all mods with Speed secondaries").
 -   **Explicit UI States:** Feature views should distinguish loading, empty, success, and error states without relying on mock fallback data.
 

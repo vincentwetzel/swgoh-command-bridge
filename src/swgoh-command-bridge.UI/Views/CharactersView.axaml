@@ -14,7 +14,7 @@
     <TextBlock Grid.Row="2" Margin="0,0,0,8" Text="{Binding CatalogStatusText}" IsVisible="{Binding HasCatalogStatus}"
                Foreground="Gray" TextWrapping="Wrap"/>
 
-    <Grid Grid.Row="3" ColumnDefinitions="*, 460">
+    <Grid Grid.Row="3" ColumnDefinitions="*, 500">
       <Grid>
         <TextBlock Text="Loading characters..." IsVisible="{Binding IsLoading}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         <TextBlock Text="No cached characters. Sync an account from Home to begin." IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"/>
@@ -47,14 +47,14 @@
         </ListBox>
       </Grid>
 
-      <Border Grid.Column="1" Margin="16,0,0,0" BorderBrush="#555555" BorderThickness="1" CornerRadius="6" Padding="16"
+      <Border Grid.Column="1" Margin="16,0,0,0" BorderBrush="#3F4A55" BorderThickness="1" CornerRadius="8" Padding="16"
               IsVisible="{Binding HasCharacters}">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
-          <StackPanel Spacing="12">
+          <StackPanel Spacing="16">
             <ContentControl Content="{Binding SelectedCharacter}">
               <ContentControl.ContentTemplate>
                 <DataTemplate>
-                  <StackPanel Spacing="12">
+                  <Border Background="#18222D" BorderBrush="#2D4B68" BorderThickness="1" CornerRadius="6" Padding="12">
                     <StackPanel Orientation="Horizontal" Spacing="12">
                       <Border Width="64" Height="64" CornerRadius="32" Background="#26344A" ClipToBounds="True">
                         <Grid>
@@ -64,61 +64,85 @@
                         </Grid>
                       </Border>
                       <StackPanel VerticalAlignment="Center" Spacing="2">
-                        <TextBlock Text="{Binding Converter={StaticResource CharacterDisplayName}}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding Converter={StaticResource CharacterDisplayName}}" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap"/>
                         <TextBlock Text="{Binding Stars, StringFormat='Stars: {0}'}" Foreground="Gray"/>
                         <TextBlock Text="{Binding GearLevel, StringFormat='Gear: {0}'}" Foreground="Gray"/>
                       </StackPanel>
                     </StackPanel>
-                    <TextBlock Text="{Binding Level, StringFormat='Level: {0}'}"/>
-                    <TextBlock Text="{Binding GalacticPower, StringFormat='Galactic Power: {0:N0}'}"/>
-                    <TextBlock Text="{Binding Priority, StringFormat='Priority: {0}'}"/>
-                  </StackPanel>
+                  </Border>
                 </DataTemplate>
               </ContentControl.ContentTemplate>
             </ContentControl>
-            <TextBlock Text="Top GAC mod setup" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,0"/>
-            <TextBlock Text="{Binding PreferredModDataText}" Foreground="Gray" TextWrapping="Wrap"/>
-            <ItemsControl ItemsSource="{Binding PreferredSetups}" IsVisible="{Binding HasPreferredSetups}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                  <TextBlock Text="{Binding}" Foreground="#9CC9FF" TextWrapping="Wrap"/>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <ItemsControl ItemsSource="{Binding PreferredPrimaryAdvice}" IsVisible="{Binding HasPreferredPrimaryAdvice}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                  <TextBlock Text="{Binding}" TextWrapping="Wrap"/>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <TextBlock Text="Guidance" FontWeight="SemiBold" IsVisible="{Binding HasCurrentModGuidance}"/>
-            <ItemsControl ItemsSource="{Binding CurrentModGuidance}" IsVisible="{Binding HasCurrentModGuidance}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                  <TextBlock Text="{Binding}" Foreground="Gray" TextWrapping="Wrap"/>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <TextBlock Text="Current mods" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,0"/>
-            <TextBlock Text="No equipped mods are cached for this character." IsVisible="{Binding HasNoCurrentMods}" Foreground="Gray" TextWrapping="Wrap"/>
-            <ItemsControl ItemsSource="{Binding CurrentMods}" IsVisible="{Binding HasCurrentMods}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                  <Border BorderBrush="#444444" BorderThickness="0,0,0,1" Padding="0,8">
-                    <StackPanel Spacing="3">
-                      <Grid ColumnDefinitions="*, Auto">
-                        <TextBlock Text="{Binding Id}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                        <TextBlock Grid.Column="1" Text="{Binding QualitySummary}" Foreground="Gray"/>
+            <Border Background="#112C3C" BorderBrush="#2677A3" BorderThickness="1" CornerRadius="6" Padding="14">
+              <StackPanel Spacing="10">
+                <TextBlock Text="Recommended build" FontSize="19" FontWeight="SemiBold" Foreground="#A9DCFF"/>
+                <TextBlock Text="{Binding PreferredModDataText}" Foreground="#B0BEC5" TextWrapping="Wrap"/>
+                <StackPanel Spacing="4" IsVisible="{Binding HasPreferredSetups}">
+                  <TextBlock Text="Common set combinations" FontWeight="SemiBold" Foreground="#D8EFFC"/>
+                  <ItemsControl ItemsSource="{Binding PreferredSetups}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Border Background="#1A4056" CornerRadius="4" Padding="8,4" Margin="0,2">
+                          <TextBlock Text="{Binding}" Foreground="#C7E9FF" TextWrapping="Wrap"/>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <StackPanel Spacing="8" IsVisible="{Binding HasPreferredPrimaryAdvice}">
+              <TextBlock Text="Recommended mod primaries" FontSize="19" FontWeight="SemiBold"/>
+              <TextBlock Text="{Binding PrimaryComparisonSummary}" Foreground="#A9DCFF" TextWrapping="Wrap"/>
+              <Grid ColumnDefinitions="76,*,104,72" Margin="8,0,8,4">
+                <TextBlock Text="SLOT" FontSize="11" Foreground="Gray" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="1" Text="TARGET" FontSize="11" Foreground="Gray" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="2" Text="CURRENT" FontSize="11" Foreground="Gray" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="3" Text="RESULT" FontSize="11" Foreground="Gray" FontWeight="SemiBold"/>
+              </Grid>
+              <ItemsControl ItemsSource="{Binding PreferredPrimaryAdvice}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Border Background="#181C20" BorderBrush="{Binding ResultColor}" BorderThickness="3,0,0,0" CornerRadius="4" Padding="8" Margin="0,2">
+                      <Grid ColumnDefinitions="76,*,104,72">
+                        <TextBlock Text="{Binding Slot}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Target}" Foreground="#D9F0FF" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="2" Text="{Binding Current}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="3" Text="{Binding Result}" Foreground="{Binding ResultColor}" FontWeight="SemiBold" VerticalAlignment="Center"/>
                       </Grid>
-                      <TextBlock Text="{Binding SetSlotSummary}" Foreground="Gray"/>
-                      <TextBlock Text="{Binding PrimaryStatSummary}"/>
-                      <TextBlock Text="{Binding SecondaryStatsSummary}" Foreground="Gray" TextWrapping="Wrap"/>
-                    </StackPanel>
-                  </Border>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
+            <StackPanel Spacing="8">
+              <TextBlock Text="{Binding CurrentModsHeader}" FontSize="19" FontWeight="SemiBold"/>
+              <TextBlock Text="No equipped mods are cached for this character." IsVisible="{Binding HasNoCurrentMods}" Foreground="Gray" TextWrapping="Wrap"/>
+              <Grid ColumnDefinitions="78,74,70,*" Margin="8,0,8,2" IsVisible="{Binding HasCurrentMods}">
+                <TextBlock Text="SHAPE" FontSize="11" Foreground="Gray" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="1" Text="SET" FontSize="11" Foreground="Gray" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="2" Text="SPEED" FontSize="11" Foreground="Gray" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="3" Text="PRIMARY" FontSize="11" Foreground="Gray" FontWeight="SemiBold"/>
+              </Grid>
+              <ItemsControl ItemsSource="{Binding EquippedModDetails}" IsVisible="{Binding HasCurrentMods}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Border Background="#17191C" BorderBrush="#3B4148" BorderThickness="0,0,0,1" Padding="8">
+                      <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="78,74,70,*">
+                        <TextBlock Text="{Binding Shape}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Set}" Foreground="#A9DCFF" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="2" Text="{Binding SecondarySpeed}" Foreground="#68C98A" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="3" Text="{Binding Primary}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        <TextBlock Grid.Row="1" Grid.ColumnSpan="3" Margin="0,5,8,0" Text="{Binding KeySecondaries, StringFormat='Secondaries: {0}'}" Foreground="#B0BEC5" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Grid.Row="1" Grid.Column="3" Margin="0,5,0,0" Text="{Binding Quality, StringFormat='Quality: {0}'}" Foreground="#B0BEC5" FontSize="12" TextWrapping="Wrap"/>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
           </StackPanel>
         </ScrollViewer>
       </Border>

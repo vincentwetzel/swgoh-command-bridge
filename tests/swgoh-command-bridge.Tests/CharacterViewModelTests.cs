@@ -93,7 +93,7 @@ public sealed class CharacterViewModelTests : IDisposable
         Assert.Same(character, viewModel.SelectedCharacter);
         var mod = Assert.Single(viewModel.CurrentMods);
         Assert.Equal("ACTIVE-MOD", mod.Id);
-        Assert.Equal("Speed • Arrow", mod.SetSlotSummary);
+        Assert.Equal("Set: Speed; Shape: Arrow", mod.SetSlotSummary);
         Assert.Contains("+10 Speed", mod.SecondaryStatsSummary);
 
         viewModel.SelectedCharacter = null;
@@ -103,53 +103,45 @@ public sealed class CharacterViewModelTests : IDisposable
     }
 
     [Fact]
-    public async Task CharacterPrioritiesViewModel_ValidatesAndPersistsPriorityChanges()
+    public async Task CharacterPrioritiesViewModel_MovingUnitPersistsTierOrderAndDerivedPriority()
     {
         await SeedPlayersAsync();
         var viewModel = new CharacterPrioritiesViewModel(_context, () => "123456789");
         await viewModel.LoadCharactersAsync();
 
         var character = Assert.Single(viewModel.Characters);
-        viewModel.SelectedCharacter = character;
-        viewModel.SelectedCharacterPriority = 101;
-        await viewModel.SavePriorityCommand.ExecuteAsync(null);
-
-        Assert.True(viewModel.HasValidationError);
-        Assert.Contains("between 0 and 100", viewModel.ValidationError);
-
-        viewModel.SelectedCharacterPriority = 80;
-        await viewModel.SavePriorityCommand.ExecuteAsync(null);
+        await viewModel.MoveCharacterAsync(character, viewModel.RankedTiers[0], 0);
 
         var persisted = await _context.Characters
             .SingleAsync(item => item.Id == "ACTIVE" && item.PlayerAllyCode == "123456789");
-        Assert.Equal(80, persisted.Priority);
-        Assert.False(viewModel.HasValidationError);
+        Assert.Equal(PriorityTier.S, persisted.PriorityTier);
+        Assert.Equal(0, persisted.PriorityOrder);
+        Assert.Equal(100_000, persisted.Priority);
     }
 
     [Fact]
-    public async Task CharacterPrioritiesViewModel_CancelRestoresDirtyEditAndRefreshPreservesSelection()
+    public async Task CharacterPrioritiesViewModel_SwitchingBoardsKeepsShipsSeparate()
     {
         await SeedPlayersAsync();
+        _context.Characters.Add(new CharacterEntity
+        {
+            Id = "XWINGRESISTANCE",
+            PlayerAllyCode = "123456789",
+            Name = "Resistance X-wing"
+        });
+        await _context.SaveChangesAsync();
+
         var viewModel = new CharacterPrioritiesViewModel(_context, () => "123456789");
         await viewModel.LoadCharactersAsync();
 
-        var selected = Assert.Single(viewModel.Characters);
-        viewModel.SelectedCharacter = selected;
-        viewModel.SelectedCharacterPriority = 75;
+        Assert.Single(viewModel.UnrankedTier.Characters);
+        Assert.Equal("ACTIVE", viewModel.UnrankedTier.Characters[0].Id);
 
-        Assert.True(viewModel.IsDirty);
-        viewModel.CancelEditCommand.Execute(null);
+        viewModel.ShowShips = true;
 
-        Assert.Equal(10, viewModel.SelectedCharacterPriority);
-        Assert.False(viewModel.IsDirty);
-
-        viewModel.SelectedCharacterPriority = 75;
-        await viewModel.SavePriorityCommand.ExecuteAsync(null);
-        await viewModel.RefreshCommand.ExecuteAsync(null);
-
-        Assert.Equal("ACTIVE", viewModel.SelectedCharacter!.Id);
-        Assert.Equal(75, viewModel.SelectedCharacterPriority);
-        Assert.Equal(OperationStatus.Success, viewModel.State.Status);
+        Assert.Single(viewModel.UnrankedTier.Characters);
+        Assert.Equal("XWINGRESISTANCE", viewModel.UnrankedTier.Characters[0].Id);
+        Assert.True(viewModel.HasCharacters);
     }
 
     [Fact]

@@ -30,6 +30,8 @@ This document records the implementation work verified during the roadmap audit.
 - Cached accounts can be selected, searched, switched offline, and removed with confirmation.
 - Startup can refresh one stale active account after cached data loads without blocking offline access to the previous cache.
 - Character catalogs use embedded verified JSON, best-effort Comlink refresh, localized names, portrait assets, audit summaries, and atomic persistence with rollback to the prior snapshot.
+- Priority management uses a separate character/ship tier board with S/A/B/C/D and Unranked rows, drag-and-drop ordering, bundled-catalog ship classification, and preservation across account replacement.
+- Mod-primary mapping validates each shape's legal primaries and repairs known legacy identifiers during parsing and cache migration.
 - Repository replacement, upsert, account removal, and failed-refresh rollback are transactional.
 - Representative Comlink fixtures cover empty, malformed, duplicate, partial, nested, and inventory-heavy responses.
 
@@ -71,7 +73,7 @@ This document records the implementation work verified during the roadmap audit.
 
 - Named fixtures replace the old test placeholder and keep payload data separate from test helpers.
 - View-model, navigation, command, validation, no-data, backup/restore failure, threshold failure, and diagnostics retry coverage exists.
-- Migration coverage includes schema versions 0–5, repair, rollback, idempotence, unsupported versions, backup, and restore using isolated databases.
+- Migration coverage includes the supported legacy schema matrix, repair, rollback, idempotence, unsupported versions, backup, restore, mod-primary correction, and priority-tier migration using isolated databases.
 - Diagnostics capture bounded privacy-safe events and redact ally codes/account payloads.
 - Character catalog parser, refresh, fallback, and UI portrait/name behavior are covered by the current source and tests.
 - Crash-safe cache recovery, guarded reset, verified restore rollback, and offline behavior are implemented.

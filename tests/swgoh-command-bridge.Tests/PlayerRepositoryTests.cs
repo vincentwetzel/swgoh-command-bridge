@@ -127,7 +127,7 @@ public sealed class PlayerRepositoryTests : IDisposable
         using var command = _connection.CreateCommand();
         command.CommandText = "SELECT \"Version\" FROM \"__CacheSchema\" WHERE \"Id\" = 1;";
 
-        Assert.Equal(7L, command.ExecuteScalar());
+        Assert.Equal((long)CacheSchemaMigrator.CurrentVersion, command.ExecuteScalar());
     }
 
     [Fact]
@@ -137,7 +137,7 @@ public sealed class PlayerRepositoryTests : IDisposable
 
         Assert.NotNull(_context.LastSchemaMigration);
         Assert.Equal(0, _context.LastSchemaMigration!.PreviousVersion);
-        Assert.Equal(7, _context.LastSchemaMigration.CurrentVersion);
+        Assert.Equal(CacheSchemaMigrator.CurrentVersion, _context.LastSchemaMigration.CurrentVersion);
         Assert.True(_context.LastSchemaMigration.Changed);
         Assert.Contains("2: mod stat snapshots", _context.LastSchemaMigration.AppliedMigrations);
         Assert.Contains("3: recommendation provenance", _context.LastSchemaMigration.AppliedMigrations);
@@ -145,11 +145,13 @@ public sealed class PlayerRepositoryTests : IDisposable
         Assert.Contains("5: sync outcome history", _context.LastSchemaMigration.AppliedMigrations);
         Assert.Contains("6: account-scoped recommendations", _context.LastSchemaMigration.AppliedMigrations);
         Assert.Contains("7: character portrait catalog mappings", _context.LastSchemaMigration.AppliedMigrations);
+        Assert.Contains("8: mod primary correction", _context.LastSchemaMigration.AppliedMigrations);
+        Assert.Contains("9: tier-list priority layout", _context.LastSchemaMigration.AppliedMigrations);
 
         _context.InitializeDatabase();
 
         Assert.NotNull(_context.LastSchemaMigration);
-        Assert.Equal(7, _context.LastSchemaMigration!.PreviousVersion);
+        Assert.Equal(CacheSchemaMigrator.CurrentVersion, _context.LastSchemaMigration!.PreviousVersion);
         Assert.False(_context.LastSchemaMigration.Changed);
     }
 
@@ -176,6 +178,8 @@ public sealed class PlayerRepositoryTests : IDisposable
         Assert.Contains("5: sync outcome history", result.AppliedMigrations);
         Assert.Contains("6: account-scoped recommendations", result.AppliedMigrations);
         Assert.Contains("7: character portrait catalog mappings", result.AppliedMigrations);
+        Assert.Contains("8: mod primary correction", result.AppliedMigrations);
+        Assert.Contains("9: tier-list priority layout", result.AppliedMigrations);
 
         using var tableCommand = connection.CreateCommand();
         tableCommand.CommandText =
@@ -206,7 +210,7 @@ public sealed class PlayerRepositoryTests : IDisposable
 
         var result = new CacheSchemaMigrator().Migrate(connection);
 
-        Assert.Equal(7, result.CurrentVersion);
+        Assert.Equal(CacheSchemaMigrator.CurrentVersion, result.CurrentVersion);
         using var scopeCommand = connection.CreateCommand();
         scopeCommand.CommandText =
             "SELECT \"PlayerAllyCode\" FROM \"SwgohGgRecommendations\" WHERE \"CharacterId\" = 'CHARACTER';";
@@ -242,6 +246,18 @@ public sealed class PlayerRepositoryTests : IDisposable
         Assert.Contains("PrimaryStatValue", columns);
         Assert.Contains("SecondaryStatsJson", columns);
 
+        using var characterColumnCommand = connection.CreateCommand();
+        characterColumnCommand.CommandText = "PRAGMA table_info('Characters');";
+        using var characterReader = characterColumnCommand.ExecuteReader();
+        var characterColumns = new List<string>();
+        while (characterReader.Read())
+        {
+            characterColumns.Add(characterReader.GetString(1));
+        }
+
+        Assert.Contains("PriorityTier", characterColumns);
+        Assert.Contains("PriorityOrder", characterColumns);
+
         using var playerColumnCommand = connection.CreateCommand();
         playerColumnCommand.CommandText = "PRAGMA table_info('Players');";
         using var playerReader = playerColumnCommand.ExecuteReader();
@@ -254,13 +270,46 @@ public sealed class PlayerRepositoryTests : IDisposable
         Assert.Contains("LastSyncedUtc", playerColumns);
     }
 
+    [Fact]
+    public void CacheSchemaMigrator_CorrectsFixedModPrimaryStatsFromVersionSevenCache()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+        var migrator = new CacheSchemaMigrator();
+        migrator.Migrate(connection);
+
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText =
+                "UPDATE \"__CacheSchema\" SET \"Version\" = 7 WHERE \"Id\" = 1;" +
+                "INSERT INTO \"Mods\" (\"Id\", \"PlayerAllyCode\", \"CharacterId\", \"Set\", \"Slot\", \"Level\", \"Tier\", \"Rarity\", \"PrimaryStatType\", \"PrimaryStatValue\", \"SecondaryStatsJson\") VALUES " +
+                "('square', '123456789', 'CHARACTER', 1, 1, 15, 5, 5, 'Accuracy', 0.05, '[]')," +
+                "('diamond', '123456789', 'CHARACTER', 4, 3, 15, 5, 5, 'CriticalAvoidance', 0.10, '[]');";
+            command.ExecuteNonQuery();
+        }
+
+        var result = migrator.Migrate(connection);
+
+        Assert.Contains("8: mod primary correction", result.AppliedMigrations);
+        using var readCommand = connection.CreateCommand();
+        readCommand.CommandText = "SELECT \"PrimaryStatType\" FROM \"Mods\" ORDER BY \"Slot\";";
+        using var reader = readCommand.ExecuteReader();
+        Assert.True(reader.Read());
+        Assert.Equal("OffensePercent", reader.GetString(0));
+        Assert.True(reader.Read());
+        Assert.Equal("DefensePercent", reader.GetString(0));
+    }
+
     [Theory]
-    [InlineData(0, 5)]
-    [InlineData(1, 5)]
-    [InlineData(2, 4)]
-    [InlineData(3, 3)]
-    [InlineData(4, 2)]
-    [InlineData(5, 1)]
+    [InlineData(0, 8)]
+    [InlineData(1, 8)]
+    [InlineData(2, 7)]
+    [InlineData(3, 6)]
+    [InlineData(4, 5)]
+    [InlineData(5, 4)]
+    [InlineData(6, 3)]
+    [InlineData(7, 2)]
+    [InlineData(8, 1)]
     public void CacheSchemaMigrator_UpgradesEverySupportedVersion(
         int previousVersion,
         int expectedMigrationCount)

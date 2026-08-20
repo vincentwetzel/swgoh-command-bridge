@@ -15,7 +15,7 @@ The first version is intentionally primary-stat driven, while retaining enough d
 - A dominant primary is preferred, but close alternatives remain viable. A 55%/45% split therefore produces “Health preferred” and “Protection viable.”
 - Missing slots receive advice just like incorrectly equipped slots.
 - Insufficient data produces a low-confidence result rather than a fabricated universal recommendation.
-- The user’s character priority (0–100) is a weighting factor for future farming recommendations, not a filter.
+- The user’s character priority is a weighting factor for future farming recommendations, not a filter. The current priority board derives the legacy numeric weighting from S/A/B/C/D tier and order; Unranked units retain the lowest compatibility weight.
 - The dataset is global and contains no ally codes or raw player profiles.
 
 ## Separation from existing recommendation data
@@ -132,7 +132,7 @@ Each opportunity should carry separate components so the explanation remains und
 - `FinalScore` and tier;
 - a concise explanation and the affected characters.
 
-Character priority is a multiplier, not a gate. A low-priority character can contribute, but ten high-priority characters with the same weakness should dominate the ranking.
+Character priority is a multiplier, not a gate. A low-priority character can contribute, but ten high-priority characters with the same weakness should dominate the ranking. The board’s tier/order values are persisted locally and converted to the numeric compatibility value consumed by existing assignment and future farming logic.
 
 ## Offline cache and silent update flow
 

@@ -49,8 +49,10 @@ public static class PersistedModelMapper
     {
         ArgumentNullException.ThrowIfNull(mod);
 
-        var primaryType = Enum.TryParse<StatType>(mod.PrimaryStatType, true, out var parsedType)
-            ? parsedType
+        var slot = (ModSlot)mod.Slot;
+        var primaryType = Enum.TryParse<StatType>(mod.PrimaryStatType, true, out var parsedType) &&
+                          Enum.IsDefined(slot)
+            ? ModPrimaryRules.Normalize(slot, parsedType)
             : StatType.None;
         var secondaries = new List<ModStat>();
 
@@ -78,7 +80,7 @@ public static class PersistedModelMapper
             mod.Level,
             mod.Rarity,
             mod.Tier,
-            (ModSlot)mod.Slot,
+            slot,
             (ModSet)mod.Set,
             new ModStat(primaryType, mod.PrimaryStatValue),
             secondaries,

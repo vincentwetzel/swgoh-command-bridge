@@ -72,7 +72,12 @@ namespace swgoh_command_bridge.Core.Database.Repositories
                 if (existingPlayer != null)
                 {
                     var existingPriorities = existingPlayer.Characters
-                        .ToDictionary(character => character.Id, character => character.Priority);
+                        .ToDictionary(
+                            character => character.Id,
+                            character => new PriorityLayout(
+                                character.Priority,
+                                character.PriorityTier,
+                                character.PriorityOrder));
 
                     existingPlayer.Name = player.Name;
                     existingPlayer.Level = player.Level;
@@ -86,7 +91,9 @@ namespace swgoh_command_bridge.Core.Database.Repositories
                     {
                         if (existingPriorities.TryGetValue(character.Id, out var priority))
                         {
-                            character.Priority = priority;
+                            character.Priority = priority.Priority;
+                            character.PriorityTier = priority.Tier;
+                            character.PriorityOrder = priority.Order;
                         }
 
                         character.PlayerAllyCode = existingPlayer.AllyCode;
@@ -139,6 +146,8 @@ namespace swgoh_command_bridge.Core.Database.Repositories
                 }
             }
         }
+
+        private sealed record PriorityLayout(int Priority, Models.PriorityTier Tier, int Order);
 
         /// <inheritdoc />
         public async Task<bool> DeletePlayerAsync(

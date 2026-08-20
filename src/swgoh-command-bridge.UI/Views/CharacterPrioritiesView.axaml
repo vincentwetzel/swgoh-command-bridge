@@ -3,64 +3,120 @@
              xmlns:vm="using:swgoh_command_bridge.UI.ViewModels"
              x:Class="swgoh_command_bridge.UI.Views.CharacterPrioritiesView"
              x:DataType="vm:CharacterPrioritiesViewModel">
-  <Grid RowDefinitions="Auto, *" Margin="24">
-    <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,16">
-      <TextBlock Text="{Binding HeaderText}" FontSize="26" FontWeight="Bold"/>
-      <Button Grid.Column="1" Content="Refresh" Command="{Binding RefreshCommand}"/>
+  <Grid x:Name="BoardRoot" RowDefinitions="Auto, Auto, *" Margin="24" DragDrop.AllowDrop="True">
+    <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,10">
+      <StackPanel Spacing="3">
+        <TextBlock Text="{Binding HeaderText}" FontSize="26" FontWeight="Bold"/>
+        <TextBlock Text="Drag portraits to a tier. Within a tier, leftmost units receive the highest priority. Changes save automatically."
+                   Foreground="#AEB9C6" TextWrapping="Wrap"/>
+      </StackPanel>
+      <Button Grid.Column="1" Content="Refresh" Command="{Binding RefreshCommand}" VerticalAlignment="Top"/>
     </Grid>
 
-    <Grid Grid.Row="1" ColumnDefinitions="*, 280">
-      <Grid>
-        <TextBlock Text="Loading characters..." IsVisible="{Binding IsLoading}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-        <TextBlock Text="No cached characters. Sync an account from Home to begin." IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"/>
-        <StackPanel IsVisible="{Binding HasError}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" MaxWidth="360">
-          <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" Foreground="#FF8A80"/>
-          <Button Content="Retry" Command="{Binding RefreshCommand}" HorizontalAlignment="Center"/>
-        </StackPanel>
-        <ListBox ItemsSource="{Binding Characters}" SelectedItem="{Binding SelectedCharacter}" IsVisible="{Binding HasCharacters}">
-          <ListBox.ItemTemplate>
-            <DataTemplate>
-              <Grid ColumnDefinitions="44,*, Auto" Margin="2,4">
-                <Border Width="38" Height="38" CornerRadius="19" Background="#26344A" ClipToBounds="True">
-                  <Grid>
-                    <TextBlock Text="{Binding Converter={StaticResource CharacterInitials}}"
-                               HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#9CC9FF"/>
-                    <Image Source="{Binding Converter={StaticResource CharacterPortrait}}" Stretch="UniformToFill"/>
+    <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,0,0,16">
+      <Button Content="Characters" Command="{Binding ShowCharactersCommand}"/>
+      <Button Content="Ships" Command="{Binding ShowShipsCommand}"/>
+    </StackPanel>
+
+    <Grid Grid.Row="2">
+      <TextBlock Text="Loading roster..." IsVisible="{Binding IsLoading}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+      <TextBlock Text="No cached roster units. Sync an account from Home to begin." IsVisible="{Binding IsEmpty}"
+                 HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"/>
+      <StackPanel IsVisible="{Binding HasError}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" MaxWidth="360">
+        <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" Foreground="#FF8A80"/>
+        <Button Content="Retry" Command="{Binding RefreshCommand}" HorizontalAlignment="Center"/>
+      </StackPanel>
+      <TextBlock Text="No units of this type are present in the cached roster." IsVisible="{Binding IsActiveBoardEmpty}"
+                 HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"/>
+
+      <ScrollViewer IsVisible="{Binding HasCharacters}" VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="10">
+          <ItemsControl ItemsSource="{Binding RankedTiers}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border Background="#1C222A" BorderBrush="#445160" BorderThickness="1" CornerRadius="7" Height="132">
+                  <Grid ColumnDefinitions="112,*">
+                    <Border Background="{Binding AccentColor}" CornerRadius="6,0,0,6" Padding="12">
+                      <StackPanel VerticalAlignment="Center" Spacing="2">
+                        <TextBlock Text="{Binding Title}" FontSize="34" FontWeight="Bold" Foreground="#10151B" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding Count, StringFormat='{}{0} units'}" Foreground="#263238" HorizontalAlignment="Center"/>
+                      </StackPanel>
+                    </Border>
+                    <Border Grid.Column="1" Padding="10" Height="130" Background="#151A20"
+                            DragDrop.AllowDrop="True">
+                      <ItemsControl ItemsSource="{Binding Characters}">
+                        <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate>
+                            <WrapPanel/>
+                          </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                            <Border Classes="priority-card" Width="104" Margin="4" Padding="5" Background="#26344A"
+                                    BorderBrush="#4C6B8A" BorderThickness="1" CornerRadius="6" Cursor="Hand"
+                                    PointerPressed="CharacterCard_PointerPressed">
+                              <StackPanel Spacing="5">
+                                <Border Width="70" Height="70" CornerRadius="35" Background="#121A24" ClipToBounds="True" HorizontalAlignment="Center">
+                                  <Grid>
+                                    <TextBlock Text="{Binding Converter={StaticResource CharacterInitials}}" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#9CC9FF"/>
+                                    <Image Source="{Binding Converter={StaticResource CharacterPortrait}}" Stretch="UniformToFill"/>
+                                  </Grid>
+                                </Border>
+                                <TextBlock Text="{Binding Converter={StaticResource CharacterDisplayName}}" FontSize="12" FontWeight="SemiBold"
+                                           TextAlignment="Center" TextWrapping="Wrap" MaxHeight="34" TextTrimming="CharacterEllipsis"/>
+                              </StackPanel>
+                            </Border>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </Border>
                   </Grid>
                 </Border>
-                <TextBlock Grid.Column="1" Margin="10,0,0,0" Text="{Binding Converter={StaticResource CharacterDisplayName}}" VerticalAlignment="Center"/>
-                <TextBlock Grid.Column="2" Text="{Binding Priority, StringFormat='Priority: {0}' }" VerticalAlignment="Center" Foreground="Gray"/>
-              </Grid>
-            </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
-      </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
 
-      <Border Grid.Column="1" BorderBrush="#555555" BorderThickness="1" CornerRadius="6" Padding="16" IsVisible="{Binding HasCharacters}">
-        <StackPanel Spacing="12">
-          <StackPanel Orientation="Horizontal" Spacing="12">
-            <Border Width="64" Height="64" CornerRadius="32" Background="#26344A" ClipToBounds="True">
-              <Grid>
-                <TextBlock Text="{Binding SelectedCharacter, Converter={StaticResource CharacterInitials}}"
-                           HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#9CC9FF"/>
-                <Image Source="{Binding SelectedCharacter, Converter={StaticResource CharacterPortrait}}" Stretch="UniformToFill"/>
-              </Grid>
-            </Border>
-            <StackPanel VerticalAlignment="Center" Spacing="2">
-              <TextBlock Text="Selected character" FontSize="18" FontWeight="SemiBold"/>
-              <TextBlock Text="{Binding SelectedCharacter, Converter={StaticResource CharacterDisplayName}}" FontSize="16"/>
-            </StackPanel>
-          </StackPanel>
-          <TextBlock Text="Priority (0–100)"/>
-          <TextBox Text="{Binding SelectedCharacterPriority}"/>
-          <TextBlock Text="{Binding ValidationError}" IsVisible="{Binding HasValidationError}" Foreground="#FF8A80" TextWrapping="Wrap"/>
-          <TextBlock Text="Unsaved priority change" IsVisible="{Binding IsDirty}" Foreground="Gray"/>
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <Button Content="Save priority" Command="{Binding SavePriorityCommand}" IsEnabled="{Binding CanSavePriority}"/>
-            <Button Content="Cancel" Command="{Binding CancelEditCommand}" IsVisible="{Binding IsDirty}"/>
-          </StackPanel>
+          <Border Background="#151A20" BorderBrush="#586773" BorderThickness="1" CornerRadius="7" MinHeight="132" Margin="0,8,0,0"
+                  DataContext="{Binding UnrankedTier}" DragDrop.AllowDrop="True">
+            <Grid ColumnDefinitions="112,*">
+              <Border Background="{Binding AccentColor}" CornerRadius="6,0,0,6" Padding="12">
+                <StackPanel VerticalAlignment="Center" Spacing="2">
+                  <TextBlock Text="{Binding Title}" FontSize="18" FontWeight="Bold" Foreground="#10151B" HorizontalAlignment="Center" TextAlignment="Center"/>
+                  <TextBlock Text="{Binding Count, StringFormat='{}{0} units'}" Foreground="#263238" HorizontalAlignment="Center"/>
+                </StackPanel>
+              </Border>
+              <Border Grid.Column="1" Padding="10" MinHeight="130" Background="#11161C">
+                <ItemsControl ItemsSource="{Binding Characters}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <WrapPanel/>
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Border Classes="priority-card" Width="104" Margin="4" Padding="5" Background="#26344A"
+                              BorderBrush="#4C6B8A" BorderThickness="1" CornerRadius="6" Cursor="Hand"
+                              PointerPressed="CharacterCard_PointerPressed">
+                        <StackPanel Spacing="5">
+                          <Border Width="70" Height="70" CornerRadius="35" Background="#121A24" ClipToBounds="True" HorizontalAlignment="Center">
+                            <Grid>
+                              <TextBlock Text="{Binding Converter={StaticResource CharacterInitials}}" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#9CC9FF"/>
+                              <Image Source="{Binding Converter={StaticResource CharacterPortrait}}" Stretch="UniformToFill"/>
+                            </Grid>
+                          </Border>
+                          <TextBlock Text="{Binding Converter={StaticResource CharacterDisplayName}}" FontSize="12" FontWeight="SemiBold"
+                                     TextAlignment="Center" TextWrapping="Wrap" MaxHeight="34" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </Border>
+            </Grid>
+          </Border>
         </StackPanel>
-      </Border>
+      </ScrollViewer>
     </Grid>
+    <Canvas x:Name="DragPreviewLayer" Grid.RowSpan="3" IsHitTestVisible="False" Panel.ZIndex="100"/>
   </Grid>
 </UserControl>

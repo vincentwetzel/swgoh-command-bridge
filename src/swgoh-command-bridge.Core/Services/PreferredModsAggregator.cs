@@ -268,7 +268,9 @@ public sealed class PreferredModsAggregator
     }
 
     private static bool HasKnownPrimary(GameMod mod) =>
-        mod.Primary.Type != StatType.None && Enum.IsDefined(mod.Primary.Type);
+        mod.Primary.Type != StatType.None &&
+        Enum.IsDefined(mod.Primary.Type) &&
+        ModPrimaryRules.IsAllowed(mod.Slot, mod.Primary.Type);
 
     private static void ValidateOptions(PreferredModsAggregationOptions options)
     {

@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 This unreleased work is not a packaged release. The product remains read-only. Windows x64 can manage the local Comlink runtime; other platforms and externally managed deployments require a configured Comlink endpoint.
 
 ### Added
+- Added a drag-and-drop S/A/B/C/D priority board with an Unranked area, separate character/ship views, persisted order, and migration of legacy numeric priorities.
+- Added canonical mod-primary validation and normalization for malformed or version-skewed Comlink payloads, including schema migration repair for known invalid cached pairs.
 - Added an embedded character/ship catalog with localized-name and portrait resolution, best-effort Comlink catalog refresh, atomic catalog persistence, audit summaries, and bundled portrait/initials UI fallbacks.
 - Added aggregated preferred GAC mod guidance with complete set patterns, slot-primary recommendations, viable alternatives for close usage splits, an embedded/offline-safe cache, and silent GitHub-hosted refreshes.
 - Added a maintainer-run local ComLink publisher that samples high-ranking GAC accounts and writes only validated aggregate preferred-mod data plus a manifest for GitHub distribution.

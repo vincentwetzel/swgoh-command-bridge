@@ -1,5 +1,7 @@
 #nullable enable
 
+using swgoh_command_bridge.Core.Models;
+
 namespace swgoh_command_bridge.Core.Database.Entities
 {
     /// <summary>
@@ -24,6 +26,17 @@ namespace swgoh_command_bridge.Core.Database.Entities
         public long GalacticPower { get; set; }
         
         public int Priority { get; set; }
+
+        /// <summary>
+        /// Gets or sets the tier-list grouping. Unranked is the default for units
+        /// that have not been placed on the priority board.
+        /// </summary>
+        public PriorityTier PriorityTier { get; set; }
+
+        /// <summary>
+        /// Gets or sets the left-to-right rank inside <see cref="PriorityTier"/>.
+        /// </summary>
+        public int PriorityOrder { get; set; }
         
         public virtual PlayerEntity Player { get; set; } = null!;
     }

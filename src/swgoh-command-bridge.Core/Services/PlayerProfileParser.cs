@@ -260,14 +260,15 @@ public sealed class PlayerProfileParser
         var slot = GetOptionalInt(modJson, "slot") ?? definitionParts.Slot;
         var set = GetOptionalInt(modJson, "set", "setId") ?? definitionParts.Set;
         var pips = GetOptionalInt(modJson, "pips", "rarity") ?? definitionParts.Pips;
+        var parsedSlot = (ModSlot)Math.Clamp(slot, 1, 6);
         return new GameMod(
             Id: id,
             Level: Math.Clamp(GetInt(modJson, 1, "level"), 1, 15),
             Pips: Math.Clamp(pips, 1, 6),
             Tier: Math.Clamp(GetInt(modJson, 1, "tier"), 1, 5),
-            Slot: (ModSlot)Math.Clamp(slot, 1, 6),
+            Slot: parsedSlot,
             Set: (ModSet)Math.Max(1, set),
-            Primary: primary,
+            Primary: primary with { Type = ModPrimaryRules.Normalize(parsedSlot, primary.Type) },
             Secondaries: secondaries,
             EquippedUnitId: string.IsNullOrWhiteSpace(equippedUnitId) ? null : equippedUnitId);
     }

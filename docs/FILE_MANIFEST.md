@@ -69,12 +69,14 @@ This document lists the current source and documentation files in the repository
 |   |   |   |-- ModRecommendation.cs
 |   |   |   |-- ModStat.cs
 |   |   |   |-- ModThresholdTransferDocument.cs
+|   |   |   |-- ModPrimaryRules.cs
 |   |   |   |-- ModUpgradeThreshold.cs
 |   |   |   |-- OperationState.cs
 |   |   |   |-- PlayerProfile.cs
 |   |   |   |-- PlayerService.cs
 |   |   |   |-- PlayerSyncDiagnostics.cs
 |   |   |   |-- PlayerSyncProgress.cs
+|   |   |   |-- PriorityTier.cs
 |   |   |   |-- RecommendationSnapshot.cs
 |   |   |   |-- RosterLoadoutPlan.cs
 |   |   |   |-- ScrapeCharacterResult.cs
@@ -84,6 +86,7 @@ This document lists the current source and documentation files in the repository
 |   |   |   `-- ThemePreference.cs
 |   |   `-- Services
 |   |       |-- BundledCharacterCatalogService.cs
+|   |       |-- BundledRosterUnitClassifier.cs
 |   |       |-- CharacterCatalogParser.cs
 |   |       |-- CharacterMetadataParser.cs
 |   |       |-- CharacterNameFormatter.cs
@@ -127,6 +130,7 @@ This document lists the current source and documentation files in the repository
 |       |   |-- ModOptimizerViewModel.cs
 |       |   |-- ModThresholdsViewModel.cs
 |       |   |-- ModsViewModel.cs
+|       |   |-- PriorityTierViewModel.cs
 |       |   |-- StateViewModelBase.cs
 |       |   `-- ViewModelBase.cs
 |       `-- Views
@@ -156,6 +160,7 @@ This document lists the current source and documentation files in the repository
         |-- CharacterCatalogParserTests.cs
         |-- CharacterMetadataParserTests.cs
         |-- CharacterViewModelTests.cs
+        |-- ModPrimaryRulesTests.cs
         |-- ComlinkErrorFormatterTests.cs
         |-- ComlinkServiceTests.cs
         |-- DiagnosticEventLogTests.cs

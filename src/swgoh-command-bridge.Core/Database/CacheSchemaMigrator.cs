@@ -20,7 +20,7 @@ public sealed record CacheSchemaMigrationResult(
 /// </summary>
 public sealed class CacheSchemaMigrator
 {
-    public const int CurrentVersion = 7;
+    public const int CurrentVersion = 9;
 
     public CacheSchemaMigrationResult Migrate(DbConnection connection)
     {
@@ -113,6 +113,27 @@ public sealed class CacheSchemaMigrator
                 applied.Add("7: character portrait catalog mappings");
             }
 
+            if (previousVersion < 8)
+            {
+                CorrectInvalidModPrimaries(connection, transaction);
+                applied.Add("8: mod primary correction");
+            }
+
+            if (previousVersion < 9)
+            {
+                EnsureColumns(
+                    connection,
+                    transaction,
+                    "Characters",
+                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["PriorityTier"] = "INTEGER NOT NULL DEFAULT 0",
+                        ["PriorityOrder"] = "INTEGER NOT NULL DEFAULT 0"
+                    });
+                MigrateLegacyPrioritiesToTiers(connection, transaction);
+                applied.Add("9: tier-list priority layout");
+            }
+
             if (previousVersion < CurrentVersion)
             {
                 Execute(
@@ -158,6 +179,7 @@ public sealed class CacheSchemaMigrator
             "\"PortraitAsset\" TEXT NOT NULL DEFAULT '', " +
             "\"Level\" INTEGER NOT NULL, \"Stars\" INTEGER NOT NULL, \"GearLevel\" INTEGER NOT NULL, " +
             "\"GalacticPower\" INTEGER NOT NULL, \"Priority\" INTEGER NOT NULL, " +
+            "\"PriorityTier\" INTEGER NOT NULL DEFAULT 0, \"PriorityOrder\" INTEGER NOT NULL DEFAULT 0, " +
             "CONSTRAINT \"PK_Characters\" PRIMARY KEY (\"Id\", \"PlayerAllyCode\"), " +
             "CONSTRAINT \"FK_Characters_Players_PlayerAllyCode\" FOREIGN KEY (\"PlayerAllyCode\") " +
             "REFERENCES \"Players\" (\"AllyCode\") ON DELETE CASCADE);");
@@ -238,6 +260,55 @@ public sealed class CacheSchemaMigrator
         Execute(connection, transaction, "DROP TABLE \"SwgohGgRecommendations\";");
         Execute(connection, transaction,
             "ALTER TABLE \"SwgohGgRecommendations_v6\" RENAME TO \"SwgohGgRecommendations\";");
+    }
+
+    private static void CorrectInvalidModPrimaries(
+        DbConnection connection,
+        DbTransaction transaction)
+    {
+        // Earlier Comlink payloads could expose raw primary identifiers
+        // inconsistently. Correct only pairs that are impossible in-game.
+        Execute(
+            connection,
+            transaction,
+            "UPDATE \"Mods\" SET \"PrimaryStatType\" = 'OffensePercent' " +
+            "WHERE \"Slot\" = 1 AND \"PrimaryStatType\" = 'Accuracy';");
+        Execute(
+            connection,
+            transaction,
+            "UPDATE \"Mods\" SET \"PrimaryStatType\" = 'DefensePercent' " +
+            "WHERE \"Slot\" = 3 AND \"PrimaryStatType\" = 'CriticalAvoidance';");
+        Execute(
+            connection,
+            transaction,
+            "UPDATE \"Mods\" SET \"PrimaryStatType\" = 'OffensePercent' " +
+            "WHERE \"Slot\" IN (4, 6) AND \"PrimaryStatType\" = 'Accuracy';");
+        Execute(
+            connection,
+            transaction,
+            "UPDATE \"Mods\" SET \"PrimaryStatType\" = 'DefensePercent' " +
+            "WHERE \"Slot\" IN (4, 6) AND \"PrimaryStatType\" = 'CriticalAvoidance';");
+        Execute(
+            connection,
+            transaction,
+            "UPDATE \"Mods\" SET \"PrimaryStatType\" = 'CriticalChancePercent' " +
+            "WHERE \"Slot\" = 4 AND \"PrimaryStatType\" = '53';");
+    }
+
+    private static void MigrateLegacyPrioritiesToTiers(
+        DbConnection connection,
+        DbTransaction transaction)
+    {
+        Execute(
+            connection,
+            transaction,
+            "UPDATE \"Characters\" SET \"PriorityTier\" = CASE " +
+            "WHEN \"Priority\" >= 80 THEN 1 " +
+            "WHEN \"Priority\" >= 60 THEN 2 " +
+            "WHEN \"Priority\" >= 40 THEN 3 " +
+            "WHEN \"Priority\" >= 20 THEN 4 " +
+            "WHEN \"Priority\" > 0 THEN 5 ELSE 0 END " +
+            "WHERE \"PriorityTier\" = 0 AND \"Priority\" > 0;");
     }
 
     private static IEnumerable<string> ReadColumns(

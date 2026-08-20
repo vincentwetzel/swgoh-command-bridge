@@ -31,6 +31,7 @@ namespace swgoh_command_bridge.UI.ViewModels
         private string _searchText = string.Empty;
         private string _catalogStatusText = string.Empty;
         private string _preferredModDataText = "Top GAC mod data is unavailable.";
+        private string _primaryComparisonSummary = string.Empty;
         private CharacterEntity? _selectedCharacter;
         private readonly List<GameModEntity> _equippedMods = new();
         /// <summary>
@@ -55,17 +56,27 @@ namespace swgoh_command_bridge.UI.ViewModels
                 OnPropertyChanged(nameof(SelectedCharacter));
                 OnPropertyChanged(nameof(HasSelectedCharacter));
                 CurrentMods.Clear();
+                EquippedModDetails.Clear();
                 if (value != null)
                 {
-                    foreach (var mod in _equippedMods.Where(mod =>
-                                 string.Equals(mod.CharacterId, value.Id, StringComparison.Ordinal)))
+                    foreach (var mod in _equippedMods
+                                 .Where(mod => string.Equals(mod.CharacterId, value.Id, StringComparison.Ordinal))
+                                 .OrderBy(mod => mod.Slot))
                     {
                         CurrentMods.Add(mod);
+                        EquippedModDetails.Add(new EquippedModDisplayItem(
+                            FormatSlot(mod.Slot),
+                            FormatSet(mod.Set),
+                            FormatPrimaryStat(mod.PrimaryStatType, mod.PrimaryStatValue),
+                            FormatSecondarySpeed(mod.SecondaryStatsJson),
+                            mod.SecondaryStatsSummary,
+                            mod.QualitySummary));
                     }
                 }
 
                 OnPropertyChanged(nameof(HasCurrentMods));
                 OnPropertyChanged(nameof(HasNoCurrentMods));
+                OnPropertyChanged(nameof(CurrentModsHeader));
                 RefreshPreferredModGuidance();
             }
         }
@@ -75,11 +86,14 @@ namespace swgoh_command_bridge.UI.ViewModels
         /// </summary>
         public ObservableCollection<GameModEntity> CurrentMods { get; } = new();
 
+        /// <summary>Readable equipped-mod rows for the selected character detail view.</summary>
+        public ObservableCollection<EquippedModDisplayItem> EquippedModDetails { get; } = new();
+
         /// <summary>Common complete builds observed in the top GAC dataset.</summary>
         public ObservableCollection<string> PreferredSetups { get; } = new();
 
-        /// <summary>Primary-stat distributions for each mod slot.</summary>
-        public ObservableCollection<string> PreferredPrimaryAdvice { get; } = new();
+        /// <summary>Primary-stat recommendations for each mod slot.</summary>
+        public ObservableCollection<PreferredPrimaryRecommendationItem> PreferredPrimaryAdvice { get; } = new();
 
         /// <summary>Comparison of the selected character's equipped or missing mods to the preferred data.</summary>
         public ObservableCollection<string> CurrentModGuidance { get; } = new();
@@ -96,6 +110,8 @@ namespace swgoh_command_bridge.UI.ViewModels
 
         public bool HasCurrentModGuidance => CurrentModGuidance.Count > 0;
 
+        public string CurrentModsHeader => $"Your equipped mods ({CurrentMods.Count})";
+
         public string PreferredModDataText
         {
             get => _preferredModDataText;
@@ -105,6 +121,20 @@ namespace swgoh_command_bridge.UI.ViewModels
                 {
                     _preferredModDataText = value;
                     OnPropertyChanged(nameof(PreferredModDataText));
+                }
+            }
+        }
+
+        /// <summary>Compact outcome summary for the primary-stat comparison.</summary>
+        public string PrimaryComparisonSummary
+        {
+            get => _primaryComparisonSummary;
+            private set
+            {
+                if (_primaryComparisonSummary != value)
+                {
+                    _primaryComparisonSummary = value;
+                    OnPropertyChanged(nameof(PrimaryComparisonSummary));
                 }
             }
         }
@@ -430,6 +460,26 @@ namespace swgoh_command_bridge.UI.ViewModels
             }
         }
 
+        private static string FormatSecondarySpeed(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return "—";
+            }
+
+            try
+            {
+                var speed = (JsonSerializer.Deserialize<List<ModStatSnapshot>>(json) ?? new List<ModStatSnapshot>())
+                    .FirstOrDefault(snapshot =>
+                        Enum.TryParse<StatType>(snapshot.Type, true, out var type) && type == StatType.Speed);
+                return speed == null ? "—" : new ModStat(StatType.Speed, speed.Value, speed.RollCount).ToString();
+            }
+            catch (JsonException)
+            {
+                return "—";
+            }
+        }
+
         private static string FormatSet(int set) =>
             Enum.IsDefined(typeof(ModSet), set) ? ((ModSet)set).ToString() : $"Set {set}";
 
@@ -439,7 +489,7 @@ namespace swgoh_command_bridge.UI.ViewModels
         private static void PopulateDisplayFields(GameModEntity mod)
         {
             mod.QualitySummary = $"{mod.Rarity}-dot • Level {mod.Level} • Tier {mod.Tier}";
-            mod.SetSlotSummary = $"{FormatSet(mod.Set)} • {FormatSlot(mod.Slot)}";
+            mod.SetSlotSummary = $"Set: {FormatSet(mod.Set)}; Shape: {FormatSlot(mod.Slot)}";
             mod.PrimaryStatSummary = FormatPrimaryStat(mod.PrimaryStatType, mod.PrimaryStatValue);
 
             var secondaries = ParseSecondarySummaries(mod.SecondaryStatsJson);
@@ -470,6 +520,7 @@ namespace swgoh_command_bridge.UI.ViewModels
             PreferredSetups.Clear();
             PreferredPrimaryAdvice.Clear();
             CurrentModGuidance.Clear();
+            PrimaryComparisonSummary = string.Empty;
 
             if (_preferredModsService == null)
             {
@@ -503,10 +554,21 @@ namespace swgoh_command_bridge.UI.ViewModels
                 PreferredSetups.Add($"{sets} ({setup.Share:P0})");
             }
 
+            var alignedCount = 0;
+            var flexibleCount = 0;
+            var attentionCount = 0;
             foreach (var slot in recommendation.Slots.OrderBy(slot => slot.Slot))
             {
                 var preferred = slot.Options.FirstOrDefault(option =>
                     option.Status == PreferredRecommendationStatus.Preferred);
+                var currentMod = CurrentMods.FirstOrDefault(mod => mod.Slot == (int)slot.Slot);
+                var currentPrimary = currentMod != null &&
+                                     Enum.TryParse<StatType>(currentMod.PrimaryStatType, true, out var parsed)
+                    ? ModPrimaryRules.Normalize(slot.Slot, parsed)
+                    : StatType.None;
+                var equippedPrimary = currentMod == null
+                    ? "Not equipped"
+                    : FormatPreferredStat(currentPrimary);
                 var displayOptions = preferred == null
                     ? slot.Options.Take(3).ToList()
                     : slot.Options
@@ -518,11 +580,41 @@ namespace swgoh_command_bridge.UI.ViewModels
                     displayOptions.Add(fallback);
                 }
 
-                var options = string.Join(", ", displayOptions.Select(option =>
-                    $"{FormatPreferredStat(option.PrimaryStat)} {option.Share:P0} ({FormatStatus(option.Status)})"));
-                PreferredPrimaryAdvice.Add($"{slot.Slot}: {options}");
+                var currentOption = slot.Options.FirstOrDefault(option => option.PrimaryStat == currentPrimary);
+                var (equippedStatus, equippedAccent) = preferred == null
+                    ? currentMod == null
+                        ? ("Equip", "#E5A84B")
+                        : ("Flexible", "#79B8FF")
+                    : currentMod == null
+                        ? ("Equip", "#E5A84B")
+                        : currentOption?.Status switch
+                        {
+                            PreferredRecommendationStatus.Preferred => ("Aligned", "#68C98A"),
+                            PreferredRecommendationStatus.ViableAlternative => ("Flexible", "#79B8FF"),
+                            _ => ("Review", "#FF9B73")
+                        };
 
-                var currentMod = CurrentMods.FirstOrDefault(mod => mod.Slot == (int)slot.Slot);
+                if (equippedStatus == "Aligned")
+                {
+                    alignedCount++;
+                }
+                else if (equippedStatus == "Flexible")
+                {
+                    flexibleCount++;
+                }
+                else
+                {
+                    attentionCount++;
+                }
+
+                PreferredPrimaryAdvice.Add(new PreferredPrimaryRecommendationItem(
+                    slot.Slot.ToString(),
+                    string.Join(" · ", displayOptions.Select(option =>
+                        $"{FormatPreferredStat(option.PrimaryStat)} {option.Share:P0}")),
+                    currentMod == null ? "Not equipped" : equippedPrimary,
+                    equippedStatus,
+                    equippedAccent));
+
                 if (preferred == null)
                 {
                     if (currentMod == null)
@@ -540,10 +632,6 @@ namespace swgoh_command_bridge.UI.ViewModels
                     continue;
                 }
 
-                var currentPrimary = Enum.TryParse<StatType>(currentMod.PrimaryStatType, true, out var parsed)
-                    ? parsed
-                    : StatType.None;
-                var currentOption = slot.Options.FirstOrDefault(option => option.PrimaryStat == currentPrimary);
                 if (currentOption?.Status == PreferredRecommendationStatus.Preferred)
                 {
                     continue;
@@ -559,6 +647,10 @@ namespace swgoh_command_bridge.UI.ViewModels
                 }
             }
 
+            PrimaryComparisonSummary = attentionCount == 0
+                ? $"{alignedCount} aligned · {flexibleCount} flexible · no changes recommended"
+                : $"{alignedCount} aligned · {flexibleCount} flexible · {attentionCount} need attention";
+
             NotifyPreferredModGuidanceChanged();
         }
 
@@ -567,20 +659,39 @@ namespace swgoh_command_bridge.UI.ViewModels
             OnPropertyChanged(nameof(HasPreferredSetups));
             OnPropertyChanged(nameof(HasPreferredPrimaryAdvice));
             OnPropertyChanged(nameof(HasCurrentModGuidance));
+            OnPropertyChanged(nameof(PrimaryComparisonSummary));
         }
 
-        private static string FormatPreferredStat(StatType stat) => stat == StatType.None
-            ? "an unknown primary"
-            : stat.ToString().Replace("Percent", " %", StringComparison.Ordinal);
-
-        private static string FormatStatus(PreferredRecommendationStatus status) => status switch
+        private static string FormatPreferredStat(StatType stat) => stat switch
         {
-            PreferredRecommendationStatus.Preferred => "preferred",
-            PreferredRecommendationStatus.ViableAlternative => "viable",
-            PreferredRecommendationStatus.Inconclusive => "limited data",
-            PreferredRecommendationStatus.LessCommon => "less common",
-            _ => "unavailable"
+            StatType.None => "unknown",
+            StatType.HealthPercent => "Health %",
+            StatType.ProtectionPercent => "Protection %",
+            StatType.OffensePercent => "Offense %",
+            StatType.DefensePercent => "Defense %",
+            StatType.SpeedPercent => "Speed %",
+            StatType.CriticalDamage => "Critical Damage",
+            StatType.CriticalChance => "Critical Chance",
+            StatType.CriticalChancePercent => "Critical Chance %",
+            StatType.CriticalAvoidance => "Critical Avoidance",
+            StatType.CriticalAvoidancePercent => "Critical Avoidance %",
+            _ => stat.ToString()
         };
 
     }
+
+    public sealed record PreferredPrimaryRecommendationItem(
+        string Slot,
+        string Target,
+        string Current,
+        string Result,
+        string ResultColor);
+
+    public sealed record EquippedModDisplayItem(
+        string Shape,
+        string Set,
+        string Primary,
+        string SecondarySpeed,
+        string KeySecondaries,
+        string Quality);
 }

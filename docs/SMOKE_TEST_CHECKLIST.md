@@ -22,6 +22,8 @@ Run `dotnet build swgoh-command-bridge.sln` and `dotnet test swgoh-command-bridg
 - [ ] Confirm the latest sync result and warning count appear in the account dropdown and Diagnostics.
 - [ ] Confirm Diagnostics lists recent redacted sync attempts without full ally codes or account payloads.
 - [ ] Confirm characters, priorities, mods, equipped owners, and optimizer data refresh without restarting.
+- [ ] Open Priorities, verify character and ship tabs show only their respective units, drag units between S/A/B/C/D and Unranked, reorder units within a tier, save, restart, and confirm placement/order persist.
+- [ ] Sync the same account again and confirm the priority board retains local tier placement and ordering.
 - [ ] Confirm startup catalog refresh is best-effort: localized character names and bundled portraits appear when the catalog is available, while an unavailable Comlink leaves the embedded/previous catalog usable.
 - [ ] Close and reopen the app with Comlink unavailable; confirm cached data remains viewable offline.
 - [ ] With a stale cache and Comlink unavailable, confirm the background refresh fails visibly while the previous cached roster and mods remain usable.
@@ -38,6 +40,7 @@ Run `dotnet build swgoh-command-bridge.sln` and `dotnet test swgoh-command-bridg
 - [ ] Enter an invalid URL and confirm Settings rejects it without changing the active client URL.
 - [ ] Change the theme to Dark, Light, and System, then restart and confirm the selected theme is applied.
 - [ ] Load malformed or partial fixture data and confirm the app reports the affected operation instead of crashing.
+- [ ] Verify malformed/impossible mod primary pairs are corrected when unambiguous or shown as unavailable, and do not produce invalid preferred-mod guidance.
 
 ## Cache recovery
 
