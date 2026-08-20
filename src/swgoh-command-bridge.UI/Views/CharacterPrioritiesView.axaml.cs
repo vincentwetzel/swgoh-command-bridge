@@ -5,6 +5,7 @@ using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Media;
 using swgoh_command_bridge.Core.Database.Entities;
 using swgoh_command_bridge.UI.Converters;
@@ -17,22 +18,43 @@ namespace swgoh_command_bridge.UI.Views;
 /// </summary>
 public partial class CharacterPrioritiesView : UserControl
 {
-    private const string PriorityCardFormat = "swgoh-command-bridge/priority-card";
     private readonly CharacterPortraitConverter _portraitConverter = new();
     private readonly CharacterInitialsConverter _initialsConverter = new();
     private readonly CharacterDisplayNameConverter _displayNameConverter = new();
     private Border? _dragPreview;
     private Vector _dragPreviewPointerOffset;
+    private CharacterEntity? _draggedCharacter;
+    private Control? _draggedCard;
+    private IPointer? _dragPointer;
+    private double _draggedCardOpacity;
 
     /// <summary>Initializes the priority board view.</summary>
     public CharacterPrioritiesView()
     {
         InitializeComponent();
-        AddHandler(DragDrop.DragOverEvent, Tier_DragOver);
-        AddHandler(DragDrop.DropEvent, Tier_Drop);
+        BoardRoot.AddHandler(
+            InputElement.PointerMovedEvent,
+            PriorityBoard_PointerMoved,
+            RoutingStrategies.Tunnel,
+            handledEventsToo: true);
+        BoardRoot.AddHandler(
+            InputElement.PointerReleasedEvent,
+            PriorityBoard_PointerReleased,
+            RoutingStrategies.Tunnel,
+            handledEventsToo: true);
+        BoardRoot.AddHandler(
+            InputElement.PointerCaptureLostEvent,
+            PriorityBoard_PointerCaptureLost,
+            RoutingStrategies.Tunnel,
+            handledEventsToo: true);
+        BoardRoot.AddHandler(
+            InputElement.PointerWheelChangedEvent,
+            PriorityBoard_PointerWheelChanged,
+            RoutingStrategies.Tunnel,
+            handledEventsToo: true);
     }
 
-    private async void CharacterCard_PointerPressed(object? sender, PointerPressedEventArgs e)
+    private void CharacterCard_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (sender is not Control card ||
             card.DataContext is not CharacterEntity character ||
@@ -41,10 +63,10 @@ public partial class CharacterPrioritiesView : UserControl
             return;
         }
 
-        var data = new DataObject();
-        data.Set(PriorityCardFormat, character);
-        var originalOpacity = card.Opacity;
+        _draggedCardOpacity = card.Opacity;
         card.Opacity = 0.35;
+        _draggedCharacter = character;
+        _draggedCard = card;
         _dragPreview = CreateDragPreview(character);
         DragPreviewLayer.Children.Add(_dragPreview);
         var pointerPosition = e.GetPosition(DragPreviewLayer);
@@ -52,42 +74,44 @@ public partial class CharacterPrioritiesView : UserControl
         _dragPreviewPointerOffset = pointerPosition - cardPosition;
         MoveDragPreview(pointerPosition);
 
-        try
-        {
-            await DragDrop.DoDragDrop(e, data, DragDropEffects.Move);
-        }
-        finally
-        {
-            card.Opacity = originalOpacity;
-            DragPreviewLayer.Children.Remove(_dragPreview);
-            _dragPreview = null;
-            _dragPreviewPointerOffset = default;
-        }
-
+        _dragPointer = e.Pointer;
+        e.Pointer.Capture(card);
         e.Handled = true;
     }
 
-    private void Tier_DragOver(object? sender, DragEventArgs e)
+    private void PriorityBoard_PointerMoved(object? sender, PointerEventArgs e)
     {
         MoveDragPreview(e.GetPosition(DragPreviewLayer));
-        e.DragEffects = FindTierDestination(e.Source) != null && e.Data.Contains(PriorityCardFormat)
-            ? DragDropEffects.Move
-            : DragDropEffects.None;
+    }
+
+    private void PriorityBoard_PointerWheelChanged(object? sender, PointerWheelEventArgs e)
+    {
+        if (_dragPreview == null)
+        {
+            return;
+        }
+
+        var offset = PriorityBoardScrollViewer.Offset;
+        var maximumOffset = Math.Max(0, PriorityBoardScrollViewer.Extent.Height - PriorityBoardScrollViewer.Viewport.Height);
+        var verticalOffset = Math.Clamp(offset.Y - e.Delta.Y * 48, 0, maximumOffset);
+        PriorityBoardScrollViewer.Offset = new Vector(offset.X, verticalOffset);
         e.Handled = true;
     }
 
-    private async void Tier_Drop(object? sender, DragEventArgs e)
+    private async void PriorityBoard_PointerReleased(object? sender, PointerReleasedEventArgs e)
     {
-        if (FindTierDestination(e.Source) is not PriorityTierViewModel destination ||
-            e.Data.Get(PriorityCardFormat) is not CharacterEntity character ||
+        if (_draggedCharacter is not CharacterEntity character ||
             DataContext is not CharacterPrioritiesViewModel viewModel)
         {
             return;
         }
 
-        var targetCard = FindPriorityCard(e.Source);
+        var target = BoardRoot.InputHitTest(e.GetPosition(BoardRoot));
+        var destination = FindTierDestination(target);
+        var targetCard = FindPriorityCard(target);
         var targetCharacter = targetCard?.DataContext as CharacterEntity;
-        if (ReferenceEquals(targetCharacter, character))
+        EndDrag(e.Pointer);
+        if (destination is null || ReferenceEquals(targetCharacter, character))
         {
             return;
         }
@@ -97,6 +121,11 @@ public partial class CharacterPrioritiesView : UserControl
             : destination.Characters.IndexOf(targetCharacter);
         await viewModel.MoveCharacterAsync(character, destination, destinationIndex);
         e.Handled = true;
+    }
+
+    private void PriorityBoard_PointerCaptureLost(object? sender, PointerEventArgs e)
+    {
+        EndDrag(null);
     }
 
     private static Control? FindPriorityCard(object? source)
@@ -121,7 +150,7 @@ public partial class CharacterPrioritiesView : UserControl
         while (control != null)
         {
             if (control.DataContext is PriorityTierViewModel destination &&
-                DragDrop.GetAllowDrop(control))
+                control is Border)
             {
                 return destination;
             }
@@ -211,5 +240,28 @@ public partial class CharacterPrioritiesView : UserControl
 
         Canvas.SetLeft(_dragPreview, position.X - _dragPreviewPointerOffset.X);
         Canvas.SetTop(_dragPreview, position.Y - _dragPreviewPointerOffset.Y);
+    }
+
+    private void EndDrag(IPointer? pointer)
+    {
+        if (_dragPreview == null)
+        {
+            return;
+        }
+
+        var preview = _dragPreview;
+        var draggedCard = _draggedCard;
+        _dragPreview = null;
+        _dragPreviewPointerOffset = default;
+        _draggedCharacter = null;
+        _draggedCard = null;
+        _dragPointer = null;
+        if (draggedCard != null)
+        {
+            draggedCard.Opacity = _draggedCardOpacity;
+        }
+        _draggedCardOpacity = 1;
+        pointer?.Capture(null);
+        DragPreviewLayer.Children.Remove(preview);
     }
 }

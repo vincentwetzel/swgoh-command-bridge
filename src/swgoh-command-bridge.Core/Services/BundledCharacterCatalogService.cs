@@ -54,7 +54,7 @@ public sealed class BundledCharacterCatalogService : ICharacterCatalogSnapshotSe
     private const string ShipsFileName = "swgoh-ships.json";
     private const string ComlinkCatalogFileName = "comlink-catalog.json";
     private const string ComlinkManifestFileName = "comlink-manifest.json";
-    private const int ManifestVersion = 1;
+    private const int ManifestVersion = 2;
     private const int MinimumComlinkCatalogRecords = 100;
     private const int MinimumEmbeddedCharacterRecords = 100;
     private const int MinimumEmbeddedShipRecords = 20;
@@ -110,7 +110,8 @@ public sealed class BundledCharacterCatalogService : ICharacterCatalogSnapshotSe
                 {
                     base_id = entry.Id,
                     name = entry.Name,
-                    image = entry.PortraitAsset
+                    image = entry.PortraitAsset,
+                    alignment = entry.Alignment
                 }));
         var manifest = new AggregateCatalogSnapshotManifest(
             ManifestVersion,
@@ -220,7 +221,8 @@ public sealed class BundledCharacterCatalogService : ICharacterCatalogSnapshotSe
                 {
                     baseId = entry.Id,
                     name = entry.Name,
-                    thumbnailName = entry.Image
+                    thumbnailName = entry.Image,
+                    alignment = entry.Alignment
                 })
         });
         return new CharacterCatalogPayload(gameDataJson, "{}", snapshot.Info.Source);
@@ -263,7 +265,8 @@ public sealed class BundledCharacterCatalogService : ICharacterCatalogSnapshotSe
             entries.Add(new CatalogEntry(
                 GetRequiredString(value, "base_id", source),
                 GetRequiredString(value, "name", source),
-                GetRequiredString(value, "image", source)));
+                GetRequiredString(value, "image", source),
+                GetOptionalString(value, "alignment") ?? "Neutral"));
         }
 
         return entries;
@@ -322,6 +325,15 @@ public sealed class BundledCharacterCatalogService : ICharacterCatalogSnapshotSe
         throw new InvalidDataException($"The {source} contains a record without '{propertyName}'.");
     }
 
+    private static string? GetOptionalString(JsonElement record, string propertyName)
+    {
+        return record.ValueKind == JsonValueKind.Object &&
+               record.TryGetProperty(propertyName, out var property) &&
+               property.ValueKind == JsonValueKind.String
+            ? property.GetString()?.Trim()
+            : null;
+    }
+
     private static async Task WriteAtomicallyAsync(
         string destinationPath,
         byte[] contents,
@@ -342,7 +354,7 @@ public sealed class BundledCharacterCatalogService : ICharacterCatalogSnapshotSe
         }
     }
 
-    private sealed record CatalogEntry(string Id, string Name, string Image);
+    private sealed record CatalogEntry(string Id, string Name, string Image, string Alignment);
 
     private sealed record CatalogSnapshot(
         IReadOnlyDictionary<string, CatalogEntry> Entries,

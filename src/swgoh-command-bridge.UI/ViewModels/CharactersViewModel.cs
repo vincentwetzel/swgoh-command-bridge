@@ -27,7 +27,7 @@ namespace swgoh_command_bridge.UI.ViewModels
         private readonly IPreferredModsDatasetService? _preferredModsService;
         private bool _catalogRepairAttempted;
         private bool _catalogRepairInProgress;
-        private string _headerText = "Characters List";
+        private string _headerText = "Roster · Characters";
         private string _searchText = string.Empty;
         private string _catalogStatusText = string.Empty;
         private string _preferredModDataText = "Top GAC mod data is unavailable.";
@@ -380,11 +380,13 @@ namespace swgoh_command_bridge.UI.ViewModels
 
                     matched++;
                     if (!string.Equals(character.Name, entry.Name, StringComparison.Ordinal) ||
-                        !string.Equals(character.PortraitAsset, entry.PortraitAsset, StringComparison.Ordinal))
+                        !string.Equals(character.PortraitAsset, entry.PortraitAsset, StringComparison.Ordinal) ||
+                        !string.Equals(character.Alignment, entry.Alignment, StringComparison.Ordinal))
                     {
                         changed++;
                         character.Name = entry.Name;
                         character.PortraitAsset = entry.PortraitAsset;
+                        character.Alignment = entry.Alignment;
                     }
 
                     if (string.IsNullOrWhiteSpace(entry.PortraitAsset))
@@ -561,6 +563,11 @@ namespace swgoh_command_bridge.UI.ViewModels
             {
                 var preferred = slot.Options.FirstOrDefault(option =>
                     option.Status == PreferredRecommendationStatus.Preferred);
+                var orderedOptions = slot.Options
+                    .OrderByDescending(option => option.Share)
+                    .ThenBy(option => option.PrimaryStat)
+                    .ToList();
+                var leadingOption = preferred ?? orderedOptions.FirstOrDefault();
                 var currentMod = CurrentMods.FirstOrDefault(mod => mod.Slot == (int)slot.Slot);
                 var currentPrimary = currentMod != null &&
                                      Enum.TryParse<StatType>(currentMod.PrimaryStatType, true, out var parsed)
@@ -569,16 +576,6 @@ namespace swgoh_command_bridge.UI.ViewModels
                 var equippedPrimary = currentMod == null
                     ? "Not equipped"
                     : FormatPreferredStat(currentPrimary);
-                var displayOptions = preferred == null
-                    ? slot.Options.Take(3).ToList()
-                    : slot.Options
-                        .Where(option => option.Status is PreferredRecommendationStatus.Preferred or
-                            PreferredRecommendationStatus.ViableAlternative)
-                        .ToList();
-                if (displayOptions.Count == 0 && slot.Options.FirstOrDefault() is { } fallback)
-                {
-                    displayOptions.Add(fallback);
-                }
 
                 var currentOption = slot.Options.FirstOrDefault(option => option.PrimaryStat == currentPrimary);
                 var (equippedStatus, equippedAccent) = preferred == null
@@ -609,8 +606,11 @@ namespace swgoh_command_bridge.UI.ViewModels
 
                 PreferredPrimaryAdvice.Add(new PreferredPrimaryRecommendationItem(
                     slot.Slot.ToString(),
-                    string.Join(" · ", displayOptions.Select(option =>
-                        $"{FormatPreferredStat(option.PrimaryStat)} {option.Share:P0}")),
+                    leadingOption == null
+                        ? "No primary data"
+                        : $"{FormatPreferredStat(leadingOption.PrimaryStat)} {leadingOption.Share:P0}",
+                    FormatAlternativeChoices(orderedOptions, leadingOption),
+                    FormatPrimaryDistributionTooltip(slot.Slot, orderedOptions),
                     currentMod == null ? "Not equipped" : equippedPrimary,
                     equippedStatus,
                     equippedAccent));
@@ -678,14 +678,53 @@ namespace swgoh_command_bridge.UI.ViewModels
             _ => stat.ToString()
         };
 
+        private static string FormatAlternativeChoices(
+            IReadOnlyList<PreferredPrimaryOption> options,
+            PreferredPrimaryOption? leadingOption)
+        {
+            if (leadingOption == null)
+            {
+                return string.Empty;
+            }
+
+            var alternatives = options
+                .Where(option => option.PrimaryStat != leadingOption.PrimaryStat)
+                .Select(option => $"{FormatPreferredStat(option.PrimaryStat)} {option.Share:P0}")
+                .ToList();
+            return alternatives.Count == 0
+                ? string.Empty
+                : $"Other choices: {string.Join(" · ", alternatives)}";
+        }
+
+        private static string FormatPrimaryDistributionTooltip(
+            ModSlot slot,
+            IReadOnlyList<PreferredPrimaryOption> options)
+        {
+            if (options.Count == 0)
+            {
+                return "No top-GAC primary-stat observations are available for this slot.";
+            }
+
+            var observedMods = options.Max(option => option.Observations);
+            var distribution = string.Join(
+                Environment.NewLine,
+                options.Select(option => $"{FormatPreferredStat(option.PrimaryStat)}: {option.Share:P0}"));
+            return $"{slot} primary distribution ({observedMods:N0} observed mods){Environment.NewLine}{distribution}";
+        }
+
     }
 
     public sealed record PreferredPrimaryRecommendationItem(
         string Slot,
         string Target,
+        string AlternativeChoices,
+        string PrimaryDistributionTooltip,
         string Current,
         string Result,
-        string ResultColor);
+        string ResultColor)
+    {
+        public bool HasAlternativeChoices => !string.IsNullOrWhiteSpace(AlternativeChoices);
+    }
 
     public sealed record EquippedModDisplayItem(
         string Shape,

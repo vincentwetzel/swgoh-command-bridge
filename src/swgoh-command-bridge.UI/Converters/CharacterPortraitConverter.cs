@@ -2,8 +2,10 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text.Json;
 using Avalonia.Data.Converters;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
@@ -91,6 +93,125 @@ public sealed class CharacterPortraitConverter : IValueConverter
         {
             return null;
         }
+    }
+}
+
+/// <summary>
+/// Resolves the gear-tier border displayed over a character portrait.
+/// </summary>
+public sealed class CharacterTierHighlightConverter : IValueConverter
+{
+    private const string ResourcePrefix = "avares://swgoh-command-bridge.UI/Assets/TierHighlights/";
+    private static readonly ConcurrentDictionary<string, Bitmap> Cache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly Lazy<IReadOnlyDictionary<string, string>> BundledAlignments = new(LoadBundledAlignments);
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is not CharacterEntity character)
+        {
+            return null;
+        }
+
+        var gearTier = Math.Clamp(character.GearLevel - 1, 0, 12);
+        var resourceName = character.RelicTier > 0
+            ? GetRelicHighlightName(ResolveAlignment(character))
+            : $"TierHighlight{gearTier}.png";
+
+        if (!AssetLoader.Exists(new Uri(ResourcePrefix + resourceName, UriKind.Absolute)))
+        {
+            return null;
+        }
+
+        if (Cache.TryGetValue(resourceName, out var cachedHighlight))
+        {
+            return cachedHighlight;
+        }
+
+        try
+        {
+            var uri = new Uri(ResourcePrefix + resourceName, UriKind.Absolute);
+            using var stream = AssetLoader.Open(uri);
+            var highlight = new Bitmap(stream);
+            return Cache.GetOrAdd(resourceName, highlight);
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+
+    private static string GetRelicHighlightName(string? alignment) =>
+        alignment?.Trim().ToLowerInvariant() switch
+        {
+            "dark side" or "dark" => "TierHighlight13_dark.png",
+            "light side" or "light" => "TierHighlight13_light.png",
+            _ => "TierHighlight13_neutral.png"
+        };
+
+    private static string ResolveAlignment(CharacterEntity character)
+    {
+        if (!string.IsNullOrWhiteSpace(character.Alignment) &&
+            !string.Equals(character.Alignment, "Neutral", StringComparison.OrdinalIgnoreCase))
+        {
+            return character.Alignment;
+        }
+
+        return BundledAlignments.Value.TryGetValue(character.Id, out var bundledAlignment)
+            ? bundledAlignment
+            : character.Alignment;
+    }
+
+    private static IReadOnlyDictionary<string, string> LoadBundledAlignments()
+    {
+        var alignments = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            var assembly = typeof(BundledCharacterCatalogService).Assembly;
+            foreach (var resourceName in assembly.GetManifestResourceNames().Where(name =>
+                         name.Contains(".Assets.CharacterCatalog.", StringComparison.OrdinalIgnoreCase) &&
+                         name.EndsWith(".json", StringComparison.OrdinalIgnoreCase)))
+            {
+                using var stream = assembly.GetManifestResourceStream(resourceName);
+                if (stream == null)
+                {
+                    continue;
+                }
+
+                using var document = JsonDocument.Parse(stream);
+                if (document.RootElement.ValueKind != JsonValueKind.Array)
+                {
+                    continue;
+                }
+
+                foreach (var record in document.RootElement.EnumerateArray())
+                {
+                    if (!record.TryGetProperty("base_id", out var id) ||
+                        !record.TryGetProperty("alignment", out var alignment) ||
+                        id.ValueKind != JsonValueKind.String ||
+                        alignment.ValueKind != JsonValueKind.String)
+                    {
+                        continue;
+                    }
+
+                    var normalized = alignment.GetString()?.Trim().ToLowerInvariant() switch
+                    {
+                        "dark side" or "dark" => "Dark Side",
+                        "light side" or "light" => "Light Side",
+                        _ => "Neutral"
+                    };
+                    alignments[id.GetString()!] = normalized;
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // The neutral frame remains a safe fallback if bundled metadata cannot load.
+        }
+
+        return alignments;
     }
 }
 

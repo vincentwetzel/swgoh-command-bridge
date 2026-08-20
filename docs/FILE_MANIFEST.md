@@ -76,6 +76,7 @@ This document lists the current source and documentation files in the repository
 |   |   |   |-- PlayerService.cs
 |   |   |   |-- PlayerSyncDiagnostics.cs
 |   |   |   |-- PlayerSyncProgress.cs
+|   |   |   |-- PreferredModsDataset.cs
 |   |   |   |-- PriorityTier.cs
 |   |   |   |-- RecommendationSnapshot.cs
 |   |   |   |-- RosterLoadoutPlan.cs
@@ -106,6 +107,8 @@ This document lists the current source and documentation files in the repository
 |   |       |-- ModThresholdTransferService.cs
 |   |       |-- PersistedModelMapper.cs
 |   |       |-- PlayerProfileParser.cs
+|   |       |-- PreferredModsAggregator.cs
+|   |       |-- PreferredModsDatasetService.cs
 |   |       |-- SecondaryStatFilterService.cs
 |   |       |-- SettingsMigrationService.cs
 |   |       |-- SettingsService.cs
@@ -131,9 +134,12 @@ This document lists the current source and documentation files in the repository
 |       |   |-- ModThresholdsViewModel.cs
 |       |   |-- ModsViewModel.cs
 |       |   |-- PriorityTierViewModel.cs
+|       |   |-- SettingsViewModel.cs
 |       |   |-- StateViewModelBase.cs
 |       |   `-- ViewModelBase.cs
 |       `-- Views
+|           |-- CharacterPortraitView.axaml
+|           |-- CharacterPortraitView.axaml.cs
 |           |-- CharacterPrioritiesView.axaml
 |           |-- CharacterPrioritiesView.axaml.cs
 |           |-- CharactersView.axaml
@@ -201,7 +207,7 @@ This document lists the current source and documentation files in the repository
 - `data/preferred-mods/dataset.json` and `manifest.json` are the published aggregate dataset and its validation metadata.
 - `src/swgoh-command-bridge.Core/Assets/PreferredMods/preferred-mods.json` is the embedded offline bootstrap baseline.
 - `PreferredModsDataset.cs`, `PreferredModsDatasetService.cs`, and `PreferredModsAggregator.cs` implement the model, offline cache/update path, and aggregation logic.
-- `tools/swgoh-command-bridge.PreferredModsPublisher/` is the standalone publisher, and its focused tests live beside the existing test project.
+- `tools/swgoh-command-bridge.PreferredModsPublisher/` is the standalone publisher; its executable project and maintainer instructions are kept separate from the desktop projects.
 
 ## Asset and generated-file boundaries
 

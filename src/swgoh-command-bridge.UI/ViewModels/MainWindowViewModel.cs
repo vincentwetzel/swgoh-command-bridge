@@ -104,6 +104,7 @@ public partial class MainWindowViewModel : ViewModelBase
             composition.ScraperService,
             () => AllyCode,
             _settingsService);
+        CharacterPrioritiesViewModel.PrioritiesChanged += RefreshPriorityDependentViewsAsync;
         DiagnosticsViewModel = new DiagnosticsViewModel(
             _context,
             _settingsService,
@@ -1069,6 +1070,12 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         await CharactersViewModel.RefreshCatalogAsync();
         await CharacterPrioritiesViewModel.LoadCharactersAsync();
+        await ModOptimizerViewModel.LoadCharactersAsync();
+    }
+
+    private async Task RefreshPriorityDependentViewsAsync()
+    {
+        await CharactersViewModel.LoadCharactersAsync();
         await ModOptimizerViewModel.LoadCharactersAsync();
     }
 

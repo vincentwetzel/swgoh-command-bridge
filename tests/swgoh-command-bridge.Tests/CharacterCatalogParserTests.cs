@@ -12,15 +12,17 @@ public sealed class CharacterCatalogParserTests
     {
         var payload = new CharacterCatalogPayload(
             "{\"data\":[" +
-            "{\"baseId\":\"BARRISSOFFEE\",\"nameKey\":\"UNIT_BARRISS_NAME\",\"thumbnailName\":\"tex.charui_barriss_light\"}," +
-            "{\"baseId\":\"CC2224\",\"nameKey\":\"UNIT_CODY_NAME\",\"thumbnailName\":\"charui_trooperclone_cody.png\"}]}",
+            "{\"baseId\":\"BARRISSOFFEE\",\"nameKey\":\"UNIT_BARRISS_NAME\",\"thumbnailName\":\"tex.charui_barriss_light\",\"alignment\":\"Light Side\"}," +
+            "{\"baseId\":\"CC2224\",\"nameKey\":\"UNIT_CODY_NAME\",\"thumbnailName\":\"charui_trooperclone_cody.png\",\"alignment\":\"Dark Side\"}]}",
             "{\"data\":{\"UNIT_BARRISS_NAME\":\"Barriss Offee\",\"UNIT_CODY_NAME\":\"Commander Cody\"}}");
 
         var result = new CharacterCatalogParser().ParseWithAudit(payload);
 
         Assert.Equal("Barriss Offee", result.Entries["BARRISSOFFEE"].Name);
         Assert.Equal("charui_barriss_light.png", result.Entries["BARRISSOFFEE"].PortraitAsset);
+        Assert.Equal("Light Side", result.Entries["BARRISSOFFEE"].Alignment);
         Assert.Equal("charui_trooperclone_cody.png", result.Entries["CC2224"].PortraitAsset);
+        Assert.Equal("Dark Side", result.Entries["CC2224"].Alignment);
         Assert.Equal(2, result.Audit.Entries);
         Assert.Equal(2, result.Audit.EntriesWithLocalizedNames);
         Assert.Equal(2, result.Audit.EntriesWithPortraits);

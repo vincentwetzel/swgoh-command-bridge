@@ -1,0 +1,20 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="swgoh_command_bridge.UI.Views.CharacterPortraitView">
+  <Viewbox Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center">
+    <Grid Width="138" Height="126">
+      <Border Width="126" Height="126" CornerRadius="63" Background="#121A24"
+              ClipToBounds="True" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <Grid>
+          <TextBlock Text="{Binding Converter={StaticResource CharacterInitials}}"
+                     HorizontalAlignment="Center" VerticalAlignment="Center"
+                     FontWeight="Bold" Foreground="#9CC9FF"/>
+          <Image Source="{Binding Converter={StaticResource CharacterPortrait}}"
+                 Stretch="UniformToFill"/>
+        </Grid>
+      </Border>
+      <Image Source="{Binding Converter={StaticResource CharacterTierHighlight}}"
+             Stretch="Fill" IsHitTestVisible="False"/>
+    </Grid>
+  </Viewbox>
+</UserControl>

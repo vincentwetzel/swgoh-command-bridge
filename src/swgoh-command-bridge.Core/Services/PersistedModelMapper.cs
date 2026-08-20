@@ -36,12 +36,13 @@ public static class PersistedModelMapper
             character.Name,
             character.Level,
             character.GearLevel,
-            0,
+            character.RelicTier,
             (int)Math.Clamp(character.GalacticPower, 0L, int.MaxValue),
             character.Priority,
             equipped)
         {
-            Stars = character.Stars
+            Stars = character.Stars,
+            Alignment = character.Alignment
         };
     }
 

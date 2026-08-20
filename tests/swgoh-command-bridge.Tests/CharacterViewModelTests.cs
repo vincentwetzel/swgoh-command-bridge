@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using swgoh_command_bridge.Core.Database;
 using swgoh_command_bridge.Core.Database.Entities;
 using swgoh_command_bridge.Core.Models;
+using swgoh_command_bridge.Core.Services;
 using swgoh_command_bridge.UI.ViewModels;
 using Xunit;
 
@@ -100,6 +101,66 @@ public sealed class CharacterViewModelTests : IDisposable
 
         Assert.Empty(viewModel.CurrentMods);
         Assert.True(viewModel.HasNoCurrentMods);
+    }
+
+    [Fact]
+    public async Task CharactersViewModel_ShowsOtherPrimaryChoicesAndFullDistribution()
+    {
+        await SeedPlayersAsync();
+        var preferredMods = new FakePreferredModsDatasetService(new PreferredModsDataset(
+            1,
+            "test",
+            DateTimeOffset.Parse("2026-08-20T00:00:00Z"),
+            new PreferredModsSource("GAC", Array.Empty<string>(), 250, 250),
+            new[]
+            {
+                new PreferredCharacterRecommendation(
+                    "ACTIVE",
+                    204,
+                    PreferredConfidence.High,
+                    Array.Empty<PreferredSetupPattern>(),
+                    new[]
+                    {
+                        new PreferredSlotRecommendation(
+                            ModSlot.Triangle,
+                            new[]
+                            {
+                                new PreferredPrimaryOption(
+                                    StatType.HealthPercent,
+                                    0.48,
+                                    204,
+                                    PreferredRecommendationStatus.Preferred),
+                                new PreferredPrimaryOption(
+                                    StatType.ProtectionPercent,
+                                    0.32,
+                                    204,
+                                    PreferredRecommendationStatus.LessCommon),
+                                new PreferredPrimaryOption(
+                                    StatType.CriticalDamage,
+                                    0.20,
+                                    204,
+                                    PreferredRecommendationStatus.LessCommon)
+                            }),
+                    },
+                    Array.Empty<PreferredModQualityProfile>())
+            }));
+        var viewModel = new CharactersViewModel(
+            _context,
+            () => "123456789",
+            preferredModsService: preferredMods);
+
+        await viewModel.LoadCharactersAsync();
+
+        var triangle = Assert.Single(viewModel.PreferredPrimaryAdvice);
+        Assert.Equal("Health % 48%", triangle.Target);
+        Assert.Equal(
+            "Other choices: Protection % 32% · Critical Damage 20%",
+            triangle.AlternativeChoices);
+        Assert.True(triangle.HasAlternativeChoices);
+        Assert.Contains("Triangle primary distribution (204 observed mods)", triangle.PrimaryDistributionTooltip);
+        Assert.Contains("Health %: 48%", triangle.PrimaryDistributionTooltip);
+        Assert.Contains("Protection %: 32%", triangle.PrimaryDistributionTooltip);
+        Assert.Contains("Critical Damage: 20%", triangle.PrimaryDistributionTooltip);
     }
 
     [Fact]
@@ -197,5 +258,31 @@ public sealed class CharacterViewModelTests : IDisposable
     {
         _context.Dispose();
         _connection.Dispose();
+    }
+
+    private sealed class FakePreferredModsDatasetService : IPreferredModsDatasetService
+    {
+        public FakePreferredModsDatasetService(PreferredModsDataset current)
+        {
+            Current = current;
+        }
+
+        public event EventHandler? DatasetChanged;
+
+        public PreferredModsDataset Current { get; }
+
+        public PreferredModsDatasetInfo GetDatasetInfo() => new(
+            Current.DatasetVersion,
+            Current.GeneratedAtUtc,
+            Current.Source.AccountCount,
+            Current.Characters.Count,
+            Current.Source.GameMode);
+
+        public Task<PreferredModsRefreshResult> RefreshIfDueAsync(
+            System.Threading.CancellationToken cancellationToken = default) =>
+            Task.FromResult(new PreferredModsRefreshResult(
+                PreferredModsRefreshStatus.Current,
+                "Current.",
+                GetDatasetInfo()));
     }
 }

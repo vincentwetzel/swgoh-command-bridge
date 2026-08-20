@@ -6,7 +6,7 @@
   <ScrollViewer>
     <StackPanel Margin="32" Spacing="18" MaxWidth="760">
       <TextBlock Text="{Binding Greeting}" FontSize="30" FontWeight="Bold"/>
-      <TextBlock Text="Inspect characters, review mods, and build optimization plans using the account selected in the top-right account switcher."
+      <TextBlock Text="Use this dashboard to inspect your roster, manage mods, and build optimization plans for the account selected in the top-right account switcher."
                  TextWrapping="Wrap" Foreground="Gray"/>
 
       <Border BorderBrush="#555555" BorderThickness="1" CornerRadius="6" Padding="18">
@@ -19,9 +19,9 @@
                      IsVisible="{Binding IsActiveCacheStale}" TextWrapping="Wrap" Foreground="#FFCC80"/>
           <TextBlock Text="{Binding NextStepText}" TextWrapping="Wrap" Foreground="Gray"/>
           <Grid ColumnDefinitions="Auto, Auto, Auto" IsVisible="{Binding HasActiveCache}">
-            <Button Grid.Column="0" Content="Inspect characters" Command="{Binding GoToCharactersCommand}" Padding="12,7"/>
-            <Button Grid.Column="1" Content="Inspect mods" Command="{Binding GoToModsCommand}" Padding="12,7"/>
-            <Button Grid.Column="2" Content="Open optimizer" Command="{Binding GoToOptimizerCommand}" Padding="12,7"/>
+            <Button Grid.Column="0" Content="Open roster" Command="{Binding GoToCharactersCommand}" Padding="12,7"/>
+            <Button Grid.Column="1" Content="Manage mods" Command="{Binding GoToModsCommand}" Padding="12,7"/>
+            <Button Grid.Column="2" Content="Optimize roster" Command="{Binding GoToOptimizerCommand}" Padding="12,7"/>
           </Grid>
         </StackPanel>
       </Border>

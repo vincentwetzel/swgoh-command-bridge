@@ -12,7 +12,8 @@ namespace swgoh_command_bridge.Core.Services;
 public sealed record CharacterCatalogEntry(
     string Id,
     string Name,
-    string PortraitAsset);
+    string PortraitAsset,
+    string Alignment = "Neutral");
 
 public sealed record CharacterCatalogPayload(
     IReadOnlyList<string> GameDataJsonSegments,
@@ -105,9 +106,14 @@ public sealed class CharacterCatalogParser
                     "characterImage",
                     "image",
                     "portrait"));
+                var alignment = NormalizeAlignment(GetString(
+                    unit,
+                    "alignment",
+                    "alignmentType",
+                    "alignmentName"));
 
                 var candidate = new UnitCandidate(
-                    new CharacterCatalogEntry(normalizedId, name.Trim(), portrait),
+                    new CharacterCatalogEntry(normalizedId, name.Trim(), portrait, alignment),
                     !string.IsNullOrWhiteSpace(localized),
                     Score(name, localized, portrait));
                 if (!candidates.TryGetValue(normalizedId, out var entriesForId))
@@ -152,6 +158,14 @@ public sealed class CharacterCatalogParser
         (string.IsNullOrWhiteSpace(name) ? 0 : 1) +
         (string.IsNullOrWhiteSpace(localizedName) ? 0 : 4) +
         (string.IsNullOrWhiteSpace(portrait) ? 0 : 2);
+
+    private static string NormalizeAlignment(string? value) =>
+        value?.Trim().ToLowerInvariant() switch
+        {
+            "dark side" or "dark" => "Dark Side",
+            "light side" or "light" => "Light Side",
+            _ => "Neutral"
+        };
 
     private sealed record UnitCandidate(
         CharacterCatalogEntry Entry,

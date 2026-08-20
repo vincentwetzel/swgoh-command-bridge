@@ -26,7 +26,7 @@ namespace swgoh_command_bridge.UI.ViewModels
         private readonly ISettingsService? _settingsService;
         private readonly Func<string?>? _activeAllyCodeProvider;
         private CancellationTokenSource? _scrapeCancellation;
-        private string _headerText = "Mod Assignment Optimizer";
+        private string _headerText = "Optimize · Mod Assignments";
         private CharacterEntity? _selectedCharacter;
         private string _popularityText = "No community recommendation data available.";
         private string _lastUpdatedText = string.Empty;
@@ -655,12 +655,18 @@ namespace swgoh_command_bridge.UI.ViewModels
                     .ThenBy(c => c.Name)
                     .ToListAsync()
                     .ConfigureAwait(true);
+                var selectedCharacterId = SelectedCharacter?.Id;
 
                 Characters.Clear();
                 foreach (var character in characters)
                 {
                     Characters.Add(character);
                 }
+
+                SelectedCharacter = string.IsNullOrWhiteSpace(selectedCharacterId)
+                    ? null
+                    : Characters.FirstOrDefault(character =>
+                        string.Equals(character.Id, selectedCharacterId, StringComparison.Ordinal));
 
                 State = Characters.Count == 0
                     ? OperationState<IReadOnlyList<GameModEntity>>.ToEmpty()

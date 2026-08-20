@@ -5,6 +5,7 @@
              x:Class="swgoh_command_bridge.UI.App">
     <Application.Resources>
         <converters:CharacterPortraitConverter x:Key="CharacterPortrait" />
+        <converters:CharacterTierHighlightConverter x:Key="CharacterTierHighlight" />
         <converters:CharacterInitialsConverter x:Key="CharacterInitials" />
         <converters:CharacterDisplayNameConverter x:Key="CharacterDisplayName" />
     </Application.Resources>

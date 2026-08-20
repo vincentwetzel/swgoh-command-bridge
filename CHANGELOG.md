@@ -13,6 +13,7 @@ This unreleased work is not a packaged release. The product remains read-only. W
 - Added a drag-and-drop S/A/B/C/D priority board with an Unranked area, separate character/ship views, persisted order, and migration of legacy numeric priorities.
 - Added canonical mod-primary validation and normalization for malformed or version-skewed Comlink payloads, including schema migration repair for known invalid cached pairs.
 - Added an embedded character/ship catalog with localized-name and portrait resolution, best-effort Comlink catalog refresh, atomic catalog persistence, audit summaries, and bundled portrait/initials UI fallbacks.
+- Added catalog alignment and persisted relic-tier data so character portraits can select the correct gear/relic frame variant across cache reloads and syncs.
 - Added aggregated preferred GAC mod guidance with complete set patterns, slot-primary recommendations, viable alternatives for close usage splits, an embedded/offline-safe cache, and silent GitHub-hosted refreshes.
 - Added a maintainer-run local ComLink publisher that samples high-ranking GAC accounts and writes only validated aggregate preferred-mod data plus a manifest for GitHub distribution.
 - Added a top-right account switcher for adding, searching, switching, refreshing, retrying, and removing cached accounts, plus one non-blocking stale-active-account refresh after startup cache loading.
@@ -66,6 +67,7 @@ This unreleased work is not a packaged release. The product remains read-only. W
 - Documentation refreshed to identify `src/` as the compiled implementation and root-level C# files as retained historical drafts.
 - Documentation now reflects the active `src/` implementation, account-scoped sync and offline cache behavior, local cache/settings locations, recovery controls, privacy-redacted diagnostics, recommendation scraping policy, release packaging guidance, and the manual smoke-test gate.
 - Documentation now distinguishes cross-platform UI/Core targets from the Windows x64-only automatic Comlink setup and records the external-service requirement for other platforms.
+- Documentation now reflects cache schema version 11, alignment-aware portrait frames, persisted relic tiers, the reusable portrait view, and the current Dashboard/Roster/Mods/Optimize navigation.
 
 ### Documentation status
 - `docs/ROADMAP_HISTORY.md` records the completed implementation audit; `TODO.md` now contains only open release gates and deferred scope.

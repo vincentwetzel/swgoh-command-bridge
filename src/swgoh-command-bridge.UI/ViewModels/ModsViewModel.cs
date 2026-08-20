@@ -25,7 +25,7 @@ public class ModsViewModel : StateViewModelBase<IReadOnlyList<GameModEntity>>
     private readonly List<GameModEntity> _filteredModResults = new();
     private readonly List<Character> _characters = new();
     private string _searchText = string.Empty;
-    private string _headerText = "Mod Inventory";
+    private string _headerText = "Mods · Inventory";
     private GameModEntity? _selectedMod;
     private ModRecommendation? _selectedModRecommendation;
     private int _rarityFilter;

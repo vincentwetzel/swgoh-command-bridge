@@ -6,7 +6,8 @@ The application is an analysis tool: it reads account data through a configured 
 
 ## Current Shape
 - `src/swgoh-command-bridge.Core` contains the compiled domain models, EF Core/SQLite persistence, repositories, Comlink/settings/filter/mechanics services, mod advisor/assignment services, the managed Comlink runtime coordinator, and the `swgoh.gg` scraper.
-- `src/swgoh-command-bridge.UI` contains the Avalonia shell, navigation, diagnostics, and feature viewmodels for characters, mods, priorities, thresholds, and optimization. The priority screen is a drag-and-drop S/A/B/C/D tier board with an Unranked holding area and separate character/ship views.
+- `src/swgoh-command-bridge.UI` contains the Avalonia shell, navigation, diagnostics, and feature viewmodels. Its primary workspaces are Roster (character inspection and character/ship priorities), Mods (inventory and upgrade rules), and Optimize (character and roster assignment planning). Dashboard, Settings, and Diagnostics support account management and application operations. The priority screen is a drag-and-drop S/A/B/C/D tier board with an Unranked holding area and separate character/ship views.
+- Character presentation uses the authoritative catalog for localized names, bundled portraits, alignment-aware gear/relic frame highlights, and initials fallbacks when an asset is unavailable. Catalog alignment and relic tiers are persisted with the account cache so portraits remain consistent across reloads and syncs.
 - Player sync now maps live `swgoh-comlink` payloads into cached player, character, and mod entities, preserves priority-board placement across syncs, supports cached-account switching, and reports tolerant-parser warnings and phase progress. Completed, failed, cancelled, and interrupted sync attempts are retained as bounded privacy-safe history. Scraped `swgoh.gg` recommendations are cached locally with stale-data protection, cancellation, bounded retries, rate-limit handling, and per-character failure summaries.
 - Mod primaries are normalized against the canonical shape rules during parsing and cache mapping. Impossible source pairs are corrected only where the legacy identifier is unambiguous; other invalid pairs become unavailable and are excluded from guidance.
 - The optimizer supports deterministic priority-first planning and a bounded joint roster plan that reserves each mod once. It reports conflicts, alternatives, swap candidates, and persisted mod-stat projections as analysis estimates rather than guaranteed in-game gains.
@@ -60,5 +61,6 @@ The application writes only local cache, settings, backup, and diagnostics files
 - [Coding standards](CODING_STANDARDS.md)
 - [Roadmap](TODO.md)
 - [Agent and background-process boundaries](docs/AGENTS.md)
+- [Preferred-mod publisher guide](tools/swgoh-command-bridge.PreferredModsPublisher/README.md)
 
 The roadmap is split intentionally: `ROADMAP_HISTORY.md` records completed implementation work, while `TODO.md` contains only release gates and deferred product scope. The current release target is a read-only desktop build; packaged runtime and visual smoke verification remain release-operator gates.

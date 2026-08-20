@@ -1,6 +1,6 @@
 # Roadmap History — Completed Implementation Audit
 
-Audit date: 2026-08-19
+Audit date: 2026-08-20
 
 This document records the implementation work verified during the roadmap audit. It is intentionally separate from [`TODO.md`](../TODO.md), which contains only remaining work.
 
@@ -30,6 +30,7 @@ This document records the implementation work verified during the roadmap audit.
 - Cached accounts can be selected, searched, switched offline, and removed with confirmation.
 - Startup can refresh one stale active account after cached data loads without blocking offline access to the previous cache.
 - Character catalogs use embedded verified JSON, best-effort Comlink refresh, localized names, portrait assets, audit summaries, and atomic persistence with rollback to the prior snapshot.
+- Character records persist normalized alignment and relic tier data; shared UI portrait rendering selects gear/relic highlights and falls back to initials when an asset is unavailable.
 - Priority management uses a separate character/ship tier board with S/A/B/C/D and Unranked rows, drag-and-drop ordering, bundled-catalog ship classification, and preservation across account replacement.
 - Mod-primary mapping validates each shape's legal primaries and repairs known legacy identifiers during parsing and cache migration.
 - Repository replacement, upsert, account removal, and failed-refresh rollback are transactional.
@@ -74,6 +75,7 @@ This document records the implementation work verified during the roadmap audit.
 - Named fixtures replace the old test placeholder and keep payload data separate from test helpers.
 - View-model, navigation, command, validation, no-data, backup/restore failure, threshold failure, and diagnostics retry coverage exists.
 - Migration coverage includes the supported legacy schema matrix, repair, rollback, idempotence, unsupported versions, backup, restore, mod-primary correction, and priority-tier migration using isolated databases.
+- The cache compatibility migrator is now at schema version 11, with migrations for character alignment and persisted relic tiers.
 - Diagnostics capture bounded privacy-safe events and redact ally codes/account payloads.
 - Character catalog parser, refresh, fallback, and UI portrait/name behavior are covered by the current source and tests.
 - Crash-safe cache recovery, guarded reset, verified restore rollback, and offline behavior are implemented.

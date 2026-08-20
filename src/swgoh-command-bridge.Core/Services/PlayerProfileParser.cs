@@ -83,7 +83,8 @@ public sealed class PlayerProfileParser
                     Priority: 0,
                     EquippedMods: equippedMods)
                 {
-                    Stars = GetInt(unit, 0, "currentRarity", "rarity", "stars")
+                    Stars = GetInt(unit, 0, "currentRarity", "rarity", "stars"),
+                    Alignment = NormalizeAlignment(GetString(unit, "alignment", "alignmentType"))
                 };
 
                 characters.Add(character);
@@ -394,6 +395,14 @@ public sealed class PlayerProfileParser
         var rawTier = GetInt(relic, 0, "currentTier", "tier");
         return rawTier > 2 ? rawTier - 2 : 0;
     }
+
+    private static string NormalizeAlignment(string? value) =>
+        value?.Trim().ToLowerInvariant() switch
+        {
+            "dark side" or "dark" => "Dark Side",
+            "light side" or "light" => "Light Side",
+            _ => "Neutral"
+        };
 
     private static bool TryGetCharacterId(JsonElement unit, out string characterId)
     {

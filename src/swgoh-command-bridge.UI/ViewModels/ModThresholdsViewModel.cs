@@ -16,7 +16,7 @@ public class ModThresholdsViewModel : StateViewModelBase<IReadOnlyList<ModUpgrad
 {
     private readonly ISettingsService _settingsService;
     private readonly ModThresholdTransferService _transferService = new();
-    private string _headerText = "Manage Upgrade Rules & Thresholds";
+    private string _headerText = "Mods · Upgrade Rules";
     private ModUpgradeThreshold? _selectedThreshold;
     private string _name = string.Empty;
     private int _minimumRarity = 5;

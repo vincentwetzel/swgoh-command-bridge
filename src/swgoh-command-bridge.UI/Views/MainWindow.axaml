@@ -38,16 +38,22 @@
 
     <DockPanel>
         <Grid DockPanel.Dock="Top" ColumnDefinitions="*, Auto" Margin="10">
-            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10">
-                <Button Content="Home" Command="{Binding GoToHomeCommand}"/>
-                <Button Content="Characters" Command="{Binding GoToCharactersCommand}"/>
-                <Button Content="Priorities" Command="{Binding GoToPrioritiesCommand}"/>
-                <Button Content="Mods" Command="{Binding GoToModsCommand}"/>
-                <Button Content="Optimizer" Command="{Binding GoToOptimizerCommand}"/>
-                <Button Content="Mod Thresholds" Command="{Binding GoToThresholdsCommand}"/>
-                <Button Content="Settings" Command="{Binding GoToSettingsCommand}"/>
-                <Button Content="Diagnostics" Command="{Binding GoToDiagnosticsCommand}"/>
-            </StackPanel>
+            <Menu Grid.Column="0" HorizontalAlignment="Left">
+                <MenuItem Header="Dashboard" Command="{Binding GoToHomeCommand}"/>
+                <MenuItem Header="Roster">
+                    <MenuItem Header="Inspect characters" Command="{Binding GoToCharactersCommand}"/>
+                    <MenuItem Header="Set priorities" Command="{Binding GoToPrioritiesCommand}"/>
+                </MenuItem>
+                <MenuItem Header="Mods">
+                    <MenuItem Header="Inventory" Command="{Binding GoToModsCommand}"/>
+                    <MenuItem Header="Upgrade rules" Command="{Binding GoToThresholdsCommand}"/>
+                </MenuItem>
+                <MenuItem Header="Optimize" Command="{Binding GoToOptimizerCommand}"/>
+                <MenuItem Header="Utilities">
+                    <MenuItem Header="Settings" Command="{Binding GoToSettingsCommand}"/>
+                    <MenuItem Header="Diagnostics" Command="{Binding GoToDiagnosticsCommand}"/>
+                </MenuItem>
+            </Menu>
 
             <Button Grid.Column="1" Padding="12,6" HorizontalContentAlignment="Left">
                 <Button.Content>
@@ -88,12 +94,12 @@
                                                 IsVisible="{Binding CanCancelSync}" Padding="10,6"/>
                                         <Button Grid.Column="2" Content="Retry" Command="{Binding RetrySyncCommand}"
                                                 IsVisible="{Binding CanRetrySync}" Padding="10,6"/>
-                                        <Button Grid.Column="3" Content="Characters" Command="{Binding GoToCharactersCommand}" Padding="10,6"
+                                        <Button Grid.Column="3" Content="Roster" Command="{Binding GoToCharactersCommand}" Padding="10,6"
                                                 IsVisible="{Binding HasActiveCache}"/>
                                         <Button Grid.Column="4" Content="Mods" Command="{Binding GoToModsCommand}" Padding="10,6"
                                                 IsVisible="{Binding HasActiveCache}"/>
                                     </Grid>
-                                    <Button Content="Optimizer" Command="{Binding GoToOptimizerCommand}" Padding="10,6"
+                                    <Button Content="Optimize" Command="{Binding GoToOptimizerCommand}" Padding="10,6"
                                             HorizontalAlignment="Left" IsVisible="{Binding HasActiveCache}"/>
                                     <TextBlock Text="{Binding SyncStatusText}" TextWrapping="Wrap"/>
                                     <TextBlock Text="{Binding SyncProgressText}" IsVisible="{Binding HasSyncProgress}"

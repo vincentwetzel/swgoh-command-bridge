@@ -233,7 +233,8 @@ namespace swgoh_command_bridge.Core.Services
                                 ? character with
                                 {
                                     Name = entry.Name,
-                                    PortraitAsset = entry.PortraitAsset
+                                    PortraitAsset = entry.PortraitAsset,
+                                    Alignment = entry.Alignment
                                 }
                                 : character)
                             .ToArray()
@@ -309,9 +310,11 @@ namespace swgoh_command_bridge.Core.Services
                     Level = character.Level,
                     Stars = character.Stars,
                     GearLevel = character.GearLevel,
+                    RelicTier = character.RelicTier,
                     GalacticPower = character.GalacticPower,
                     Priority = character.Priority,
                     PortraitAsset = character.PortraitAsset,
+                    Alignment = character.Alignment,
                     Player = entity
                 });
             }

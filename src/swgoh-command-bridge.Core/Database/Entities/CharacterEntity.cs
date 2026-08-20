@@ -16,12 +16,16 @@ namespace swgoh_command_bridge.Core.Database.Entities
         public string Name { get; set; } = string.Empty;
 
         public string PortraitAsset { get; set; } = string.Empty;
+
+        public string Alignment { get; set; } = "Neutral";
         
         public int Level { get; set; }
         
         public int Stars { get; set; }
         
         public int GearLevel { get; set; }
+
+        public int RelicTier { get; set; }
         
         public long GalacticPower { get; set; }
         

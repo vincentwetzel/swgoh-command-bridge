@@ -6,6 +6,8 @@ This feature provides character-based mod guidance derived from a maintainer-own
 
 The first version is intentionally primary-stat driven, while retaining enough detail for later mod-farming recommendations.
 
+The contract, publisher, embedded fallback, validated cache, and Characters UI integration are implemented. The farming-opportunity model remains future scope. This document describes both the shipped contract and those deferred extensions.
+
 ## Decisions
 
 - The local publisher selects a configurable number of top GAC accounts. It currently samples up to 250 unique accounts across Kyber divisions and does not expose this choice to desktop users.
@@ -138,9 +140,9 @@ Character priority is a multiplier, not a gate. A low-priority character can con
 
 Add a dedicated application-data directory, separate from the SQLite account cache:
 
-- `preferred-mods/embedded.json`: release-bundled baseline, or an embedded Core resource;
+- `src/swgoh-command-bridge.Core/Assets/PreferredMods/preferred-mods.json`: release-bundled embedded baseline;
 - `preferred-mods/current.json`: last known-good downloaded dataset;
-- `preferred-mods/manifest.json`: last accepted manifest and validation metadata;
+- `preferred-mods/state.json`: last update-check timestamp;
 - `preferred-mods/*.tmp`: transient download files only.
 
 At startup, after cached account data is available, a best-effort background update check runs without requiring the user's Comlink to be online. The app checks no more often than the configured interval, initially one week, except that an empty bootstrap baseline retries at subsequent startups until real data has been published.
@@ -148,16 +150,16 @@ At startup, after cached account data is available, a best-effort background upd
 Update sequence:
 
 1. Load the downloaded dataset if valid; otherwise load the bundled baseline.
-2. Fetch the small GitHub-hosted manifest using conditional HTTP requests when possible.
+2. Fetch the small GitHub-hosted manifest over HTTPS.
 3. Ignore the result when the manifest is not newer or the schema is unsupported.
 4. Download the dataset to a temporary file.
 5. Validate the bounded compact JSON payload (currently 8 MiB maximum), schema, character IDs, slot coverage, percentages, and SHA-256.
-6. Atomically replace `current.json` and the accepted manifest.
+6. Atomically replace `current.json` and update `state.json`.
 7. Keep the previous dataset when any step fails.
 
 The update path must never delay opening cached account data, and update failures should be diagnostic-only unless no bundled or cached dataset is usable.
 
-Compact UI metadata is sufficient: `Updated Aug 12 · 312 accounts`. Detailed source seasons, schema, and validation diagnostics belong in Diagnostics or an advanced view.
+Compact UI metadata is sufficient: `Updated Aug 12 · 312 accounts`. The current desktop Diagnostics screen reports refresh events and aggregate cache counts; detailed dataset metadata remains in the validated dataset and publisher output.
 
 ## GitHub distribution flow
 
@@ -180,11 +182,11 @@ The publisher must validate before publishing:
 
 GitHub is a distribution channel only. It does not query ComLink, store a ComLink URL/secret, or receive raw profiles. This is an operational constraint, not a reason to make desktop clients query the top accounts.
 
-## Implementation sequence
+## Implementation status and remaining sequence
 
-1. Add Core contract records, parser/validator, embedded baseline loading, and file-backed cache.
-2. Add the GitHub manifest client with atomic replacement and offline fallback.
-3. Add tests for malformed manifests, checksum failures, unsupported schemas, partial downloads, and fallback behavior.
-4. Add a local publisher project/script that consumes Comlink snapshots and emits the aggregate contract.
-5. Add assignment/UI integration for character setup and slot-primary advice while retaining the existing `swgoh.gg` path.
-6. Add farming-opportunity scoring and tiered presentation after the preferred-data path is stable.
+1. **Complete:** Core contract records, parser/validator, embedded baseline loading, and file-backed cache.
+2. **Complete:** HTTPS manifest client with checksum validation, atomic replacement, and offline fallback.
+3. **Complete:** Tests for malformed manifests, checksum failures, unsupported schemas, bounded downloads, and fallback behavior.
+4. **Complete:** Local publisher project that consumes ComLink snapshots and emits the aggregate contract and manifest.
+5. **Complete:** Characters UI integration for complete setup patterns and slot-primary advice while retaining the existing `swgoh.gg` path.
+6. **Future:** Add farming-opportunity scoring and tiered presentation after the preferred-data path has sufficient quality profiles.

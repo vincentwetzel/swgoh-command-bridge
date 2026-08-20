@@ -24,6 +24,9 @@ public sealed class CharacterPrioritiesViewModel : StateViewModelBase<IReadOnlyL
     private readonly IRosterUnitClassifier _unitClassifier;
     private bool _showShips;
 
+    /// <summary>Raised after a priority placement has been persisted successfully.</summary>
+    public event Func<Task>? PrioritiesChanged;
+
     /// <summary>Gets all loaded units for the active account scope.</summary>
     public ObservableCollection<CharacterEntity> Characters { get; } = new();
 
@@ -65,7 +68,9 @@ public sealed class CharacterPrioritiesViewModel : StateViewModelBase<IReadOnlyL
     }
 
     /// <summary>Gets the heading shown above the board.</summary>
-    public string HeaderText => ShowShips ? "Configure Ship Priorities" : "Configure Character Priorities";
+    public string HeaderText => ShowShips
+        ? "Roster · Ship Priorities"
+        : "Roster · Character Priorities";
 
     /// <summary>Gets whether the ship board is currently visible.</summary>
     public bool ShowShips
@@ -164,6 +169,7 @@ public sealed class CharacterPrioritiesViewModel : StateViewModelBase<IReadOnlyL
         try
         {
             await PersistBoardAsync().ConfigureAwait(true);
+            await NotifyPrioritiesChangedAsync().ConfigureAwait(true);
         }
         catch (Exception ex)
         {
@@ -234,6 +240,21 @@ public sealed class CharacterPrioritiesViewModel : StateViewModelBase<IReadOnlyL
         }
 
         await _context.SaveChangesAsync().ConfigureAwait(true);
+    }
+
+    private async Task NotifyPrioritiesChangedAsync()
+    {
+        var handlers = PrioritiesChanged;
+        if (handlers == null)
+        {
+            return;
+        }
+
+        var notifications = handlers
+            .GetInvocationList()
+            .Cast<Func<Task>>()
+            .Select(handler => handler());
+        await Task.WhenAll(notifications).ConfigureAwait(true);
     }
 
     private PriorityTierViewModel FindTier(CharacterEntity character) => FindTier(GetEffectiveTier(character));

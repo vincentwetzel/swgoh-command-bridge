@@ -21,6 +21,11 @@ public record Character(
     public string PortraitAsset { get; init; } = string.Empty;
 
     /// <summary>
+    /// The character's alignment used to select the relic frame variant.
+    /// </summary>
+    public string Alignment { get; init; } = "Neutral";
+
+    /// <summary>
     /// Gets the current set bonuses active on this character.
     /// </summary>
     public IEnumerable<ModSet> GetActiveSets()

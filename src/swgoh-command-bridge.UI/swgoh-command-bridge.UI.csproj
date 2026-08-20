@@ -11,6 +11,8 @@
     <AvaloniaResource Include="Assets\**" />
     <AvaloniaResource Include="..\..\..\swgoh-command-bridge-assets\SWGOH_AssetDump\Portraits\*.png"
                       Link="Assets\Portraits\%(Filename)%(Extension)" />
+    <AvaloniaResource Include="..\..\..\swgoh-command-bridge-assets\SWGOH_AssetDump\TierHighlights\*.png"
+                      Link="Assets\TierHighlights\%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

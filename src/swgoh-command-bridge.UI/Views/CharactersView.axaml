@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:swgoh_command_bridge.UI.ViewModels"
+             xmlns:portrait="using:swgoh_command_bridge.UI.Views"
              x:Class="swgoh_command_bridge.UI.Views.CharactersView"
              x:DataType="vm:CharactersViewModel">
   <Grid RowDefinitions="Auto, Auto, Auto, *" Margin="24">
@@ -14,8 +15,14 @@
     <TextBlock Grid.Row="2" Margin="0,0,0,8" Text="{Binding CatalogStatusText}" IsVisible="{Binding HasCatalogStatus}"
                Foreground="Gray" TextWrapping="Wrap"/>
 
-    <Grid Grid.Row="3" ColumnDefinitions="*, 500">
-      <Grid>
+    <Grid Grid.Row="3">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="3*" MinWidth="360"/>
+        <ColumnDefinition Width="10"/>
+        <ColumnDefinition Width="2*" MinWidth="480"/>
+      </Grid.ColumnDefinitions>
+
+      <Grid Grid.Column="0">
         <TextBlock Text="Loading characters..." IsVisible="{Binding IsLoading}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         <TextBlock Text="No cached characters. Sync an account from Home to begin." IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"/>
         <StackPanel IsVisible="{Binding HasError}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" MaxWidth="360">
@@ -28,13 +35,7 @@
             <DataTemplate>
               <Border BorderBrush="#444444" BorderThickness="0,0,0,1" Padding="8">
                 <Grid ColumnDefinitions="64,*, Auto, Auto, Auto">
-                  <Border Width="56" Height="56" CornerRadius="28" Background="#26344A" ClipToBounds="True">
-                    <Grid>
-                      <TextBlock Text="{Binding Converter={StaticResource CharacterInitials}}"
-                                 HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#9CC9FF"/>
-                      <Image Source="{Binding Converter={StaticResource CharacterPortrait}}" Stretch="UniformToFill"/>
-                    </Grid>
-                  </Border>
+                  <portrait:CharacterPortraitView Width="56" Height="56"/>
                   <TextBlock Grid.Column="1" Margin="14,0,0,0" Text="{Binding Converter={StaticResource CharacterDisplayName}}"
                              FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                   <TextBlock Grid.Column="2" Text="{Binding Stars, StringFormat='Stars: {0}'}" VerticalAlignment="Center" Foreground="Gray"/>
@@ -47,7 +48,11 @@
         </ListBox>
       </Grid>
 
-      <Border Grid.Column="1" Margin="16,0,0,0" BorderBrush="#3F4A55" BorderThickness="1" CornerRadius="8" Padding="16"
+      <GridSplitter Grid.Column="1" Width="10" HorizontalAlignment="Stretch" Background="#2D4B68"
+                    Cursor="SizeWestEast" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"
+                    ToolTip.Tip="Drag to resize the roster and details panes" ToolTip.ShowDelay="0"/>
+
+      <Border Grid.Column="2" Margin="8,0,0,0" BorderBrush="#3F4A55" BorderThickness="1" CornerRadius="8" Padding="16"
               IsVisible="{Binding HasCharacters}">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <StackPanel Spacing="16">
@@ -56,13 +61,7 @@
                 <DataTemplate>
                   <Border Background="#18222D" BorderBrush="#2D4B68" BorderThickness="1" CornerRadius="6" Padding="12">
                     <StackPanel Orientation="Horizontal" Spacing="12">
-                      <Border Width="64" Height="64" CornerRadius="32" Background="#26344A" ClipToBounds="True">
-                        <Grid>
-                          <TextBlock Text="{Binding Converter={StaticResource CharacterInitials}}"
-                                     HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#9CC9FF"/>
-                          <Image Source="{Binding Converter={StaticResource CharacterPortrait}}" Stretch="UniformToFill"/>
-                        </Grid>
-                      </Border>
+                      <portrait:CharacterPortraitView Width="64" Height="64"/>
                       <StackPanel VerticalAlignment="Center" Spacing="2">
                         <TextBlock Text="{Binding Converter={StaticResource CharacterDisplayName}}" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap"/>
                         <TextBlock Text="{Binding Stars, StringFormat='Stars: {0}'}" Foreground="Gray"/>
@@ -95,9 +94,11 @@
             <StackPanel Spacing="8" IsVisible="{Binding HasPreferredPrimaryAdvice}">
               <TextBlock Text="Recommended mod primaries" FontSize="19" FontWeight="SemiBold"/>
               <TextBlock Text="{Binding PrimaryComparisonSummary}" Foreground="#A9DCFF" TextWrapping="Wrap"/>
+              <TextBlock Text="The leading choice is shown first. Other observed choices are listed below it; hover the recommendation for the complete distribution."
+                         Foreground="#B0BEC5" FontSize="12" TextWrapping="Wrap"/>
               <Grid ColumnDefinitions="76,*,104,72" Margin="8,0,8,4">
                 <TextBlock Text="SLOT" FontSize="11" Foreground="Gray" FontWeight="SemiBold"/>
-                <TextBlock Grid.Column="1" Text="TARGET" FontSize="11" Foreground="Gray" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="1" Text="TARGET &amp; OTHER CHOICES" FontSize="11" Foreground="Gray" FontWeight="SemiBold" TextWrapping="Wrap"/>
                 <TextBlock Grid.Column="2" Text="CURRENT" FontSize="11" Foreground="Gray" FontWeight="SemiBold"/>
                 <TextBlock Grid.Column="3" Text="RESULT" FontSize="11" Foreground="Gray" FontWeight="SemiBold"/>
               </Grid>
@@ -107,7 +108,12 @@
                     <Border Background="#181C20" BorderBrush="{Binding ResultColor}" BorderThickness="3,0,0,0" CornerRadius="4" Padding="8" Margin="0,2">
                       <Grid ColumnDefinitions="76,*,104,72">
                         <TextBlock Text="{Binding Slot}" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                        <TextBlock Grid.Column="1" Text="{Binding Target}" Foreground="#D9F0FF" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1" ToolTip.Tip="{Binding PrimaryDistributionTooltip}" ToolTip.ShowDelay="0"
+                                    VerticalAlignment="Center" Spacing="2">
+                          <TextBlock Text="{Binding Target}" Foreground="#D9F0FF" TextWrapping="Wrap"/>
+                          <TextBlock Text="{Binding AlternativeChoices}" IsVisible="{Binding HasAlternativeChoices}"
+                                     Foreground="#B0BEC5" FontSize="12" TextWrapping="Wrap"/>
+                        </StackPanel>
                         <TextBlock Grid.Column="2" Text="{Binding Current}" TextWrapping="Wrap" VerticalAlignment="Center"/>
                         <TextBlock Grid.Column="3" Text="{Binding Result}" Foreground="{Binding ResultColor}" FontWeight="SemiBold" VerticalAlignment="Center"/>
                       </Grid>

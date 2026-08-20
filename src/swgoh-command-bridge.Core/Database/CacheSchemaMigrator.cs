@@ -20,7 +20,7 @@ public sealed record CacheSchemaMigrationResult(
 /// </summary>
 public sealed class CacheSchemaMigrator
 {
-    public const int CurrentVersion = 9;
+    public const int CurrentVersion = 11;
 
     public CacheSchemaMigrationResult Migrate(DbConnection connection)
     {
@@ -134,6 +134,32 @@ public sealed class CacheSchemaMigrator
                 applied.Add("9: tier-list priority layout");
             }
 
+            if (previousVersion < 10)
+            {
+                EnsureColumns(
+                    connection,
+                    transaction,
+                    "Characters",
+                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["Alignment"] = "TEXT NOT NULL DEFAULT 'Neutral'"
+                    });
+                applied.Add("10: character alignment for relic frames");
+            }
+
+            if (previousVersion < 11)
+            {
+                EnsureColumns(
+                    connection,
+                    transaction,
+                    "Characters",
+                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["RelicTier"] = "INTEGER NOT NULL DEFAULT 0"
+                    });
+                applied.Add("11: persisted character relic tiers");
+            }
+
             if (previousVersion < CurrentVersion)
             {
                 Execute(
@@ -177,7 +203,9 @@ public sealed class CacheSchemaMigrator
             "CREATE TABLE IF NOT EXISTS \"Characters\" (" +
             "\"Id\" TEXT NOT NULL, \"PlayerAllyCode\" TEXT NOT NULL, \"Name\" TEXT NOT NULL, " +
             "\"PortraitAsset\" TEXT NOT NULL DEFAULT '', " +
+            "\"Alignment\" TEXT NOT NULL DEFAULT 'Neutral', " +
             "\"Level\" INTEGER NOT NULL, \"Stars\" INTEGER NOT NULL, \"GearLevel\" INTEGER NOT NULL, " +
+            "\"RelicTier\" INTEGER NOT NULL DEFAULT 0, " +
             "\"GalacticPower\" INTEGER NOT NULL, \"Priority\" INTEGER NOT NULL, " +
             "\"PriorityTier\" INTEGER NOT NULL DEFAULT 0, \"PriorityOrder\" INTEGER NOT NULL DEFAULT 0, " +
             "CONSTRAINT \"PK_Characters\" PRIMARY KEY (\"Id\", \"PlayerAllyCode\"), " +

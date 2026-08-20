@@ -12,7 +12,7 @@ The current release target is read-only. Any feature that changes the game accou
 -   **Full Roster Sync:** It fetches, parses, persists, and displays the usable character and mod inventory records returned by Comlink, preserving warnings for tolerated malformed records.
 -   **Local Caching:** It uses a local SQLite database to cache player data, minimizing redundant API calls and enabling offline viewing.
 -   **Configurable Local Services:** It stores the local `swgoh-comlink` base URL, default ally code, normalized Dark/Light/System theme choice, scraping policy, and user-defined mod thresholds in cross-platform application settings.
--   **Character Catalog:** It ships verified embedded character/ship catalogs, best-effort refreshes them from Comlink, resolves localized names and portrait assets, and atomically preserves the previous snapshot when a refresh is rejected.
+-   **Character Catalog:** It ships verified embedded character/ship catalogs, best-effort refreshes them from Comlink, resolves localized names, portrait assets, and alignment, and atomically preserves the previous snapshot when a refresh is rejected. Roster, priority, and optimizer views share portrait rendering with gear/relic frame highlights and initials fallback.
 -   **Priority Board:** Users organize cached roster units on separate character and ship boards using S/A/B/C/D tiers, left-to-right order within each tier, and an Unranked holding area. The board persists placement locally and retains it when a roster is replaced by a later sync.
 
 ### 2.1.1. Preferred GAC Mod Guidance

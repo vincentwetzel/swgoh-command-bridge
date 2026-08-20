@@ -1,6 +1,6 @@
 # TODO Roadmap — Release Readiness
 
-Audit date: 2026-08-19
+Audit date: 2026-08-20
 
 ## What is actually left
 
@@ -27,7 +27,7 @@ These require packaged builds and runtime verification, which are intentionally 
 
 ## Current product boundary
 
-The current target is a local, read-only desktop product. It can configure Comlink, sync and cache player data by ally code, analyze persisted mods, retrieve recommendations under a release-controllable scraping policy, and produce deterministic explainable assignments. Windows x64 can manage the local Comlink runtime; Linux/macOS deployments currently require an external Comlink service.
+The current target is a local, read-only desktop product. It can configure Comlink, sync and cache player data by ally code, display catalog-backed portraits and gear/relic frames, analyze persisted mods, retrieve recommendations under a release-controllable scraping policy, and produce deterministic explainable assignments. Windows x64 can manage the local Comlink runtime; Linux/macOS deployments currently require an external Comlink service.
 
 It does not write to the game, provide full game-stat simulation, or claim legal approval for public scraping.
 

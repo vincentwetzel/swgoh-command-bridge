@@ -19,7 +19,7 @@ namespace swgoh_command_bridge.Tests;
 public sealed class MainWindowViewModelTests
 {
     [Fact]
-    public async Task NavigationCommands_SelectEveryPrimaryScreenWithoutUsingUserCache()
+    public async Task NavigationCommands_SelectEveryWorkspaceAndUtilityScreenWithoutUsingUserCache()
     {
         await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync();
@@ -37,18 +37,23 @@ public sealed class MainWindowViewModelTests
 
         viewModel.GoToCharactersCommand.Execute(null);
         Assert.Same(viewModel.CharactersViewModel, viewModel.CurrentView);
+        Assert.Equal("Roster · Characters", viewModel.CharactersViewModel.HeaderText);
 
         viewModel.GoToPrioritiesCommand.Execute(null);
         Assert.Same(viewModel.CharacterPrioritiesViewModel, viewModel.CurrentView);
+        Assert.Equal("Roster · Character Priorities", viewModel.CharacterPrioritiesViewModel.HeaderText);
 
         viewModel.GoToModsCommand.Execute(null);
         Assert.Same(viewModel.ModsViewModel, viewModel.CurrentView);
+        Assert.Equal("Mods · Inventory", viewModel.ModsViewModel.HeaderText);
 
         viewModel.GoToOptimizerCommand.Execute(null);
         Assert.Same(viewModel.ModOptimizerViewModel, viewModel.CurrentView);
+        Assert.Equal("Optimize · Mod Assignments", viewModel.ModOptimizerViewModel.HeaderText);
 
         viewModel.GoToThresholdsCommand.Execute(null);
         Assert.Same(viewModel.ModThresholdsViewModel, viewModel.CurrentView);
+        Assert.Equal("Mods · Upgrade Rules", viewModel.ModThresholdsViewModel.HeaderText);
 
         viewModel.GoToSettingsCommand.Execute(null);
         Assert.Same(viewModel.SettingsViewModel, viewModel.CurrentView);
@@ -59,6 +64,62 @@ public sealed class MainWindowViewModelTests
         viewModel.GoToHomeCommand.Execute(null);
         Assert.Same(viewModel, viewModel.CurrentView);
         Assert.Empty(settings.SavedSettings);
+    }
+
+    [Fact]
+    public async Task PriorityChange_RefreshesRosterAndOptimizerProjections()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlite(connection)
+            .Options;
+        await using var context = new AppDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+        context.Players.Add(new PlayerEntity
+        {
+            AllyCode = "123456789",
+            Name = "Active Account",
+            Characters =
+            {
+                new CharacterEntity
+                {
+                    Id = "FIRST",
+                    PlayerAllyCode = "123456789",
+                    Name = "First Character"
+                },
+                new CharacterEntity
+                {
+                    Id = "SECOND",
+                    PlayerAllyCode = "123456789",
+                    Name = "Second Character"
+                }
+            }
+        });
+        await context.SaveChangesAsync();
+
+        using var composition = ApplicationComposition.CreateDefault(
+            context,
+            new FakeSettingsService(new AppSettings(DefaultAllyCode: "123456789")));
+        var viewModel = new MainWindowViewModel(composition);
+        await viewModel.CharactersViewModel.LoadCharactersAsync();
+        await viewModel.CharacterPrioritiesViewModel.LoadCharactersAsync();
+        await viewModel.ModOptimizerViewModel.LoadCharactersAsync();
+        viewModel.ModOptimizerViewModel.SelectedCharacter = viewModel.ModOptimizerViewModel.Characters
+            .Single(character => character.Id == "SECOND");
+
+        var secondCharacter = viewModel.CharacterPrioritiesViewModel.Characters
+            .Single(character => character.Id == "SECOND");
+        await viewModel.CharacterPrioritiesViewModel.MoveCharacterAsync(
+            secondCharacter,
+            viewModel.CharacterPrioritiesViewModel.RankedTiers[0],
+            0);
+
+        Assert.Equal("SECOND", viewModel.CharactersViewModel.Characters[0].Id);
+        Assert.Equal(100_000, viewModel.CharactersViewModel.Characters[0].Priority);
+        Assert.Equal("SECOND", viewModel.ModOptimizerViewModel.Characters[0].Id);
+        Assert.Equal(100_000, viewModel.ModOptimizerViewModel.Characters[0].Priority);
+        Assert.Equal("SECOND", viewModel.ModOptimizerViewModel.SelectedCharacter?.Id);
     }
 
     [Fact]
