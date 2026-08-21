@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:swgoh_command_bridge.UI.ViewModels"
              xmlns:portrait="using:swgoh_command_bridge.UI.Views"
+             xmlns:controls="using:swgoh_command_bridge.UI.Controls"
              x:Class="swgoh_command_bridge.UI.Views.CharactersView"
              x:DataType="vm:CharactersViewModel">
   <Grid RowDefinitions="Auto, Auto, Auto, *" Margin="24">
@@ -126,23 +127,22 @@
             <StackPanel Spacing="8">
               <TextBlock Text="{Binding CurrentModsHeader}" FontSize="19" FontWeight="SemiBold"/>
               <TextBlock Text="No equipped mods are cached for this character." IsVisible="{Binding HasNoCurrentMods}" Foreground="Gray" TextWrapping="Wrap"/>
-              <Grid ColumnDefinitions="78,74,70,*" Margin="8,0,8,2" IsVisible="{Binding HasCurrentMods}">
-                <TextBlock Text="SHAPE" FontSize="11" Foreground="Gray" FontWeight="SemiBold"/>
-                <TextBlock Grid.Column="1" Text="SET" FontSize="11" Foreground="Gray" FontWeight="SemiBold"/>
-                <TextBlock Grid.Column="2" Text="SPEED" FontSize="11" Foreground="Gray" FontWeight="SemiBold"/>
-                <TextBlock Grid.Column="3" Text="PRIMARY" FontSize="11" Foreground="Gray" FontWeight="SemiBold"/>
+              <Grid ColumnDefinitions="78,70,*" Margin="8,0,8,2" IsVisible="{Binding HasCurrentMods}">
+                <TextBlock Text="MOD" FontSize="11" Foreground="Gray" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="1" Text="SPEED" FontSize="11" Foreground="Gray" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="2" Text="PRIMARY" FontSize="11" Foreground="Gray" FontWeight="SemiBold"/>
               </Grid>
               <ItemsControl ItemsSource="{Binding EquippedModDetails}" IsVisible="{Binding HasCurrentMods}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
                     <Border Background="#17191C" BorderBrush="#3B4148" BorderThickness="0,0,0,1" Padding="8">
-                      <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="78,74,70,*">
-                        <TextBlock Text="{Binding Shape}" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                        <TextBlock Grid.Column="1" Text="{Binding Set}" Foreground="#A9DCFF" VerticalAlignment="Center"/>
-                        <TextBlock Grid.Column="2" Text="{Binding SecondarySpeed}" Foreground="#68C98A" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                        <TextBlock Grid.Column="3" Text="{Binding Primary}" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                        <TextBlock Grid.Row="1" Grid.ColumnSpan="3" Margin="0,5,8,0" Text="{Binding KeySecondaries, StringFormat='Secondaries: {0}'}" Foreground="#B0BEC5" FontSize="12" TextTrimming="CharacterEllipsis"/>
-                        <TextBlock Grid.Row="1" Grid.Column="3" Margin="0,5,0,0" Text="{Binding Quality, StringFormat='Quality: {0}'}" Foreground="#B0BEC5" FontSize="12" TextWrapping="Wrap"/>
+                      <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="78,70,*">
+                        <controls:ModVisualControl Mod="{Binding Mod}" Scale="0.85" Grid.RowSpan="2"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Text="{Binding SecondarySpeed}" Foreground="#68C98A" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="2" Text="{Binding Primary}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Margin="0,5,8,0" Text="{Binding KeySecondaries, StringFormat='Secondaries: {0}'}" Foreground="#B0BEC5" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Grid.Row="1" Grid.Column="2" Margin="0,5,0,0" Text="{Binding Quality, StringFormat='Quality: {0}'}" Foreground="#B0BEC5" FontSize="12" TextWrapping="Wrap"/>
                       </Grid>
                     </Border>
                   </DataTemplate>

@@ -3,8 +3,8 @@
              x:Class="swgoh_command_bridge.UI.Views.CharacterPortraitView">
   <Viewbox Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center">
     <Grid Width="138" Height="126">
-      <Border Width="126" Height="126" CornerRadius="63" Background="#121A24"
-              ClipToBounds="True" HorizontalAlignment="Center" VerticalAlignment="Center">
+          <Border Width="94" Height="94" CornerRadius="47" Background="#121A24"
+                  ClipToBounds="True" HorizontalAlignment="Center" VerticalAlignment="Center">
         <Grid>
           <TextBlock Text="{Binding Converter={StaticResource CharacterInitials}}"
                      HorizontalAlignment="Center" VerticalAlignment="Center"

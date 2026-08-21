@@ -13,6 +13,19 @@
                       Link="Assets\Portraits\%(Filename)%(Extension)" />
     <AvaloniaResource Include="..\..\..\swgoh-command-bridge-assets\SWGOH_AssetDump\TierHighlights\*.png"
                       Link="Assets\TierHighlights\%(Filename)%(Extension)" />
+    <AvaloniaResource Include="..\..\..\swgoh-command-bridge-assets\SWGOH_AssetDump\mod_visual_spec.json"
+                      Link="Assets\Mods\mod_visual_spec.json" />
+    <AvaloniaResource Include="..\..\..\swgoh-command-bridge-assets\SWGOH_AssetDump\battleui_view_rgba_sprites\*.png"
+                      Link="Assets\Mods\SetIcons\%(Filename)%(Extension)" />
+    <AvaloniaResource Include="..\..\..\swgoh-command-bridge-assets\SWGOH_AssetDump\charactermods_datacard_sprites\*.png"
+                      Link="Assets\Mods\Chassis\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <!-- Keep local verification scratch output from being treated as source by SDK globs. -->
+  <ItemGroup>
+    <Compile Remove=".codex*\**" />
+    <Compile Remove=".codex-build-obj\**" />
+    <Compile Remove="build-verify\**" />
   </ItemGroup>
 
   <ItemGroup>

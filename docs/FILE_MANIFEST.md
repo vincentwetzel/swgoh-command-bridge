@@ -68,6 +68,7 @@ This document lists the current source and documentation files in the repository
 |   |   |   |-- ModLoadoutResult.cs
 |   |   |   |-- ModRecommendation.cs
 |   |   |   |-- ModStat.cs
+|   |   |   |-- ModVisualSpec.cs
 |   |   |   |-- ModThresholdTransferDocument.cs
 |   |   |   |-- ModPrimaryRules.cs
 |   |   |   |-- ModUpgradeThreshold.cs
@@ -132,11 +133,17 @@ This document lists the current source and documentation files in the repository
 |       |   |-- MainWindowViewModel.cs
 |       |   |-- ModOptimizerViewModel.cs
 |       |   |-- ModThresholdsViewModel.cs
+|       |   |-- ModVisualPreviewViewModel.cs
 |       |   |-- ModsViewModel.cs
 |       |   |-- PriorityTierViewModel.cs
 |       |   |-- SettingsViewModel.cs
 |       |   |-- StateViewModelBase.cs
 |       |   `-- ViewModelBase.cs
+|       |-- Controls
+|       |   |-- ModVisualControl.cs
+|       |   `-- ModVisualRequest.cs
+|       |-- Services
+|       |   `-- ModVisualAssetService.cs
 |       `-- Views
 |           |-- CharacterPortraitView.axaml
 |           |-- CharacterPortraitView.axaml.cs
@@ -154,6 +161,8 @@ This document lists the current source and documentation files in the repository
 |           |-- ModOptimizerView.axaml.cs
 |           |-- ModThresholdsView.axaml
 |           |-- ModThresholdsView.axaml.cs
+|           |-- ModVisualPreviewWindow.axaml
+|           |-- ModVisualPreviewWindow.axaml.cs
 |           |-- ModsView.axaml
 |           |-- ModsView.axaml.cs
 |           |-- SettingsView.axaml
@@ -180,6 +189,7 @@ This document lists the current source and documentation files in the repository
         |-- ModOptimizerViewModelTests.cs
         |-- ModThresholdTransferServiceTests.cs
         |-- ModThresholdsViewModelTests.cs
+        |-- ModVisualSpecTests.cs
         |-- ModsViewModelTests.cs
         |-- OperationStateTests.cs
         |-- PersistedModelMapperTests.cs
@@ -209,10 +219,19 @@ This document lists the current source and documentation files in the repository
 - `PreferredModsDataset.cs`, `PreferredModsDatasetService.cs`, and `PreferredModsAggregator.cs` implement the model, offline cache/update path, and aggregation logic.
 - `tools/swgoh-command-bridge.PreferredModsPublisher/` is the standalone publisher; its executable project and maintainer instructions are kept separate from the desktop projects.
 
+## Visual mod assets
+
+- `src/swgoh-command-bridge.Core/Models/ModVisualSpec.cs` defines the JSON model and coordinate conversion used by the UI renderer.
+- `src/swgoh-command-bridge.UI/Controls/ModVisualControl.cs` and `ModVisualRequest.cs` build a layered mod visual from cached shape, set, dot, level metadata, and tier values.
+- `src/swgoh-command-bridge.UI/Services/ModVisualAssetService.cs` loads `Assets/Mods/mod_visual_spec.json`, resolves linked chassis/set-emblem PNGs, and caches neutral/tinted bitmaps.
+- `src/swgoh-command-bridge-assets/SWGOH_AssetDump/mod_visual_spec.json`, `charactermods_datacard_sprites/`, and `battleui_view_rgba_sprites/` are the source asset inputs. The UI project links them at build time; they are not duplicated in this repository.
+- `ModVisualPreviewWindow` and `ModVisualPreviewViewModel` provide the offline `--mod-visual-preview` verification path. The preview does not initialize SQLite, Comlink, or account state.
+
 ## Asset and generated-file boundaries
 
 - Core embeds the verified fallback character and ship catalogs from `src/swgoh-command-bridge.Core/Assets/CharacterCatalog/`.
 - Core embeds a deliberately empty preferred-mod bootstrap baseline from `src/swgoh-command-bridge.Core/Assets/PreferredMods/`; `data/preferred-mods/` holds only the GitHub-published aggregate dataset and manifest.
 - The UI packages Avalonia resources and links portrait PNGs from the sibling `swgoh-command-bridge-assets` workspace when available.
+- The UI also links the mod visual spec, chassis sprites, and set-emblem sprites from that workspace. Missing runtime artwork is reported inside the visual control and must be resolved before release.
 - Runtime catalog snapshots, SQLite cache, settings, backups, diagnostics, and managed Windows Comlink binaries live below the platform-local `SWGOHCommandBridge` application-data directory; they are not repository files.
 - Build, test, publish, temporary, and Codex-generated folders are not source inputs and should not be added to this manifest.

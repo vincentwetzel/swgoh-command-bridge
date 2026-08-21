@@ -440,7 +440,7 @@ namespace swgoh_command_bridge.UI.ViewModels
                     var availability = swap.CandidateAvailable ? "available" : "reserved/unavailable";
                     RosterSwapSummaries.Add(
                         $"P{swap.Priority} {swap.CharacterName}, slot {swap.Slot}: " +
-                        $"{swap.CurrentModId} -> {swap.CandidateModId} (+{swap.ScoreGain:F1}, {availability}) — {swap.Reason}");
+                        $"replacement candidate (+{swap.ScoreGain:F1}, {availability}) — {swap.Reason}");
                 }
                 OnPropertyChanged(nameof(HasRosterSwapRecommendations));
 
@@ -820,7 +820,7 @@ namespace swgoh_command_bridge.UI.ViewModels
                 }
                 foreach (var explanation in loadoutResult.Explanations)
                 {
-                    LoadoutExplanations.Add($"Slot {explanation.Slot} - {explanation.ModId}: {explanation.Reason}");
+                    LoadoutExplanations.Add($"Slot {explanation.Slot}: {explanation.Reason}");
                 }
                 LoadoutScoreText = loadoutResult.Explanations.Count == 0
                     ? "No assignment score is available for this loadout."
@@ -829,13 +829,13 @@ namespace swgoh_command_bridge.UI.ViewModels
                 foreach (var alternative in loadoutResult.Alternatives)
                 {
                     AlternativeSummaries.Add(
-                        $"Slot {alternative.Slot} - {alternative.ModId}: score {alternative.Score:F1} " +
+                        $"Slot {alternative.Slot}: alternative score {alternative.Score:F1} " +
                         $"({alternative.ScoreDelta:+0.0;-0.0;0.0} vs selected) - {alternative.BenefitSummary} {alternative.Reason}");
                 }
                 foreach (var swap in loadoutResult.SwapRecommendations)
                 {
                     SwapRecommendationSummaries.Add(
-                        $"Replace {swap.CurrentModId} with {swap.CandidateModId} in slot {swap.Slot}: " +
+                        $"Replacement candidate in slot {swap.Slot}: " +
                       $"{swap.BenefitSummary} {swap.Reason}");
                 }
                 foreach (var impact in loadoutResult.Projection.StatImpacts)

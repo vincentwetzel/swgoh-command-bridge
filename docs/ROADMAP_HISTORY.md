@@ -33,6 +33,7 @@ This document records the implementation work verified during the roadmap audit.
 - Character records persist normalized alignment and relic tier data; shared UI portrait rendering selects gear/relic highlights and falls back to initials when an asset is unavailable.
 - Priority management uses a separate character/ship tier board with S/A/B/C/D and Unranked rows, drag-and-drop ordering, bundled-catalog ship classification, and preservation across account replacement.
 - Mod-primary mapping validates each shape's legal primaries and repairs known legacy identifiers during parsing and cache migration.
+- Mod presentation uses linked game artwork and a versioned visual spec to render shape-specific chassis, tier-colored set emblems, rarity pips, and six-dot variants in Characters, Mods, and Optimize; an offline preview switch covers all six shapes.
 - Repository replacement, upsert, account removal, and failed-refresh rollback are transactional.
 - Representative Comlink fixtures cover empty, malformed, duplicate, partial, nested, and inventory-heavy responses.
 
@@ -78,6 +79,7 @@ This document records the implementation work verified during the roadmap audit.
 - The cache compatibility migrator is now at schema version 11, with migrations for character alignment and persisted relic tiers.
 - Diagnostics capture bounded privacy-safe events and redact ally codes/account payloads.
 - Character catalog parser, refresh, fallback, and UI portrait/name behavior are covered by the current source and tests.
+- Mod visual spec parsing, coordinate conversion, tier palette, and layered layout behavior are covered by the current source/tests; packaged asset presence remains a release smoke-test responsibility.
 - Crash-safe cache recovery, guarded reset, verified restore rollback, and offline behavior are implemented.
 - README, architecture, state-flow, Comlink setup, diagnostics, file manifest, release guide, and coding standards reflect the shipped behavior and platform support boundary.
 - The read-only boundary is documented in the README, specification, and smoke checklist.

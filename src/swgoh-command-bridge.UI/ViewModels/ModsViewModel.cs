@@ -12,6 +12,7 @@ using swgoh_command_bridge.Core.Database;
 using swgoh_command_bridge.Core.Database.Entities;
 using swgoh_command_bridge.Core.Models;
 using swgoh_command_bridge.Core.Services;
+using swgoh_command_bridge.UI.Controls;
 
 namespace swgoh_command_bridge.UI.ViewModels;
 
@@ -151,6 +152,7 @@ public class ModsViewModel : StateViewModelBase<IReadOnlyList<GameModEntity>>
 
             _selectedMod = value;
             OnPropertyChanged(nameof(SelectedMod));
+            OnPropertyChanged(nameof(SelectedModVisualRequest));
             OnPropertyChanged(nameof(SelectedModSetText));
             OnPropertyChanged(nameof(SelectedModSlotText));
             OnPropertyChanged(nameof(SelectedModSummaryText));
@@ -168,6 +170,10 @@ public class ModsViewModel : StateViewModelBase<IReadOnlyList<GameModEntity>>
             _ = UpdateRecommendationAsync();
         }
     }
+
+    public ModVisualRequest? SelectedModVisualRequest => _selectedMod == null
+        ? null
+        : ModVisualRequest.FromEntity(_selectedMod);
 
     public ModRecommendation? SelectedModRecommendation
     {
@@ -477,8 +483,13 @@ public class ModsViewModel : StateViewModelBase<IReadOnlyList<GameModEntity>>
 
             var characterNames = characters
                 .ToDictionary(character => character.Id, character => character.Name, StringComparer.Ordinal);
+            var charactersById = characters
+                .ToDictionary(character => character.Id, StringComparer.Ordinal);
             foreach (var mod in mods)
             {
+                mod.OwnerCharacter = string.IsNullOrWhiteSpace(mod.CharacterId)
+                    ? null
+                    : charactersById.GetValueOrDefault(mod.CharacterId);
                 mod.OwnerDisplayName = string.IsNullOrWhiteSpace(mod.CharacterId)
                     ? "Un-equipped"
                     : characterNames.TryGetValue(mod.CharacterId, out var ownerName)

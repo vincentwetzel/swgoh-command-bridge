@@ -153,6 +153,27 @@ internal static class ComlinkPayloadFixtures
         }
         """;
 
+    public const string CanonicalComlinkGearTier = """
+        {
+          "name": "Canonical Tier Shape",
+          "rosterUnit": [
+            {
+              "definitionId": "DARTHVADER:SEVEN_STAR",
+              "currentLevel": 85,
+              "currentRarity": 7,
+              "currentTier": 13,
+              "relic": { "currentTier": 8 }
+            },
+            {
+              "definitionId": "PADME_AMIDALA:SEVEN_STAR",
+              "currentLevel": 85,
+              "currentRarity": 7,
+              "currentTier": 7
+            }
+          ]
+        }
+        """;
+
     public const string RawRosterModShape = """
         {
           "name": "Raw Shape",

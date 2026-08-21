@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 This unreleased work is not a packaged release. The product remains read-only. Windows x64 can manage the local Comlink runtime; other platforms and externally managed deployments require a configured Comlink endpoint.
 
 ### Added
+- Added layered mod artwork rendering for inventory, character, and optimizer screens, including tier-colored chassis/set emblems, shape-specific layouts, rarity pips, 6-dot variants, cached bitmap tinting, and the `--mod-visual-preview` verification window.
 - Added a drag-and-drop S/A/B/C/D priority board with an Unranked area, separate character/ship views, persisted order, and migration of legacy numeric priorities.
 - Added canonical mod-primary validation and normalization for malformed or version-skewed Comlink payloads, including schema migration repair for known invalid cached pairs.
 - Added an embedded character/ship catalog with localized-name and portrait resolution, best-effort Comlink catalog refresh, atomic catalog persistence, audit summaries, and bundled portrait/initials UI fallbacks.
@@ -68,6 +69,7 @@ This unreleased work is not a packaged release. The product remains read-only. W
 - Documentation now reflects the active `src/` implementation, account-scoped sync and offline cache behavior, local cache/settings locations, recovery controls, privacy-redacted diagnostics, recommendation scraping policy, release packaging guidance, and the manual smoke-test gate.
 - Documentation now distinguishes cross-platform UI/Core targets from the Windows x64-only automatic Comlink setup and records the external-service requirement for other platforms.
 - Documentation now reflects cache schema version 11, alignment-aware portrait frames, persisted relic tiers, the reusable portrait view, and the current Dashboard/Roster/Mods/Optimize navigation.
+- Documentation now records the external mod-art asset boundary, the visual-spec contract, the preview launch switch, and the release smoke checks required for bundled visual assets.
 
 ### Documentation status
 - `docs/ROADMAP_HISTORY.md` records the completed implementation audit; `TODO.md` now contains only open release gates and deferred scope.

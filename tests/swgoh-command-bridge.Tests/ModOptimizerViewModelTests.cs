@@ -50,7 +50,7 @@ public sealed class ModOptimizerViewModelTests : IDisposable
         Assert.Contains("fixture-source", viewModel.RecommendationSourceUrlText);
         Assert.NotEmpty(viewModel.LoadoutExplanations);
         Assert.Contains("Combined assignment score", viewModel.LoadoutScoreText);
-        Assert.Contains(viewModel.AlternativeSummaries, summary => summary.Contains("optimizer-alt"));
+        Assert.Contains(viewModel.AlternativeSummaries, summary => summary.Contains("alternative score"));
     }
 
     [Fact]

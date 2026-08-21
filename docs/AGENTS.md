@@ -15,6 +15,8 @@ On Windows x64, `ComlinkRuntimeManager` may own a hidden child process for the d
 
 The desktop composition root owns the long-lived database and HTTP client. Do not introduce a hosted worker or broader automatic account sync without updating the read-only scope, privacy documentation, and smoke-test checklist.
 
+`ModVisualControl` and `ModVisualAssetService` are UI presentation components, not background agents. They load only build-linked assets and cached mod fields. The `--mod-visual-preview` path intentionally skips the normal composition root, database, Comlink, and all account operations so visual verification remains deterministic and offline.
+
 ---
 
 ## AI Coding Agent & Context Optimization Guidelines

@@ -65,6 +65,7 @@ namespace swgoh_command_bridge.UI.ViewModels
                     {
                         CurrentMods.Add(mod);
                         EquippedModDetails.Add(new EquippedModDisplayItem(
+                            mod,
                             FormatSlot(mod.Slot),
                             FormatSet(mod.Set),
                             FormatPrimaryStat(mod.PrimaryStatType, mod.PrimaryStatValue),
@@ -727,6 +728,7 @@ namespace swgoh_command_bridge.UI.ViewModels
     }
 
     public sealed record EquippedModDisplayItem(
+        GameModEntity Mod,
         string Shape,
         string Set,
         string Primary,

@@ -12,6 +12,8 @@ Run `dotnet build swgoh-command-bridge.sln` and `dotnet test swgoh-command-bridg
 - [ ] Open Characters and confirm preferred-mod guidance handles the bundled bootstrap dataset without errors.
 - [ ] Open Settings, enter a valid Comlink URL and ally code, save, close, and reopen the app.
 - [ ] On Linux/macOS candidate builds, configure a healthy externally managed Comlink endpoint and confirm the app does not assume the Windows managed runtime is available.
+- [ ] Run `dotnet run --project src/swgoh-command-bridge.UI/swgoh-command-bridge.UI.csproj -- --mod-visual-preview` and confirm all six normal and 6-dot shape samples render with set emblems, pips, and tier colors without initializing account services.
+- [ ] Confirm the published UI contains the linked `mod_visual_spec.json`, chassis sprites, and set-emblem sprites; a missing asset must be treated as a release failure rather than silently replaced with mock art.
 
 ## Empty and populated cache
 
@@ -22,6 +24,7 @@ Run `dotnet build swgoh-command-bridge.sln` and `dotnet test swgoh-command-bridg
 - [ ] Confirm the latest sync result and warning count appear in the account dropdown and Diagnostics.
 - [ ] Confirm Diagnostics lists recent redacted sync attempts without full ally codes or account payloads.
 - [ ] Confirm characters, priorities, mods, equipped owners, and optimizer data refresh without restarting.
+- [ ] Confirm mod visuals appear in Characters, Mods, and Optimize, and that changing the selected mod updates the larger selected-mod visual without stale artwork remaining.
 - [ ] Open Priorities, verify character and ship tabs show only their respective units, drag units between S/A/B/C/D and Unranked, reorder units within a tier, save, restart, and confirm placement/order persist.
 - [ ] Sync the same account again and confirm the priority board retains local tier placement and ordering.
 - [ ] Confirm startup catalog refresh is best-effort: localized character names, bundled portraits, and alignment-aware gear/relic frames appear when catalog data is available, while an unavailable Comlink leaves the embedded/previous catalog usable.
@@ -63,3 +66,4 @@ Run `dotnet build swgoh-command-bridge.sln` and `dotnet test swgoh-command-bridg
 - [ ] With a published preferred-mod dataset available, verify Characters shows a preferred set pattern and slot-primary guidance for a represented character.
 - [ ] Verify a close primary split is shown as a viable alternative rather than a hard mismatch, and an empty slot still receives guidance.
 - [ ] Disconnect the network, restart, and confirm the last verified preferred-mod dataset remains readable.
+- [ ] Confirm mod visuals remain available offline because they are bundled build assets, and that the visual preview still works with no Comlink endpoint or account cache.

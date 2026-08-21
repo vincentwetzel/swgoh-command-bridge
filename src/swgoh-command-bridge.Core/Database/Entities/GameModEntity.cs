@@ -22,6 +22,10 @@ namespace swgoh_command_bridge.Core.Database.Entities
         [NotMapped]
         public string OwnerDisplayName { get; set; } = string.Empty;
 
+        /// <summary>Gets or sets the cached owner projection used by portrait-aware mod views.</summary>
+        [NotMapped]
+        public CharacterEntity? OwnerCharacter { get; set; }
+
         /// <summary>Gets or sets the compact quality summary projected for inventory rows.</summary>
         [NotMapped]
         public string QualitySummary { get; set; } = string.Empty;

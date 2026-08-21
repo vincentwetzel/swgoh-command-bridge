@@ -27,7 +27,7 @@ These require packaged builds and runtime verification, which are intentionally 
 
 ## Current product boundary
 
-The current target is a local, read-only desktop product. It can configure Comlink, sync and cache player data by ally code, display catalog-backed portraits and gear/relic frames, analyze persisted mods, retrieve recommendations under a release-controllable scraping policy, and produce deterministic explainable assignments. Windows x64 can manage the local Comlink runtime; Linux/macOS deployments currently require an external Comlink service.
+The current target is a local, read-only desktop product. It can configure Comlink, sync and cache player data by ally code, display catalog-backed portraits and gear/relic frames, render linked mod artwork and tier/set visuals, analyze persisted mods, retrieve recommendations under a release-controllable scraping policy, and produce deterministic explainable assignments. Windows x64 can manage the local Comlink runtime; Linux/macOS deployments currently require an external Comlink service.
 
 It does not write to the game, provide full game-stat simulation, or claim legal approval for public scraping.
 

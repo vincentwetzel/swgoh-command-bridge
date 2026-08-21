@@ -1,6 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:swgoh_command_bridge.UI.ViewModels"
+             xmlns:portrait="using:swgoh_command_bridge.UI.Views"
+             xmlns:controls="using:swgoh_command_bridge.UI.Controls"
              x:Class="swgoh_command_bridge.UI.Views.ModsView"
              x:DataType="vm:ModsViewModel">
   <Grid RowDefinitions="Auto, *" Margin="20">
@@ -66,8 +68,13 @@
       </Grid>
     </Grid>
 
-    <Grid Grid.Row="1" ColumnDefinitions="*, 320">
-      <Grid>
+    <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" MinWidth="520"/>
+        <ColumnDefinition Width="10"/>
+        <ColumnDefinition Width="320" MinWidth="260"/>
+      </Grid.ColumnDefinitions>
+      <Grid Grid.Column="0">
         <TextBlock Text="Loading mods..." IsVisible="{Binding IsLoading}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         <TextBlock Text="No cached mods. Sync an account from Home to begin." IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"/>
         <StackPanel IsVisible="{Binding HasError}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" MaxWidth="360">
@@ -84,17 +91,20 @@
           </ListBox.ItemsPanel>
           <ListBox.ItemTemplate>
             <DataTemplate>
-              <Border BorderBrush="#444444" BorderThickness="0,0,0,1" Padding="8,6">
-                <Grid ColumnDefinitions="150, *, 150, 170" RowDefinitions="Auto, Auto">
-                  <TextBlock Grid.RowSpan="2" Text="{Binding QualitySummary}" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap"/>
-                  <StackPanel Grid.Column="1" Grid.RowSpan="2" Spacing="2" MinWidth="0">
-                    <TextBlock Text="{Binding Id}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Text="{Binding SecondaryStatsSummary}" Foreground="Gray" TextTrimming="CharacterEllipsis"/>
+              <Border BorderBrush="#444444" BorderThickness="0,0,0,1" Padding="10,10">
+                <Grid ColumnDefinitions="76,170,230,*" RowDefinitions="Auto">
+                  <controls:ModVisualControl Mod="{Binding}" Scale="1.05" Width="72" Height="64"
+                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  <StackPanel Grid.Column="1" Margin="8,0,8,0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" MinWidth="0">
+                    <portrait:CharacterPortraitView DataContext="{Binding OwnerCharacter}" Width="58" Height="52"
+                                                    IsVisible="{Binding OwnerCharacter, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <TextBlock Text="{Binding OwnerDisplayName}" Width="84" Foreground="Gray"
+                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                   </StackPanel>
-                  <TextBlock Grid.Column="2" Grid.RowSpan="2" Text="{Binding SetSlotSummary}" VerticalAlignment="Center" TextWrapping="Wrap"/>
-                  <StackPanel Grid.Column="3" Grid.RowSpan="2" Spacing="2" MinWidth="0">
-                    <TextBlock Text="{Binding PrimaryStatSummary}" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Text="{Binding OwnerDisplayName, StringFormat='Owner: {0}'}" Foreground="Gray" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Grid.Column="2" Margin="8,0" Text="{Binding PrimaryStatSummary}" FontWeight="SemiBold"
+                             TextWrapping="Wrap" VerticalAlignment="Center"/>
+                  <StackPanel Grid.Column="3" Spacing="3" MinWidth="0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding SecondaryStatsSummary}" Foreground="Gray" TextTrimming="CharacterEllipsis"/>
                   </StackPanel>
                 </Grid>
               </Border>
@@ -103,22 +113,30 @@
         </ListBox>
       </Grid>
 
-      <Border Grid.Column="1" BorderBrush="#555555" BorderThickness="1" CornerRadius="6" Padding="16">
+      <GridSplitter Grid.Column="1" Width="10" HorizontalAlignment="Stretch" Background="#2D4B68"
+                    Cursor="SizeWestEast" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"
+                    ToolTip.Tip="Drag to resize the mod inventory and selected-mod panel" ToolTip.ShowDelay="0"/>
+
+      <Border Grid.Column="2" BorderBrush="#555555" BorderThickness="1" CornerRadius="6" Padding="16">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <StackPanel Spacing="12">
           <TextBlock Text="Selected mod" FontSize="18" FontWeight="SemiBold"/>
           <TextBlock Text="Select a cached mod to analyze." IsVisible="{Binding SelectedMod, Converter={x:Static ObjectConverters.IsNull}}" Foreground="Gray" TextWrapping="Wrap"/>
           <StackPanel IsVisible="{Binding SelectedMod, Converter={x:Static ObjectConverters.IsNotNull}}" Spacing="8">
-            <TextBlock Text="{Binding SelectedMod.Id}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+            <controls:ModVisualControl Request="{Binding SelectedModVisualRequest}" Scale="1.15"
+                                       HorizontalAlignment="Center" />
             <TextBlock Text="{Binding SelectedModSummaryText}" Foreground="Gray" TextWrapping="Wrap"/>
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <portrait:CharacterPortraitView DataContext="{Binding SelectedMod.OwnerCharacter}" Width="58" Height="52"
+                                              IsVisible="{Binding SelectedMod.OwnerCharacter, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+              <TextBlock Text="{Binding SelectedMod.OwnerDisplayName, StringFormat='Equipped owner: {0}'}"
+                         TextWrapping="Wrap" VerticalAlignment="Center"/>
+            </StackPanel>
             <TextBlock Text="{Binding SelectedMod.PrimaryStatType, StringFormat='Primary: {0}'}" TextWrapping="Wrap"/>
             <TextBlock Text="{Binding SelectedMod.PrimaryStatValue, StringFormat='Primary value: {0:F2}'}" TextWrapping="Wrap"/>
-            <TextBlock Text="{Binding SelectedModSetText}" TextWrapping="Wrap"/>
-            <TextBlock Text="{Binding SelectedModSlotText}" TextWrapping="Wrap"/>
             <TextBlock Text="Secondary stats" FontWeight="SemiBold" IsVisible="{Binding HasSelectedSecondaryStats}"/>
             <ItemsControl ItemsSource="{Binding SelectedSecondarySummaries}" IsVisible="{Binding HasSelectedSecondaryStats}"/>
             <TextBlock Text="No readable secondary stats were cached." IsVisible="{Binding HasNoSelectedSecondaryStats}" Foreground="Gray"/>
-            <TextBlock Text="{Binding SelectedMod.OwnerDisplayName, StringFormat='Equipped owner: {0}'}" TextWrapping="Wrap"/>
             <TextBlock Text="{Binding SelectedModRecommendation.Action, StringFormat='Recommendation: {0}'}" FontWeight="Bold" TextWrapping="Wrap"/>
             <TextBlock Text="{Binding SelectedModRecommendation.Score, StringFormat='Recommendation score: {0:F0}'}" TextWrapping="Wrap"/>
             <TextBlock Text="{Binding SelectedModRecommendation.RuleSummary}" Foreground="Gray" TextWrapping="Wrap"/>

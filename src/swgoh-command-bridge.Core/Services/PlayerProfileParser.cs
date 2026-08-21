@@ -77,7 +77,11 @@ public sealed class PlayerProfileParser
                     Id: characterId,
                     Name: GetCharacterName(unit, characterId, characterNames),
                     Level: GetInt(unit, 1, "currentLevel", "level"),
-                    GearLevel: GetInt(unit, 1, "currentGearLevel", "gearLevel"),
+                    // Comlink's canonical roster field is currentTier. Older
+                    // adapters and cached payloads may expose the same value
+                    // as currentGearLevel/gearLevel, so accept all known
+                    // aliases before falling back to the starter gear frame.
+                    GearLevel: GetInt(unit, 1, "currentTier", "currentGearLevel", "gearLevel"),
                     RelicTier: ParseRelicTier(unit),
                     GalacticPower: GetInt(unit, 0, "gp", "galacticPower"),
                     Priority: 0,

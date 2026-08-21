@@ -66,9 +66,11 @@ The following are required before publishing an artifact:
 - The target-specific publish command completes without warnings that affect runtime loading.
 - The fresh-install, populated-cache, offline, malformed-cache, backup/restore, and read-only scenarios in [SMOKE_TEST_CHECKLIST.md](SMOKE_TEST_CHECKLIST.md) pass.
 - The published directory contains the UI executable, Core assembly, Avalonia assets, SQLite provider assets, and all required runtime files.
+- The published UI contains `Assets/Mods/mod_visual_spec.json`, all linked chassis/set-emblem PNGs, and the visual preview can render every representative normal and 6-dot sample.
 - Windows documentation identifies the managed Comlink release sequence and target architecture; non-Windows documentation identifies the external Comlink prerequisite.
 - The embedded preferred-mod baseline opens safely offline, and a verified published dataset is exercised through the Characters smoke checks when one is available.
 - Character catalog assets, alignment-aware gear/relic frames, and initials fallback are exercised through the roster/priority/optimizer smoke checks.
+- Mod visual assets are exercised through the preview switch and through Characters, Mods, and Optimize; verify that the sibling asset workspace was present when the UI package was built.
 
 ## Preferred-mod data publishing
 

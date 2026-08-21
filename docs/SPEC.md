@@ -25,6 +25,8 @@ The current release target is read-only. Any feature that changes the game accou
 ### 2.2. Mod Viewing & Filtering
 -   **Inventory View:** Display the entire mod inventory in a sortable, filterable grid.
 -   **Advanced Filtering:** Filter mods by any combination of slot, set, primary stat, secondary stats, level, pips, tier, and equipped status.
+-   **Mod visual quality colors:** Mod chassis quality borders and set emblems use the following SWGOH colors: Tier 1 / Gray `#CDFFFF`, Tier 2 / Green `#99FF33`, Tier 3 / Blue `#1D99FF`, Tier 4 / Purple `#A35EFF`, and Tier 5 / Gold `#FFCC33`. These values are applied to the extracted white alpha-mask artwork at render time.
+-   **Layered mod visuals:** Inventory rows, selected-mod details, character loadout rows, and optimizer assignments compose shape-specific chassis art, optional light art, a tier-tinted set emblem, and visible rarity pips from `mod_visual_spec.json`. Six-dot mods use their dedicated chassis sprite and retain neutral chassis artwork; level metadata is carried in the visual request for layout compatibility.
 -   **Primary validation:** Parsed and persisted mod primaries are checked against the legal primary-stat set for each shape. Known legacy fixed-primary identifiers are normalized; unknown invalid combinations are excluded from recommendations rather than treated as valid data.
 -   **Quick Search:** Instantly find mods with specific secondary stats (e.g., "all mods with Speed secondaries").
 -   **Explicit UI States:** Feature views should distinguish loading, empty, success, and error states without relying on mock fallback data.
@@ -69,6 +71,7 @@ The current release target is read-only. Any feature that changes the game accou
 -   **Game API:** `swgoh-comlink` (via configured HTTP calls; Windows x64 can manage the default local runtime)
 -   **Community Data:** Public `swgoh.gg` pages via remote HTTP calls and HTML parsing
 -   **Preferred Mod Data:** GitHub-hosted, versioned aggregate JSON with an embedded baseline and local offline cache
+-   **Visual Assets:** Build-linked PNG sprites and `mod_visual_spec.json` from the sibling `swgoh-command-bridge-assets` workspace; the preview is launched with `--mod-visual-preview`
 
 The compiled implementation lives under `src/`. The application is composed as a desktop process with no scheduled background worker. On startup, after cached data is available, the selected account is refreshed once in the background when its cache is older than the freshness threshold, and catalog/preferred-mod datasets may perform one best-effort refresh; explicit sync and local recommendation refreshes remain user-triggered. On supported Windows x64 startup, the composition root may own a downloaded Comlink child process for the lifetime of the desktop process.
 

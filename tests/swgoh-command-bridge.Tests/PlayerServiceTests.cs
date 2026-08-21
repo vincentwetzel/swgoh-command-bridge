@@ -65,6 +65,25 @@ namespace swgoh_command_bridge.Tests
         }
 
         [Fact]
+        public async Task GetPlayerProfileAsync_UsesCanonicalComlinkCurrentTierForPortraitProgression()
+        {
+            var service = new PlayerService(
+                new FakeComlinkService(ComlinkPayloadFixtures.CanonicalComlinkGearTier),
+                new FakePlayerRepository(),
+                NullLogger<PlayerService>.Instance);
+
+            var result = await service.GetPlayerProfileAsync("123456789");
+
+            var vader = Assert.Single(result.Characters, character => character.Id == "DARTHVADER");
+            Assert.Equal(13, vader.GearLevel);
+            Assert.Equal(6, vader.RelicTier);
+
+            var padme = Assert.Single(result.Characters, character => character.Id == "PADME_AMIDALA");
+            Assert.Equal(7, padme.GearLevel);
+            Assert.Equal(0, padme.RelicTier);
+        }
+
+        [Fact]
         public async Task GetPlayerProfileAsync_ParsesRawComlinkModDefinitionAndStats()
         {
             var service = new PlayerService(

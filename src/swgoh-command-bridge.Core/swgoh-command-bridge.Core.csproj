@@ -18,4 +18,11 @@
     <EmbeddedResource Include="Assets\PreferredMods\*.json" />
   </ItemGroup>
 
+  <!-- Keep local verification scratch output from being treated as source by SDK globs. -->
+  <ItemGroup>
+    <Compile Remove=".codex*\**" />
+    <Compile Remove=".codex-build-obj\**" />
+    <Compile Remove="build-verify\**" />
+  </ItemGroup>
+
 </Project>

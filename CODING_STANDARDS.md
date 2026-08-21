@@ -188,3 +188,9 @@ To ensure consistency and maintainability, all code contributed to this project 
 - **Managed Comlink scope:** Automatic Comlink installation is currently limited to 64-bit Windows. Other platforms must use a configured external endpoint until their runtime workflow is verified.
 - **Packaging:** Keep trimming, single-file publishing, and Native AOT disabled unless a release-specific test proves Avalonia XAML, EF Core, SQLite, native assets, and the view-model locator still work.
 - **Desktop lifecycle:** The composition root owns long-lived services and any managed Comlink child process. Do not add scheduled sync or background scraping without updating `docs/AGENTS.md`, `docs/STATE_FLOW.md`, privacy boundaries, and the smoke checklist.
+
+## 31. Repository-specific visual asset constraints
+- **Asset boundary:** Keep the mod visual spec and source PNGs in the sibling `swgoh-command-bridge-assets` workspace. The UI project may link them into Avalonia resources, but Core must remain independent of Avalonia and image files.
+- **Data-driven composition:** Use `ModVisualSpec` and `ModVisualAssetService` for shape/set/layout mapping. Do not duplicate sprite names, coordinates, or tier colors in individual views.
+- **Presentation-only:** `ModVisualControl` may derive a visual request from cached mod data, but it must not mutate entities, trigger Comlink calls, or affect advisor/assignment decisions.
+- **Verification:** Any change to the visual spec, sprite set, or layout control must be exercised with `--mod-visual-preview` and the normal Characters/Mods/Optimize smoke paths.

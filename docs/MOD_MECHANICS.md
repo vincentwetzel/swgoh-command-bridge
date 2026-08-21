@@ -4,6 +4,8 @@ This document outlines the process of upgrading mods in *Star Wars: Galaxy of He
 
 The advisor uses this as a bounded analysis model. It estimates upgrade and slicing potential from the cached mod record; it does not simulate every in-game stat conversion, spend credits or materials, or make changes to the game account.
 
+The UI visual is a presentation of the cached record, not a second mechanics calculation. Its tier tint reflects the stored 1–5 tier, its pip count reflects stored rarity, and six-dot status selects the dedicated six-dot chassis artwork. Missing or invalid art is reported by the control and does not change advisor decisions.
+
 ## 1. Mod Levels
 
 *   Mods can be upgraded from Level 1 to Level 15 using credits.

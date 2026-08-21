@@ -1,0 +1,33 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:swgoh_command_bridge.UI.ViewModels"
+        xmlns:controls="using:swgoh_command_bridge.UI.Controls"
+        x:Class="swgoh_command_bridge.UI.Views.ModVisualPreviewWindow"
+        x:DataType="vm:ModVisualPreviewViewModel"
+        Title="SWGOH Mod Visual Preview"
+        Width="900"
+        Height="700">
+  <ScrollViewer Padding="20">
+    <StackPanel Spacing="12">
+      <TextBlock Text="Static SWGOH mod assembly preview" FontSize="24" FontWeight="Bold"/>
+      <TextBlock Text="Launch the app with --mod-visual-preview to inspect all shape-specific layouts." Foreground="Gray" TextWrapping="Wrap"/>
+      <ItemsControl ItemsSource="{Binding Samples}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel Orientation="Horizontal" ItemWidth="270" ItemHeight="170"/>
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Border BorderBrush="#555555" BorderThickness="1" CornerRadius="6" Padding="10" Margin="4">
+              <StackPanel Spacing="6">
+                <controls:ModVisualControl Request="{Binding Request}" Scale="1.25" HorizontalAlignment="Center"/>
+                <TextBlock Text="{Binding Label}" TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center"/>
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+  </ScrollViewer>
+</Window>
